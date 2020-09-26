@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiskStatusAnalyzer", "src\DiskStatusAnalyzer\DiskStatusAnalyzer.csproj", "{88DCFA79-FC1E-437D-9CA6-CA88E1B03FC0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiskStatusAnalyzer", "DiskStatusAnalyzer\DiskStatusAnalyzer.csproj", "{88DCFA79-FC1E-437D-9CA6-CA88E1B03FC0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

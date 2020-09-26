@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BobApi", "src\BobApi\BobApi.csproj", "{DF55F9BC-56C4-4803-8FEA-55FE17B6BE26}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BobApi", "BobApi\BobApi.csproj", "{DF55F9BC-56C4-4803-8FEA-55FE17B6BE26}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OldPartitionsRemover", "src\OldPartitionsRemover\OldPartitionsRemover.csproj", "{1A6184F7-C767-4800-B70A-3F53E7670EEA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OldPartitionsRemover", "OldPartitionsRemover\OldPartitionsRemover.csproj", "{1A6184F7-C767-4800-B70A-3F53E7670EEA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
