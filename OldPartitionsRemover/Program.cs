@@ -7,11 +7,11 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using BobApi;
 using BobApi.Entities;
-using Newtonsoft.Json;
 
-namespace RecordsCalculator
+namespace OldPartitionsRemover
 {
     internal class Program
     {
@@ -26,8 +26,8 @@ namespace RecordsCalculator
             if (args.Length == 0)
             {
                 Console.WriteLine(
-                    $"Usage: \"{Assembly.GetExecutingAssembly().GetName().Name} filename.json\" with addresses or" +
-                    $"\"{Assembly.GetExecutingAssembly().GetName().Name} [-a address](multiple times)\"," +
+                    $"Usage: \"{Assembly.GetExecutingAssembly().GetName().Name} filename.json\" with addresses, threshold in file, or " +
+                    $"\"{Assembly.GetExecutingAssembly().GetName().Name} [-a address](can be added multiple times) -t threshold\"," +
                     $" also available flags are {noInfoFlag} and {noErrorFlag}");
                 return;
             }
@@ -45,15 +45,13 @@ namespace RecordsCalculator
 
         private static async Task RemoveOldPartitions()
         {
-            if (configuration is null || configuration.Nodes.Count == 0)
+            if (configuration?.Valid != true)
             {
                 LogError("Bad configuration");
                 return;
             }
 
-            ulong recordsCountWithReplicas = 0;
-            var countByVdiskId = new Dictionary<int, ulong>();
-            foreach (var node in configuration.Nodes)
+            foreach (var node in configuration.Node)
             {
                 using var api = new BobApiClient(node.Address);
                 var status = await api.GetStatus();
@@ -72,46 +70,31 @@ namespace RecordsCalculator
                             else
                             {
                                 LogInfo($"Found {partitions.Count} partitions on {vDisk}");
-                                ulong count = await CountRecordsOnReplica(node.Address, vDisk, partitions);
-                                recordsCountWithReplicas += count;
-                                if (countByVdiskId.ContainsKey(vDisk.Id))
-                                    countByVdiskId[vDisk.Id] = Math.Max(countByVdiskId[vDisk.Id], count);
-                                else
-                                    countByVdiskId.Add(vDisk.Id, count);
+                                await DeleteOldPartitions(node.Address, vDisk, partitions);
                             }
                         }
                     }
                 }
             }
-
-            var recordsCount = countByVdiskId.Values.Aggregate((ulong)0, (s, n) => s + n);
-            Console.WriteLine($"Total records count: {recordsCount}");
-            Console.WriteLine($"Total records count with replicas: {recordsCountWithReplicas}");
         }
 
-        private static async Task<ulong> CountRecordsOnReplica(Uri uri, VDisk vDisk, List<int> partitions)
+        private static async Task DeleteOldPartitions(Uri uri, VDisk vDisk, List<int> partitions)
         {
             using var api = new BobApiClient(uri);
-            var vDiskRecordsByPartitions = new Dictionary<int, ulong>();
             foreach (var partition in partitions)
             {
                 var partitionObject = await api.GetPartition(vDisk, partition);
                 if (partitionObject is null)
                     LogError($"Failed to get partition {partition} on {vDisk}");
-                else
+                else if (GetDateTimeFromTimestamp(partition) < configuration.Threshold)
                 {
-                    LogInfo(
-                        $"Found {partitionObject.RecordsCount} records on partition {partition} on {vDisk}");
-                    if (vDiskRecordsByPartitions.ContainsKey(partition))
-                        vDiskRecordsByPartitions[partition] =
-                            vDiskRecordsByPartitions[partition] + partitionObject.RecordsCount;
-                    else
-                        vDiskRecordsByPartitions.Add(partition, partitionObject.RecordsCount);
+                    await api.DeletePartition(vDisk, partition);
+                    LogInfo($"Deleted partition {partition} on {vDisk}");
                 }
             }
-
-            return vDiskRecordsByPartitions.Values.Aggregate((ulong)0, (s, n) => s + n);
         }
+
+        private static DateTime GetDateTimeFromTimestamp(int p) => new DateTime(1970, 1, 1).AddSeconds(p);
 
         private static void LogError(string text)
         {
@@ -127,6 +110,23 @@ namespace RecordsCalculator
 
         private class Configuration
         {
+            private static readonly Regex DaysOffsetRegex = new Regex(@"^\-(\d+)d$");
+
+            private Configuration(List<string> nodes, string threshold) : this(nodes)
+            {
+                if (threshold is null)
+                    LogError("Threshold not found");
+                if (nodes == null || nodes.Count == 0 || threshold == null) return;
+
+                if (DaysOffsetRegex.IsMatch(threshold))
+                    Threshold = DateTime.Now - TimeSpan.FromDays(
+                        int.Parse(DaysOffsetRegex.Match(threshold).Groups[1].Value));
+                else if (DateTime.TryParse(threshold, out var dateTimeThreshold))
+                    Threshold = dateTimeThreshold;
+                else
+                    LogError("Failed to parse threshold");
+            }
+
             private Configuration(List<string> nodes)
             {
                 if (nodes is null || nodes.Count == 0)
@@ -135,25 +135,31 @@ namespace RecordsCalculator
                     return;
                 }
 
-                Nodes = new List<Node>();
+                Node = new List<Node>();
                 foreach (var node in nodes)
                 {
-                    Nodes.Add(new Node(node));
+                    Node.Add(new Node(node));
                 }
             }
 
-            public List<Node> Nodes { get; }
+            public List<Node> Node { get; }
+            public DateTime Threshold { get; }
+
+            public bool Valid => Node?.Count > 0 && Threshold != default;
 
             public static Configuration FromCommandLineArguments(string[] args)
             {
+                string threshold = null;
                 var addresses = new List<string>();
                 for (int i = 0; i < args.Length - 1; i++)
                 {
                     if (args[i] == "-a")
                         addresses.Add(args[i + 1]);
+                    else if (args[i] == "-t")
+                        threshold = args[i + 1];
                 }
 
-                return new Configuration(addresses);
+                return new Configuration(addresses, threshold);
             }
 
             public static Configuration FromJsonFile(string filename)
@@ -161,8 +167,9 @@ namespace RecordsCalculator
                 var obj = JsonConvert.DeserializeAnonymousType(File.ReadAllText(filename), new
                 {
                     addresses = new List<string>(),
+                    threshold = string.Empty,
                 });
-                return new Configuration(obj.addresses);
+                return new Configuration(obj.addresses, obj.threshold);
             }
         }
 
