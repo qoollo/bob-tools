@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26124.0
 MinimumVisualStudioVersion = 15.0.26124.0
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BobApi", "BobApi\BobApi.csproj", "{D421C7C9-A8A6-4C70-BC11-B67505292F57}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BobApi", "src\BobApi\BobApi.csproj", "{D421C7C9-A8A6-4C70-BC11-B67505292F57}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecordsCalculator", "RecordsCalculator\RecordsCalculator.csproj", "{865DB93E-1FBA-44F8-BE0C-684F8F92C8DF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecordsCalculator", "src\RecordsCalculator\RecordsCalculator.csproj", "{865DB93E-1FBA-44F8-BE0C-684F8F92C8DF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
