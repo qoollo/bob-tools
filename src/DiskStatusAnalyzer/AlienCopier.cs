@@ -115,6 +115,7 @@ namespace DiskStatusAnalyzer
 
         private async Task RestartVDisk(VDiskDir vDisk, Node targetNode)
         {
+            logger.LogInformation($"Restarting vdisk {vDisk.Id} on node {targetNode.Name}");
             using var client = new HttpClient {BaseAddress = targetNode.Uri};
             var res = await client.PostAsync(
                 $"vdisks/{vDisk.Id}/remount",

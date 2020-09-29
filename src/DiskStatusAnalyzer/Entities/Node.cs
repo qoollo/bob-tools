@@ -14,16 +14,19 @@ namespace DiskStatusAnalyzer.Entities
     {
         private readonly RsyncWrapper rsyncWrapper;
         private readonly ILogger<Node> logger;
+        private readonly ILoggerFactory loggerFactory;
 
-        public Node(Uri uri, RsyncWrapper rsyncWrapper, ILogger<Node> logger)
+        public Node(Uri uri, RsyncWrapper rsyncWrapper, ILogger<Node> logger,
+                    ILoggerFactory loggerFactory)
         {
             Uri = uri;
             this.rsyncWrapper = rsyncWrapper;
             this.logger = logger;
+            this.loggerFactory = loggerFactory;
         }
 
         public Uri Uri { get; }
-        public  string Name { get; private set; }
+        public string Name { get; private set; }
 
         public List<DiskDir> DiskDirs { get; } = new List<DiskDir>();
 
@@ -43,7 +46,8 @@ namespace DiskStatusAnalyzer.Entities
             }
             logger.LogInformation($"Successfully read status from node {Uri}, creating disks structure...");
             Name = node.Name;
-            var structureCreator = new NodeStructureCreator(rsyncWrapper);
+            var structureCreator = new NodeStructureCreator(rsyncWrapper,
+                                                            loggerFactory.CreateLogger<NodeStructureCreator>());
             foreach (var vDisk in node.VDisks)
             {
                 foreach (var replica in vDisk.Replicas)
@@ -52,18 +56,18 @@ namespace DiskStatusAnalyzer.Entities
                         continue;
                     var parentPath = replica.Path.TrimEnd('/').Substring(0, replica.Path.LastIndexOf('/'));
                     logger.LogInformation($"Reading disk structure from path {replica.Path}");
-                    var dirs = await rsyncWrapper.GetDirs(parentPath);
+                    var dirs = await rsyncWrapper.GetDirectories(parentPath);
                     var rsyncEntry = dirs.FirstOrDefault(re => re.Path.TrimEnd('/') == replica.Path.TrimEnd('/'));
                     if (rsyncEntry != null)
                     {
                         logger.LogInformation($"Disk {replica.Path} found");
-                        var dir = await structureCreator.ParseDisk(rsyncEntry);
+                        var dir = structureCreator.ParseDisk(rsyncEntry);
                         if (dir != null)
                         {
                             logger.LogInformation($"Successfully read structure of disk {replica.Path}");
                             DiskDirs.Add(dir);
                         }
-                        else 
+                        else
                             logger.LogError($"Structure of disk {replica.Path} can't be parsed");
                     }
                     else

@@ -1,112 +1,103 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using DiskStatusAnalyzer.Entities;
 using DiskStatusAnalyzer.Rsync;
 using DiskStatusAnalyzer.Rsync.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace DiskStatusAnalyzer.NodeStructureCreation
 {
     public class NodeStructureCreator
     {
         private readonly RsyncWrapper rsyncWrapper;
+        private readonly ILogger<NodeStructureCreator> logger;
 
-        public NodeStructureCreator(RsyncWrapper rsyncWrapper)
+        public NodeStructureCreator(RsyncWrapper rsyncWrapper, ILogger<NodeStructureCreator> logger)
         {
             this.rsyncWrapper = rsyncWrapper;
+            this.logger = logger;
         }
 
-        public async Task<NodeDir> CreateNodeDir(RsyncEntry baseEntry)
+        public DiskDir ParseDisk(TreeParser.Entry diskDir)
         {
-            if (baseEntry?.IsDirectory != true)
+            if (diskDir?.IsDir != true)
                 return null;
-            
-            var nodeDirs = await rsyncWrapper.GetDirs(baseEntry.Path);
-            var disks = new List<DiskDir>(nodeDirs.Count);
-            foreach (var dir in nodeDirs)
-            {
-                var disk = await ParseDisk(dir);
-                if (disk != null)
-                    disks.Add(disk);
-            }
 
-            return new NodeDir(disks, baseEntry);
-        }
-
-        public async Task<DiskDir> ParseDisk(RsyncEntry diskDir)
-        {
-            if (diskDir?.IsDirectory != true)
-                return null;
-            
-            var dirs = await rsyncWrapper.GetDirs(diskDir.Path);
+            var dirs = diskDir.Children;
             var bobDir = dirs.FirstOrDefault(re => re.Name == "bob");
             if (bobDir is null)
                 return null;
-            var bob = await ParseBob(bobDir);
+            logger.LogDebug($"Found disk dir {diskDir.Path}");
+            var bob = ParseBob(bobDir);
             var alienDir = dirs.FirstOrDefault(re => re.Name == "alien");
-            var alien = await ParseAlien(alienDir);
-            return new DiskDir(diskDir.Name, bob, alien, diskDir);
+            var alien = ParseAlien(alienDir);
+            return new DiskDir(diskDir.Name, bob, alien, new RsyncEntry(rsyncWrapper, diskDir));
         }
 
-        private async Task<BobDir> ParseBob(RsyncEntry bobDir)
+        private BobDir ParseBob(TreeParser.Entry bobDir)
         {
-            if (bobDir?.IsDirectory != true)
+            if (!bobDir.IsDir)
                 return null;
-            
-            var dirs = await rsyncWrapper.GetDirs(bobDir.Path);
+
+            logger.LogDebug($"Found bob dir {bobDir.Path}");
+            var dirs = bobDir.Children;
             var vDisks = new List<VDiskDir>(dirs.Count);
             foreach (var dir in dirs)
             {
-                var vDisk = await ParseVDisk(dir);
+                var vDisk = ParseVDisk(dir);
                 if (vDisk != null)
                     vDisks.Add(vDisk);
             }
 
-            return new BobDir(vDisks, bobDir);
+            return new BobDir(vDisks, new RsyncEntry(rsyncWrapper, bobDir));
         }
 
-        private async Task<VDiskDir> ParseVDisk(RsyncEntry vDiskDir)
+        private VDiskDir ParseVDisk(TreeParser.Entry vDiskDir)
         {
-            if (vDiskDir?.IsDirectory != true
+            if (vDiskDir?.IsDir != true
                 || !int.TryParse(vDiskDir.Name, out var id))
                 return null;
 
-            var dirs = await rsyncWrapper.GetDirs(vDiskDir.Path);
+            logger.LogDebug($"Found vdisk dir {vDiskDir.Path}");
+            var dirs = vDiskDir.Children;
             var partitions = new List<PartitionDir>(dirs.Count);
             foreach (var dir in dirs)
             {
-                var partition = await ParsePartition(dir);
+                var partition = ParsePartition(dir);
                 if (partition != null)
                     partitions.Add(partition);
             }
 
-            return new VDiskDir(id, partitions, vDiskDir);
+            return new VDiskDir(id, partitions, new RsyncEntry(rsyncWrapper, vDiskDir));
         }
 
-        private Task<PartitionDir> ParsePartition(RsyncEntry partitionDir)
+        private PartitionDir ParsePartition(TreeParser.Entry partitionDir)
         {
             PartitionDir result = null;
-            if (partitionDir?.IsDirectory == true)
-                result = new PartitionDir(partitionDir.Name, partitionDir);
-
-            return Task.FromResult(result);
+            if (partitionDir?.IsDir == true)
+            {
+                logger.LogDebug($"Found partition dir {partitionDir.Path}");
+                result = new PartitionDir(partitionDir.Name, new RsyncEntry(rsyncWrapper, partitionDir));
+            }
+            return result;
         }
 
-        private async Task<AlienDir> ParseAlien(RsyncEntry alienDir)
+        private AlienDir ParseAlien(TreeParser.Entry alienDir)
         {
-            if (alienDir?.IsDirectory != true)
+            if (alienDir?.IsDir != true)
                 return null;
 
-            var dirs = await rsyncWrapper.GetDirs(alienDir.Path);
+            logger.LogDebug($"Found alien dir {alienDir.Path}");
+            var dirs = alienDir.Children;
             var nodes = new List<BobDir>(dirs.Count);
             foreach (var dir in dirs)
             {
-                var bob = await ParseBob(dir);
+                var bob = ParseBob(dir);
                 if (bob != null)
                     nodes.Add(bob);
             }
 
-            return new AlienDir(nodes, alienDir);
+            return new AlienDir(nodes, new RsyncEntry(rsyncWrapper, alienDir));
         }
     }
 }

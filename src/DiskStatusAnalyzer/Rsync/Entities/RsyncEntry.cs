@@ -7,7 +7,7 @@ namespace DiskStatusAnalyzer.Rsync.Entities
 {
     public class RsyncEntry : IEquatable<RsyncEntry>
     {
-        private static readonly Regex RsyncLineRegex = 
+        private static readonly Regex RsyncLineRegex =
             new Regex(@"(?<attrs>\S{10})\s*(?<size>[0-9,\.]+)\s*(?<date>\d+\S\d+\S\d+)\s*(?<time>\d+\S\d+\S\d+)\s*(?<name>\S+)");
 
         public RsyncEntry(string rsyncDirLine, string parentPath, RsyncWrapper rsyncWrapper)
@@ -19,6 +19,14 @@ namespace DiskStatusAnalyzer.Rsync.Entities
             Name = match.Groups["name"].Value;
             IsDirectory = match.Groups["attrs"].Value[0] == 'd';
             Path = $"{parentPath}/{Name}";
+        }
+
+        public RsyncEntry(RsyncWrapper rsyncWrapper, TreeParser.Entry tpEntry)
+        {
+            this.RsyncWrapper = rsyncWrapper;
+            Name = tpEntry.Name;
+            Path = tpEntry.Path;
+            IsDirectory = tpEntry.IsDir;
         }
 
         public RsyncEntry(RsyncEntry entry)
@@ -57,7 +65,7 @@ namespace DiskStatusAnalyzer.Rsync.Entities
         {
             return RsyncWrapper.Copy(this, to);
         }
-        
+
         public bool Equals(RsyncEntry other)
         {
             if (ReferenceEquals(null, other)) return false;
@@ -70,7 +78,7 @@ namespace DiskStatusAnalyzer.Rsync.Entities
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj.GetType() != this.GetType()) return false;
-            return Equals((RsyncEntry) obj);
+            return Equals((RsyncEntry)obj);
         }
 
         public override int GetHashCode()

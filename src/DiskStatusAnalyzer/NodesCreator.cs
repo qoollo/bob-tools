@@ -12,12 +12,14 @@ namespace DiskStatusAnalyzer
         private readonly ILogger<NodesCreator> logger;
         private readonly ILogger<Node> nodeLogger;
         private readonly ILogger<RsyncWrapper> rsyncWrapperLogger;
+        private readonly ILoggerFactory loggerFactory;
 
-        public NodesCreator(ILogger<NodesCreator> logger, ILogger<Node> nodeLogger, ILogger<RsyncWrapper> rsyncWrapperLogger)
+        public NodesCreator(ILogger<NodesCreator> logger, ILogger<Node> nodeLogger, ILogger<RsyncWrapper> rsyncWrapperLogger, ILoggerFactory loggerFactory)
         {
             this.logger = logger;
             this.nodeLogger = nodeLogger;
             this.rsyncWrapperLogger = rsyncWrapperLogger;
+            this.loggerFactory = loggerFactory;
         }
 
         public async Task<List<Node>> CreateNodeStructures(Configuration config)
@@ -49,7 +51,7 @@ namespace DiskStatusAnalyzer
             var rsyncWrapper = new RsyncWrapper(inputNode.SshPort, hostUri,
                 new Uri($"http://{inputNode.InnerNetworkHost}"),
                 config, rsyncWrapperLogger);
-            var node = new Node(hostUri, rsyncWrapper, nodeLogger);
+            var node = new Node(hostUri, rsyncWrapper, nodeLogger, loggerFactory);
             return node;
         }
 

@@ -12,6 +12,7 @@ namespace DiskStatusAnalyzer.Rsync
     public class RsyncWrapper : IEquatable<RsyncWrapper>
     {
         private const string syncedFilesFilename = "synced_files";
+        private static readonly HashSet<string> ExcludedFiles = new HashSet<string> { "*synced_files", "*lock" };
         private static readonly HashSet<string> ForbiddenNames = new HashSet<string> {"."};
         private readonly string rsyncCmd;
         private readonly string sshCmd;
@@ -37,7 +38,14 @@ namespace DiskStatusAnalyzer.Rsync
             username = configuration.SshUsername;
         }
 
-        public Task<List<RsyncEntry>> GetDirs(string baseDir)
+        public async Task<List<TreeParser.Entry>> GetDirectories(string baseDir)
+        {
+            var output = await InvokeSshCommandWithOutput($"tree {baseDir} -d");
+            var parser = new TreeParser(baseDir, output, true);
+            return parser.RootEntries;
+        }
+
+        public async Task<List<RsyncEntry>> GetDirs(string baseDir)
         {
             baseDir = baseDir.TrimEnd('/');
             var process = new Process {StartInfo = CreateRsyncForListOnly(baseDir), EnableRaisingEvents = true};
@@ -67,12 +75,13 @@ namespace DiskStatusAnalyzer.Rsync
                 process.Dispose();
             };
             process.Start();
-            return tcs.Task;
+            return await tcs.Task;
         }
 
         public async Task<bool> Copy(RsyncEntry from, RsyncEntry to)
         {
-            var copyCommand = $"rsync -e 'ssh -o \"StrictHostKeyChecking=no\"' --exclude *{syncedFilesFilename} " +
+            var excludedFilesString = string.Join(' ', ExcludedFiles.Select(f => $"--exclude {f}"));
+            var copyCommand = $"rsync -e 'ssh -o \"StrictHostKeyChecking=no\"' {excludedFilesString} " +
                               $"-av {from.Path}/ {configuration.SshUsername}@{to.RsyncWrapper.innerNetworkUri.Host}:{to.Path}";
             var copyResult = await from.RsyncWrapper.InvokeSshCommand(copyCommand);
             if (!copyResult) return false;
@@ -88,12 +97,16 @@ namespace DiskStatusAnalyzer.Rsync
                 if (!toResult.Contains(line))
                 {
                     logger.LogInformation($"File \"{line}\" not synced!");
-                    return false;
                 }
 
+            fromResult.RemoveAll(line => !toResult.Contains(line));
+
+            fromResult.RemoveAll(line => ExcludedFiles.Any(f => line.Contains(f.Trim('*'))));
+
             var syncedFilesFullFilename = $"{@from.Path}/{syncedFilesFilename}";
-            var echoCommand = $"echo -e \"{string.Join("\n", fromResult.Where(s => !s.Contains(syncedFilesFullFilename)))}\"" +
+            var echoCommand = $"echo -e \"{string.Join("\n", fromResult)}\"" +
                               $" > {syncedFilesFullFilename}";
+
             return await @from.RsyncWrapper.InvokeSshCommand(echoCommand);
         }
 
