@@ -89,10 +89,10 @@ namespace RecordsCalculator
             Console.WriteLine($"Total records count with replicas: {recordsCountWithReplicas}");
         }
 
-        private static async Task<ulong> CountRecordsOnReplica(Uri uri, VDisk vDisk, List<int> partitions)
+        private static async Task<ulong> CountRecordsOnReplica(Uri uri, VDisk vDisk, List<string> partitions)
         {
             using var api = new BobApiClient(uri);
-            var vDiskRecordsByPartitions = new Dictionary<int, ulong>();
+            var vDiskRecordsByPartitions = new Dictionary<long, ulong>();
             foreach (var partition in partitions)
             {
                 var partitionObject = await api.GetPartition(vDisk, partition);
@@ -102,11 +102,11 @@ namespace RecordsCalculator
                 {
                     LogInfo(
                         $"Found {partitionObject.RecordsCount} records on partition {partition} on {vDisk}");
-                    if (vDiskRecordsByPartitions.ContainsKey(partition))
-                        vDiskRecordsByPartitions[partition] =
-                            vDiskRecordsByPartitions[partition] + partitionObject.RecordsCount;
+                    if (vDiskRecordsByPartitions.ContainsKey(partitionObject.Timestamp))
+                        vDiskRecordsByPartitions[partitionObject.Timestamp] =
+                            vDiskRecordsByPartitions[partitionObject.Timestamp] + partitionObject.RecordsCount;
                     else
-                        vDiskRecordsByPartitions.Add(partition, partitionObject.RecordsCount);
+                        vDiskRecordsByPartitions.Add(partitionObject.Timestamp, partitionObject.RecordsCount);
                 }
             }
 

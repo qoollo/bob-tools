@@ -23,12 +23,13 @@ namespace OldPartitionsRemover
 
         private static async Task Main(string[] args)
         {
+            var assemblyName = Assembly.GetExecutingAssembly().GetName().Name;
             if (args.Length == 0)
             {
                 Console.WriteLine(
-                    $"Usage: \"{Assembly.GetExecutingAssembly().GetName().Name} filename.json\" with addresses, threshold in file, or " +
-                    $"\"{Assembly.GetExecutingAssembly().GetName().Name} [-a address](can be added multiple times) -t threshold\"," +
-                    $" also available flags are {noInfoFlag} and {noErrorFlag}");
+                    $"Usage: \"{assemblyName} filename.json\" with addresses, threshold in file, or "
+                    + $"\"{assemblyName} [-a address](can be added multiple times) -t threshold\","
+                    + $" also available flags are {noInfoFlag} and {noErrorFlag}");
                 return;
             }
 
@@ -78,7 +79,7 @@ namespace OldPartitionsRemover
             }
         }
 
-        private static async Task DeleteOldPartitions(Uri uri, VDisk vDisk, List<int> partitions)
+        private static async Task DeleteOldPartitions(Uri uri, VDisk vDisk, List<string> partitions)
         {
             using var api = new BobApiClient(uri);
             foreach (var partition in partitions)
@@ -86,15 +87,15 @@ namespace OldPartitionsRemover
                 var partitionObject = await api.GetPartition(vDisk, partition);
                 if (partitionObject is null)
                     LogError($"Failed to get partition {partition} on {vDisk}");
-                else if (GetDateTimeFromTimestamp(partition) < configuration.Threshold)
+                else if (GetDateTimeFromTimestamp(partitionObject.Timestamp) < configuration.Threshold)
                 {
-                    await api.DeletePartition(vDisk, partition);
+                    await api.DeletePartition(vDisk, partitionObject.Timestamp);
                     LogInfo($"Deleted partition {partition} on {vDisk}");
                 }
             }
         }
 
-        private static DateTime GetDateTimeFromTimestamp(int p) => new DateTime(1970, 1, 1).AddSeconds(p);
+        private static DateTime GetDateTimeFromTimestamp(long p) => new DateTime(1970, 1, 1).AddSeconds(p);
 
         private static void LogError(string text)
         {

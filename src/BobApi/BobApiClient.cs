@@ -37,7 +37,7 @@ namespace BobApi
             return null;
         }
 
-        public async Task<List<int>> GetPartitions(VDisk vDisk)
+        public async Task<List<string>> GetPartitions(VDisk vDisk)
         {
             var response = await client.GetAsync($"vdisks/{vDisk.Id}/partitions");
             if (response.IsSuccessStatusCode)
@@ -47,19 +47,19 @@ namespace BobApi
                     .ContinueWith(t => JsonConvert.DeserializeAnonymousType(t.Result, new
                     {
                         Partitions = new
-                            List<int>()
+                            List<string>()
                     }).Partitions);
             }
 
             return null;
         }
 
-        public async Task DeletePartition(VDisk vDisk, int partition)
+        public async Task DeletePartition(VDisk vDisk, long partition)
         {
             await client.DeleteAsync($"vdisks/{vDisk.Id}/partitions/{partition}");
         }
 
-        public async Task<Partition> GetPartition(VDisk vDisk, int partition)
+        public async Task<Partition> GetPartition(VDisk vDisk, string partition)
         {
             var result = await client.GetAsync($"vdisks/{vDisk.Id}/partitions/{partition}");
             if (!result.IsSuccessStatusCode)
