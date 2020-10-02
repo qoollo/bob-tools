@@ -15,16 +15,33 @@ namespace BobApi
         {
             client = new HttpClient
             {
-                BaseAddress = address
+                BaseAddress = address,
+                Timeout = TimeSpan.FromSeconds(5),
             };
         }
 
         public async Task<NodeStatus> GetStatus()
         {
-            var response = await client.GetAsync("status");
+            try
+            {
+                var response = await client.GetAsync("status");
+                if (response.IsSuccessStatusCode)
+                    return await response.Content.ReadAsStringAsync()
+                        .ContinueWith(t => JsonConvert.DeserializeObject<NodeStatus>(t.Result));
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+            return null;
+        }
+
+        public async Task<List<Directory>> GetDirectories(VDisk vdisk)
+        {
+            var response = await client.GetAsync($"vdisks/{vdisk.Id}/replicas/local/dirs");
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadAsStringAsync()
-                    .ContinueWith(t => JsonConvert.DeserializeObject<NodeStatus>(t.Result));
+                    .ContinueWith(t => JsonConvert.DeserializeObject<List<Directory>>(t.Result));
             return null;
         }
 

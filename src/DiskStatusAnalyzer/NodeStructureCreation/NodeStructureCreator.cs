@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using BobApi.Entities;
 using DiskStatusAnalyzer.Entities;
 using DiskStatusAnalyzer.Rsync;
 using DiskStatusAnalyzer.Rsync.Entities;
@@ -9,18 +10,16 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
 {
     public class NodeStructureCreator
     {
-        private readonly RsyncWrapper rsyncWrapper;
         private readonly ILogger<NodeStructureCreator> logger;
 
-        public NodeStructureCreator(RsyncWrapper rsyncWrapper, ILogger<NodeStructureCreator> logger)
+        public NodeStructureCreator(ILogger<NodeStructureCreator> logger)
         {
-            this.rsyncWrapper = rsyncWrapper;
             this.logger = logger;
         }
 
-        public DiskDir ParseDisk(TreeParser.Entry diskDir)
+        public DiskDir ParseDisk(Directory diskDir, ConnectionInfo connectionConfiguration)
         {
-            if (diskDir?.IsDir != true)
+            if (diskDir == null)
                 return null;
 
             var dirs = diskDir.Children;
@@ -28,15 +27,16 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
             if (bobDir is null)
                 return null;
             logger.LogDebug($"Found disk dir {diskDir.Path}");
-            var bob = ParseBob(bobDir);
+            var bob = ParseBob(bobDir, connectionConfiguration);
             var alienDir = dirs.FirstOrDefault(re => re.Name == "alien");
-            var alien = ParseAlien(alienDir);
-            return new DiskDir(diskDir.Name, bob, alien, new RsyncEntry(rsyncWrapper, diskDir));
+            var alien = ParseAlien(alienDir, connectionConfiguration);
+            return new DiskDir(diskDir.Name, bob, alien, new RsyncEntry(connectionConfiguration, diskDir));
         }
 
-        private BobDir ParseBob(TreeParser.Entry bobDir)
+        private BobDir ParseBob(Directory bobDir,
+                                ConnectionInfo connectionConfiguration)
         {
-            if (!bobDir.IsDir)
+            if (bobDir == null)
                 return null;
 
             logger.LogDebug($"Found bob dir {bobDir.Path}");
@@ -44,17 +44,18 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
             var vDisks = new List<VDiskDir>(dirs.Count);
             foreach (var dir in dirs)
             {
-                var vDisk = ParseVDisk(dir);
+                var vDisk = ParseVDisk(dir, connectionConfiguration);
                 if (vDisk != null)
                     vDisks.Add(vDisk);
             }
 
-            return new BobDir(vDisks, new RsyncEntry(rsyncWrapper, bobDir));
+            return new BobDir(vDisks, new RsyncEntry(connectionConfiguration, bobDir));
         }
 
-        private VDiskDir ParseVDisk(TreeParser.Entry vDiskDir)
+        private VDiskDir ParseVDisk(Directory vDiskDir,
+                                    ConnectionInfo connectionConfiguration)
         {
-            if (vDiskDir?.IsDir != true
+            if (vDiskDir == null
                 || !int.TryParse(vDiskDir.Name, out var id))
                 return null;
 
@@ -63,28 +64,31 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
             var partitions = new List<PartitionDir>(dirs.Count);
             foreach (var dir in dirs)
             {
-                var partition = ParsePartition(dir);
+                var partition = ParsePartition(dir, connectionConfiguration);
                 if (partition != null)
                     partitions.Add(partition);
             }
 
-            return new VDiskDir(id, partitions, new RsyncEntry(rsyncWrapper, vDiskDir));
+            return new VDiskDir(id, partitions, new RsyncEntry(connectionConfiguration, vDiskDir));
         }
 
-        private PartitionDir ParsePartition(TreeParser.Entry partitionDir)
+        private PartitionDir ParsePartition(Directory partitionDir,
+                                            ConnectionInfo connectionConfiguration)
         {
             PartitionDir result = null;
-            if (partitionDir?.IsDir == true)
+            if (partitionDir != null)
             {
                 logger.LogDebug($"Found partition dir {partitionDir.Path}");
-                result = new PartitionDir(partitionDir.Name, new RsyncEntry(rsyncWrapper, partitionDir));
+                result = new PartitionDir(partitionDir.Name, new RsyncEntry(connectionConfiguration,
+                                                                            partitionDir));
             }
             return result;
         }
 
-        private AlienDir ParseAlien(TreeParser.Entry alienDir)
+        private AlienDir ParseAlien(Directory alienDir,
+                                    ConnectionInfo connectionConfiguration)
         {
-            if (alienDir?.IsDir != true)
+            if (alienDir == null)
                 return null;
 
             logger.LogDebug($"Found alien dir {alienDir.Path}");
@@ -92,12 +96,12 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
             var nodes = new List<BobDir>(dirs.Count);
             foreach (var dir in dirs)
             {
-                var bob = ParseBob(dir);
+                var bob = ParseBob(dir, connectionConfiguration);
                 if (bob != null)
                     nodes.Add(bob);
             }
 
-            return new AlienDir(nodes, new RsyncEntry(rsyncWrapper, alienDir));
+            return new AlienDir(nodes, new RsyncEntry(connectionConfiguration, alienDir));
         }
     }
 }

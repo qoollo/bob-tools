@@ -28,6 +28,8 @@ namespace DiskStatusAnalyzer
             services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
             services.AddTransient<NodesCreator>();
             services.AddTransient<AlienCopier>();
+            services.AddTransient<NodeStructureCreator>();
+            services.AddTransient<RsyncWrapper>();
             return services.BuildServiceProvider();
         }
 

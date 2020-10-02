@@ -13,4 +13,8 @@
       <PackageReference Include="YamlDotNet" Version="8.1.2" />
     </ItemGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\BobApi\BobApi.csproj" />
+    </ItemGroup>
+
 </Project>

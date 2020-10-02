@@ -11,10 +11,12 @@ namespace DiskStatusAnalyzer
     public class AlienCopier
     {
         private readonly ILogger<AlienCopier> logger;
+        private readonly RsyncWrapper rsyncWrapper;
 
-        public AlienCopier(ILogger<AlienCopier> logger)
+        public AlienCopier(ILogger<AlienCopier> logger, RsyncWrapper rsyncWrapper)
         {
             this.logger = logger;
+            this.rsyncWrapper = rsyncWrapper;
         }
 
         public async Task CopyAlienInformation(List<Node> nodes, Configuration config)
@@ -61,7 +63,7 @@ namespace DiskStatusAnalyzer
                 logger.LogInformation($"Found not copied partition on {vDisk}");
                 if (config.CopyAliens)
                 {
-                    if (!await vDisk.CopyTo(targetVDisk))
+                    if (!await rsyncWrapper.Copy(vDisk, targetVDisk))
                         logger.LogError($"Error copying {vDisk} to {targetVDisk}");
                     else
                     {
@@ -77,8 +79,8 @@ namespace DiskStatusAnalyzer
 
         private async Task RemoveCopiedData(VDiskDir vDisk)
         {
-            var filesInDir = await vDisk.FindFilesWithSha();
-            var syncedFiles = await vDisk.ReadSyncedFiles();
+            var filesInDir = await rsyncWrapper.FindFilesWithSha(vDisk);
+            var syncedFiles = await rsyncWrapper.FindSyncedFiles(vDisk);
             foreach(var file in filesInDir)
                 logger.LogInformation($"In dir: {file}");
             foreach(var file in syncedFiles)
@@ -97,7 +99,7 @@ namespace DiskStatusAnalyzer
             if (filesToRemove.Count > 0)
             {
                 logger.LogInformation($"Removing files {string.Join(", ", filesToRemove)}");
-                if (!await vDisk.RemoveFiles(filesToRemove))
+                if (!await rsyncWrapper.RemoveFiles(vDisk, filesToRemove))
                     logger.LogError($"Failed to remove files");
             }
         }
