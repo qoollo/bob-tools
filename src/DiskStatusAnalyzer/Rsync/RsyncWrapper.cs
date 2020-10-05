@@ -25,8 +25,8 @@ namespace DiskStatusAnalyzer.Rsync
         {
             var excludedFilesString = string.Join(' ', ExcludedFiles.Select(f => $"--exclude {f}"));
             var copyCommand = $"rsync -e 'ssh -o \"StrictHostKeyChecking=no\"' {excludedFilesString} " +
-                              $"-av {frm.Path}/ {to.Configuration.SshUsername}@{to.Configuration.InnerUri.Host}:{to.Path}";
-            var copyResult = await InvokeSshCommand(frm.Configuration, copyCommand);
+                              $"-av {frm.Path}/ {to.ConInfo.SshUsername}@{to.ConInfo.InnerUri.Host}:{to.Path}";
+            var copyResult = await InvokeSshCommand(frm.ConInfo, copyCommand);
             if (!copyResult)
                 return false;
             return await SaveSyncedFiles(frm, to);
@@ -34,8 +34,8 @@ namespace DiskStatusAnalyzer.Rsync
 
         private async Task<bool> SaveSyncedFiles(RsyncEntry frm, RsyncEntry to)
         {
-            var fromResult = await FindFilesWithSha(frm.Configuration, frm.Path);
-            var toResult = await FindFilesWithSha(to.Configuration, to.Path);
+            var fromResult = await FindFilesWithSha(frm.ConInfo, frm.Path);
+            var toResult = await FindFilesWithSha(to.ConInfo, to.Path);
             foreach (var line in fromResult)
                 if (!toResult.Contains(line))
                 {
@@ -50,21 +50,21 @@ namespace DiskStatusAnalyzer.Rsync
             var echoCommand = $"echo -e \"{string.Join("\n", fromResult)}\"" +
                               $" > {syncedFilesFullFilename}";
 
-            return await InvokeSshCommand(frm.Configuration, echoCommand);
+            return await InvokeSshCommand(frm.ConInfo, echoCommand);
         }
 
         public Task<List<string>> FindFilesWithSha(RsyncEntry entry) =>
-            FindFilesWithSha(entry.Configuration, entry.Path);
+            FindFilesWithSha(entry.ConInfo, entry.Path);
 
-        public Task<List<string>> FindFilesWithSha(ConnectionInfo connectionConfiguration,
+        public Task<List<string>> FindFilesWithSha(ConnectionInfo connectionConInfo,
                                                    string path)
         {
             var command = $"find {path} -type f -exec sha256sum {{}} \\;";
-            return InvokeSshCommandWithOutput(connectionConfiguration, command);
+            return InvokeSshCommandWithOutput(connectionConInfo, command);
         }
 
         public Task<List<string>> FindSyncedFiles(RsyncEntry entry) =>
-            FindSyncedFiles(entry.Configuration, entry.Path);
+            FindSyncedFiles(entry.ConInfo, entry.Path);
 
         public Task<List<string>> FindSyncedFiles(ConnectionInfo connectionInfo, string path)
         {
@@ -73,7 +73,7 @@ namespace DiskStatusAnalyzer.Rsync
         }
 
         public Task<bool> RemoveFiles(RsyncEntry entry, IEnumerable<string> filenames) =>
-            RemoveFiles(entry.Configuration, filenames);
+            RemoveFiles(entry.ConInfo, filenames);
 
         public Task<bool> RemoveFiles(ConnectionInfo connectionInfo, IEnumerable<string> filenames)
         {
