@@ -47,7 +47,7 @@ namespace DiskStatusAnalyzer
             if (targetNode == null) return;
             foreach (var vDisk in alienNode.VDisks)
             {
-                    await CopyAlienFromVDisk(vDisk, config, targetNode);
+                await CopyAlienFromVDisk(vDisk, config, targetNode);
 
                 if (config.RemoveCopiedFiles)
                     await RemoveCopiedData(vDisk);
@@ -79,11 +79,11 @@ namespace DiskStatusAnalyzer
 
         private async Task RemoveCopiedData(VDiskDir vDisk)
         {
-            var filesInDir = await rsyncWrapper.FindFilesWithSha(vDisk);
+            var filesInDir = await rsyncWrapper.FindFilesWithShaRelative(vDisk);
             var syncedFiles = await rsyncWrapper.FindSyncedFiles(vDisk);
-            foreach(var file in filesInDir)
+            foreach (var file in filesInDir)
                 logger.LogInformation($"In dir: {file}");
-            foreach(var file in syncedFiles)
+            foreach (var file in syncedFiles)
                 logger.LogInformation($"Synced: {file}");
             var filesToRemove = new List<string>();
             foreach (var syncedFile in syncedFiles)
@@ -118,7 +118,7 @@ namespace DiskStatusAnalyzer
         private async Task RestartVDisk(VDiskDir vDisk, Node targetNode)
         {
             logger.LogInformation($"Restarting vdisk {vDisk.Id} on node {targetNode.Name}");
-            using var client = new HttpClient {BaseAddress = targetNode.Uri};
+            using var client = new HttpClient { BaseAddress = targetNode.Uri };
             var res = await client.PostAsync(
                 $"vdisks/{vDisk.Id}/remount",
                 new StringContent(string.Empty));

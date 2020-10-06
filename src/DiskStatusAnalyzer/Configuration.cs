@@ -18,6 +18,8 @@ namespace DiskStatusAnalyzer
             public string Host { get; set; }
             public int SshPort { get; set; }
             public string InnerNetworkHost { get; set; }
+
+            public override string ToString() => Host;
         }
     }
 }

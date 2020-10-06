@@ -34,8 +34,8 @@ namespace DiskStatusAnalyzer.Rsync
 
         private async Task<bool> SaveSyncedFiles(RsyncEntry frm, RsyncEntry to)
         {
-            var fromResult = await FindFilesWithSha(frm.ConInfo, frm.Path);
-            var toResult = await FindFilesWithSha(to.ConInfo, to.Path);
+            var fromResult = await FindFilesWithShaRelative(frm);
+            var toResult = await FindFilesWithShaRelative(to);
             foreach (var line in fromResult)
                 if (!toResult.Contains(line))
                 {
@@ -53,8 +53,11 @@ namespace DiskStatusAnalyzer.Rsync
             return await InvokeSshCommand(frm.ConInfo, echoCommand);
         }
 
-        public Task<List<string>> FindFilesWithSha(RsyncEntry entry) =>
-            FindFilesWithSha(entry.ConInfo, entry.Path);
+        public async Task<List<string>> FindFilesWithShaRelative(RsyncEntry entry)
+        {
+            var lines = await FindFilesWithSha(entry.ConInfo, entry.Path);
+            return lines.Select(s => s.Replace(entry.Path, string.Empty)).ToList();
+        }
 
         public Task<List<string>> FindFilesWithSha(ConnectionInfo connectionConInfo,
                                                    string path)
