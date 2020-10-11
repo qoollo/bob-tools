@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -99,7 +100,9 @@ namespace DiskStatusAnalyzer
             if (filesToRemove.Count > 0)
             {
                 logger.LogInformation($"Removing files {string.Join(", ", filesToRemove)}");
-                if (!await rsyncWrapper.RemoveFiles(vDisk, filesToRemove))
+                if (!await rsyncWrapper.RemoveFiles(vDisk,
+
+                                                    filesToRemove.Select(f => Path.Combine(vDisk.Path, f.Trim('/')))))
                     logger.LogError($"Failed to remove files");
             }
         }

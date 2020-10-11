@@ -25,7 +25,7 @@ namespace DiskStatusAnalyzer
         private static IServiceProvider CreateServiceProvider()
         {
             var services = new ServiceCollection();
-            services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
+            services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
             services.AddTransient<NodesCreator>();
             services.AddTransient<AlienCopier>();
             services.AddTransient<NodeStructureCreator>();

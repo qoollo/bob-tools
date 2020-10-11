@@ -15,4 +15,4 @@ PathToSshKey: /home/ivan/.ssh/.ssh/id_rsa
 SshUsername: root
 CopyAliens: true
 RestartAfterCopy: true
-RemoveCopiedFiles: false
+RemoveCopiedFiles: true
