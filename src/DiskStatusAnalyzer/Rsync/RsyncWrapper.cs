@@ -11,6 +11,7 @@ namespace DiskStatusAnalyzer.Rsync
 {
     public class RsyncWrapper
     {
+        public const string PathStart = "PATH";
         private const string syncedFilesFilename = "synced_files";
         private static readonly HashSet<string> ExcludedFiles = new HashSet<string> { "*synced_files", "*lock" };
         private static readonly HashSet<string> ForbiddenNames = new HashSet<string> { "." };
@@ -34,13 +35,11 @@ namespace DiskStatusAnalyzer.Rsync
 
         private async Task<bool> SaveSyncedFiles(RsyncEntry frm, RsyncEntry to)
         {
-            var fromResult = await FindFilesWithShaRelative(frm);
-            var toResult = await FindFilesWithShaRelative(to);
+            var fromResult = await FindFilesWithUniqueIdRelative(frm);
+            var toResult = await FindFilesWithUniqueIdRelative(to);
             foreach (var line in fromResult)
                 if (!toResult.Contains(line))
-                {
                     logger.LogDebug($"File \"{line}\" not synced!");
-                }
 
             fromResult.RemoveAll(line => !toResult.Contains(line));
 
@@ -53,16 +52,16 @@ namespace DiskStatusAnalyzer.Rsync
             return await InvokeSshCommand(frm.ConInfo, echoCommand);
         }
 
-        public async Task<List<string>> FindFilesWithShaRelative(RsyncEntry entry)
+        public async Task<List<string>> FindFilesWithUniqueIdRelative(RsyncEntry entry)
         {
-            var lines = await FindFilesWithSha(entry.ConInfo, entry.Path);
+            var lines = await FindFilesWithUniqueId(entry.ConInfo, entry.Path);
             return lines.Select(s => s.Replace(entry.Path, string.Empty)).ToList();
         }
 
-        public Task<List<string>> FindFilesWithSha(ConnectionInfo connectionConInfo,
+        public Task<List<string>> FindFilesWithUniqueId(ConnectionInfo connectionConInfo,
                                                    string path)
         {
-            var command = $"find {path} -type f -exec sha256sum {{}} \\;";
+            var command = $"find {path} -type f -printf \"%s %TY-%Tm-%Td %TH:%TM:%TS %Tz PATH %p\n\"";
             return InvokeSshCommandWithOutput(connectionConInfo, command);
         }
 

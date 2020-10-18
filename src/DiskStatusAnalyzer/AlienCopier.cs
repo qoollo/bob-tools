@@ -80,16 +80,18 @@ namespace DiskStatusAnalyzer
 
         private async Task RemoveCopiedData(VDiskDir vDisk)
         {
-            var filesInDir = await rsyncWrapper.FindFilesWithShaRelative(vDisk);
+            var filesInDir = await rsyncWrapper.FindFilesWithUniqueIdRelative(vDisk);
             var syncedFiles = await rsyncWrapper.FindSyncedFiles(vDisk);
+
             foreach (var file in filesInDir)
                 logger.LogInformation($"In dir: {file}");
             foreach (var file in syncedFiles)
                 logger.LogInformation($"Synced: {file}");
+
             var filesToRemove = new List<string>();
             foreach (var syncedFile in syncedFiles)
             {
-                var filename = syncedFile.Trim().Split(' ').Last();
+                var filename = syncedFile.Substring(syncedFile.IndexOf(RsyncWrapper.PathStart) + RsyncWrapper.PathStart.Length).Trim();
                 if (filesInDir.Contains(syncedFile))
                 {
                     logger.LogInformation($"File {filename} is marked for removal");
@@ -109,7 +111,9 @@ namespace DiskStatusAnalyzer
 
         private bool ContainsNonCopiedPartition(VDiskDir vDisk, VDiskDir targetVDisk)
         {
-            return vDisk.Partitions.Any(partition => targetVDisk.Partitions.All(p => p.Name != partition.Name));
+            if (targetVDisk?.Partitions != null && vDisk?.Partitions != null)
+                return vDisk.Partitions.Any(partition => targetVDisk.Partitions.All(p => p.Name != partition.Name));
+            return false;
         }
 
         private VDiskDir GetTargetVDisk(VDiskDir vDisk, Node targetNode)
