@@ -91,11 +91,19 @@ namespace DiskStatusAnalyzer
             var filesToRemove = new List<string>();
             foreach (var syncedFile in syncedFiles)
             {
-                var filename = syncedFile.Substring(syncedFile.IndexOf(RsyncWrapper.PathStart) + RsyncWrapper.PathStart.Length).Trim();
-                if (filesInDir.Contains(syncedFile))
+                var pathIndex = syncedFile.IndexOf(RsyncWrapper.PathStart) + RsyncWrapper.PathStart.Length;
+                if (pathIndex < syncedFile.Length)
                 {
-                    logger.LogInformation($"File {filename} is marked for removal");
-                    filesToRemove.Add(filename);
+                    var filename = syncedFile.Substring(pathIndex).Trim();
+                    if (filesInDir.Contains(syncedFile))
+                    {
+                        logger.LogInformation($"File {filename} is marked for removal");
+                        filesToRemove.Add(filename);
+                    }
+                }
+                else
+                {
+                    logger.LogWarning($"Received strange file string: {syncedFile}");
                 }
             }
 
