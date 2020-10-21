@@ -130,15 +130,36 @@ namespace DiskStatusAnalyzer
                 .SelectMany(d => d.Bob.VDisks.Where(vd => vd.Id == vDisk.Id)).FirstOrDefault();
         }
 
-        private async Task RestartVDisk(VDiskDir vDisk, Node targetNode)
+
+        private struct RestartInfo
         {
-            logger.LogInformation($"Restarting vdisk {vDisk.Id} on node {targetNode.Name}");
-            using var client = new HttpClient { BaseAddress = targetNode.Uri };
-            var res = await client.PostAsync(
-                $"vdisks/{vDisk.Id}/remount",
-                new StringContent(string.Empty));
-            if (!res.IsSuccessStatusCode)
-                logger.LogError($"Failed to restart vdisk {vDisk.Id} on node {targetNode.Name}");
+            public Node Node { get; }
+            public VDiskDir VDisk { get; }
+
+            public RestartInfo(Node node, VDiskDir vDisk)
+            {
+                Node = node;
+                VDisk = vDisk;
+            }
+
+            public async Task<bool> Invoke()
+            {
+                using var client = new HttpClient { BaseAddress = Node.Uri };
+                var res = await client.PostAsync(
+                    $"vdisks/{VDisk.Id}/remount",
+                    new StringContent(string.Empty));
+                return res.IsSuccessStatusCode;
+            }
+
+            public override int GetHashCode()
+            {
+                return (Node, VDisk).GetHashCode();
+            }
+
+            public override string ToString()
+            {
+                return $"Node: {Node}, vdisk: {VDisk.Id}";
+            }
         }
     }
 }
