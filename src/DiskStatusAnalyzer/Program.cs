@@ -13,6 +13,8 @@ using DiskStatusAnalyzer.Rsync.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using YamlDotNet.Serialization;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Microsoft.Extensions.Configuration;
 
 namespace DiskStatusAnalyzer
 {
@@ -22,15 +24,34 @@ namespace DiskStatusAnalyzer
 
         private static readonly IServiceProvider serviceProvider = CreateServiceProvider();
 
+        private static IConfigurationRoot configuration;
+
         private static IServiceProvider CreateServiceProvider()
         {
             var services = new ServiceCollection();
-            services.AddLogging(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
+            AddConfiguration(services);
+            AddSerilog(services);
             services.AddTransient<NodesCreator>();
             services.AddTransient<AlienCopier>();
             services.AddTransient<NodeStructureCreator>();
             services.AddTransient<RsyncWrapper>();
             return services.BuildServiceProvider();
+        }
+
+        static void AddConfiguration(IServiceCollection services)
+        {
+            configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", false)
+                .Build();
+            services.AddSingleton<IConfigurationRoot>(configuration);
+        }
+
+        static void AddSerilog(IServiceCollection services)
+        {
+            var logger = new LoggerConfiguration()
+                .ReadFrom.Configuration(configuration)
+                .CreateLogger();
+            services.AddLogging(b => b.AddSerilog(logger));
         }
 
         static async Task Main(string[] args)
