@@ -22,41 +22,56 @@ namespace DiskStatusAnalyzer
 
         public async Task CopyAlienInformation(List<Node> nodes, Configuration config)
         {
+            var restartInfos = new List<RestartInfo>();
             foreach (var node in nodes)
             {
                 logger.LogInformation($"Searching for aliens on {node}");
-                await CopyAliensFromNode(node, nodes, config);
+                restartInfos.AddRange(await CopyAliensFromNode(node, nodes, config));
+            }
+            if (restartInfos.Count > 0)
+            {
+                logger.LogInformation($"Restart actions: {restartInfos.Count}");
+                foreach (var ri in restartInfos.Distinct())
+                {
+                    logger.LogInformation($"Restart action: {ri}");
+                    logger.LogInformation($"Restart action: {ri}, result: {await ri.Invoke()}");
+                }
             }
         }
 
-        private async Task CopyAliensFromNode(Node node, List<Node> nodes, Configuration config)
+        private async Task<List<RestartInfo>> CopyAliensFromNode(Node node, List<Node> nodes, Configuration config)
         {
+            var result = new List<RestartInfo>();
             foreach (var diskDir in node.DiskDirs)
             {
                 if (diskDir.Alien == null) continue;
                 foreach (var alienNode in diskDir.Alien.Nodes)
                 {
-                    await CopyAlien(alienNode, nodes, config);
+                    result.AddRange(await CopyAlien(alienNode, nodes, config));
                 }
             }
+            return result;
         }
 
-        private async Task CopyAlien(BobDir alienNode, List<Node> nodes, Configuration config)
+        private async Task<List<RestartInfo>> CopyAlien(BobDir alienNode, List<Node> nodes, Configuration config)
         {
+            var result = new List<RestartInfo>();
             var targetNode = nodes.FirstOrDefault(n => n.Name == alienNode.Name);
             logger.LogInformation($"Found target {targetNode} for alien");
-            if (targetNode == null) return;
+            if (targetNode == null) return result;
             foreach (var vDisk in alienNode.VDisks)
             {
-                await CopyAlienFromVDisk(vDisk, config, targetNode);
+                result.AddRange(await CopyAlienFromVDisk(vDisk, config, targetNode));
 
                 if (config.RemoveCopiedFiles)
                     await RemoveCopiedData(vDisk);
             }
+            return result;
         }
 
-        private async Task CopyAlienFromVDisk(VDiskDir vDisk, Configuration config, Node targetNode)
+        private async Task<List<RestartInfo>> CopyAlienFromVDisk(VDiskDir vDisk, Configuration config, Node targetNode)
         {
+            var result = new List<RestartInfo>();
             var targetVDisk = GetTargetVDisk(vDisk, targetNode);
             logger.LogInformation($"Checking copy from {vDisk} to {targetVDisk}");
             if (ContainsNonCopiedPartition(vDisk, targetVDisk))
@@ -71,11 +86,12 @@ namespace DiskStatusAnalyzer
                         logger.LogInformation($"Successfully copied partitions from {vDisk}");
                         if (config.RestartAfterCopy)
                         {
-                            await RestartVDisk(vDisk, targetNode);
+                            result.Add(new RestartInfo(targetNode, vDisk));
                         }
                     }
                 }
             }
+            return result;
         }
 
         private async Task RemoveCopiedData(VDiskDir vDisk)
