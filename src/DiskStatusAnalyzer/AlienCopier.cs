@@ -20,7 +20,7 @@ namespace DiskStatusAnalyzer
             this.rsyncWrapper = rsyncWrapper;
         }
 
-        public async Task CopyAlienInformation(List<Node> nodes, Configuration config)
+        public async Task CopyAlienInformation(List<NodeWithDirs> nodes, Configuration config)
         {
             var tasks = new List<Task<List<RestartInfo>>>();
             foreach (var node in nodes)
@@ -40,7 +40,7 @@ namespace DiskStatusAnalyzer
             }
         }
 
-        private Task<List<RestartInfo>> CopyAliensFromNode(Node node, List<Node> nodes, Configuration config)
+        private Task<List<RestartInfo>> CopyAliensFromNode(NodeWithDirs node, List<NodeWithDirs> nodes, Configuration config)
         {
             var result = new List<RestartInfo>();
             var tasks = new List<Task<List<RestartInfo>>>();
@@ -55,7 +55,7 @@ namespace DiskStatusAnalyzer
             return Task.WhenAll(tasks).ContinueWith(t => t.Result.SelectMany(_ => _).ToList());
         }
 
-        private async Task<List<RestartInfo>> CopyAlien(BobDir alienNode, List<Node> nodes, Configuration config)
+        private async Task<List<RestartInfo>> CopyAlien(BobDir alienNode, List<NodeWithDirs> nodes, Configuration config)
         {
             var result = new List<RestartInfo>();
             var targetNode = nodes.FirstOrDefault(n => n.Name == alienNode.Name);
@@ -71,7 +71,7 @@ namespace DiskStatusAnalyzer
             return result;
         }
 
-        private async Task<List<RestartInfo>> CopyAlienFromVDisk(VDiskDir vDisk, Configuration config, Node targetNode)
+        private async Task<List<RestartInfo>> CopyAlienFromVDisk(VDiskDir vDisk, Configuration config, NodeWithDirs targetNode)
         {
             var result = new List<RestartInfo>();
             var targetVDisk = GetTargetVDisk(vDisk, targetNode);
@@ -142,7 +142,7 @@ namespace DiskStatusAnalyzer
             return false;
         }
 
-        private VDiskDir GetTargetVDisk(VDiskDir vDisk, Node targetNode)
+        private VDiskDir GetTargetVDisk(VDiskDir vDisk, NodeWithDirs targetNode)
         {
             return targetNode.DiskDirs
                 .SelectMany(d => d.Bob.VDisks.Where(vd => vd.Id == vDisk.Id)).FirstOrDefault();
@@ -151,10 +151,10 @@ namespace DiskStatusAnalyzer
 
         private struct RestartInfo
         {
-            public Node Node { get; }
+            public NodeWithDirs Node { get; }
             public VDiskDir VDisk { get; }
 
-            public RestartInfo(Node node, VDiskDir vDisk)
+            public RestartInfo(NodeWithDirs node, VDiskDir vDisk)
             {
                 Node = node;
                 VDisk = vDisk;

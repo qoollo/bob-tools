@@ -24,13 +24,14 @@ namespace DiskStatusAnalyzer
             this.nodeStructureCreator = nodeStructureCreator;
         }
 
-        public async Task<List<Node>> CreateNodeStructures(Configuration config)
+        public async Task<List<NodeWithDirs>> CreateNodeStructures(Configuration config)
         {
-            var nodes = new List<Node>();
-            foreach (var inputNode in config.Nodes)
+            var nodes = new List<NodeWithDirs>();
+            foreach (var inputNode in config.NodeInfos)
             {
                 logger.LogInformation($"Creating node {inputNode}");
-                var node = await CreateNode(config, inputNode);
+                var info = GetConnectionInfo(config, inputNode);
+                var node = await CreateNode(info);
                 if (node != null)
                 {
                     logger.LogInformation($"Successfully created node {inputNode}");
@@ -40,18 +41,22 @@ namespace DiskStatusAnalyzer
             return nodes;
         }
 
-        private async Task<Node> CreateNode(Configuration config, Configuration.Node inputNode)
+        private ConnectionInfo GetConnectionInfo(Configuration config, Configuration.NodeInfo info)
         {
-            var hostUri = new Uri($"http://{inputNode.Host}");
-            var api = new BobApiClient(hostUri);
+            var hostUri = new Uri($"http://{info.Host}");
+            return new ConnectionInfo(
+                hostUri,
+                info.SshPort,
+                new Uri($"http://{info.InnerNetworkHost}"),
+                config);
+        }
+
+        private async Task<NodeWithDirs> CreateNode(ConnectionInfo info)
+        {
+            var api = new BobApiClient(info.Uri);
             var status = await api.GetStatus();
             if (status == null)
                 return null;
-            var connectionConfiguration = new ConnectionInfo(
-                hostUri,
-                inputNode.SshPort,
-                new Uri($"http://{inputNode.InnerNetworkHost}"),
-                config);
             var diskDirs = new List<DiskDir>();
             foreach (var vDisk in status?.VDisks)
             {
@@ -61,7 +66,7 @@ namespace DiskStatusAnalyzer
                     if (replica.Node != status?.Name)
                         continue;
                     var parentPath = replica.Path;
-                    var name = $"path {replica.Path} on node {hostUri}";
+                    var name = $"path {replica.Path} on node {info.Uri}";
                     logger.LogInformation($"Reading disk structure from {name}");
                     if (dirs == null)
                     {
@@ -72,7 +77,7 @@ namespace DiskStatusAnalyzer
                     if (baseDir.Path != null)
                     {
                         logger.LogInformation($"Found dir for {name}");
-                        var dir = nodeStructureCreator.ParseDisk(baseDir, connectionConfiguration);
+                        var dir = nodeStructureCreator.ParseDisk(baseDir, info);
                         if (dir != null)
                         {
                             logger.LogInformation($"Successfully read structure of {name}");
@@ -85,7 +90,7 @@ namespace DiskStatusAnalyzer
                         logger.LogWarning($"Dir for {name} no found");
                 }
             }
-            return new Node(hostUri, status?.Name, diskDirs);
+            return new NodeWithDirs(info.Uri, status?.Name, diskDirs);
         }
     }
 }

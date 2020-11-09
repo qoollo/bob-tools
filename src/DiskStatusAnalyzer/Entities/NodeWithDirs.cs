@@ -10,10 +10,10 @@ using Newtonsoft.Json;
 
 namespace DiskStatusAnalyzer.Entities
 {
-    public class Node
+    public class NodeWithDirs
     {
 
-        public Node(Uri uri,
+        public NodeWithDirs(Uri uri,
                     string name,
                     List<DiskDir> diskDirs)
         {

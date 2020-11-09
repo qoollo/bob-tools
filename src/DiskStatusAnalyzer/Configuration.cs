@@ -4,7 +4,7 @@ namespace DiskStatusAnalyzer
 {
     public class Configuration
     {
-        public List<Node> Nodes { get; set; }
+        public List<NodeInfo> NodeInfos { get; set; }
         public string RsyncCmd { get; set; } = "rsync";
         public string SshCmd { get; set; } = "ssh";
         public string PathToSshKey { get; set; }
@@ -13,7 +13,7 @@ namespace DiskStatusAnalyzer
         public bool RestartAfterCopy { get; set; }
         public bool RemoveCopiedFiles { get; set; }
 
-        public class Node
+        public class NodeInfo
         {
             public string Host { get; set; }
             public int SshPort { get; set; }
