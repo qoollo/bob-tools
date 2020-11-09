@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace BobApi.Entities
 {
-    public class VDisk
+    public struct VDisk
     {
         public int Id { get; set; }
         public List<Replica> Replicas { get; set; }

@@ -58,11 +58,11 @@ namespace OldPartitionsRemover
                 var status = await api.GetStatus();
                 if (status == null)
                     continue;
-                foreach (var vDisk in status.VDisks)
+                foreach (var vDisk in status?.VDisks)
                 {
                     foreach (var replica in vDisk.Replicas)
                     {
-                        if (replica.Node == status.Name)
+                        if (replica.Node == status?.Name)
                         {
                             LogInfo($"Processing replica of vdisk {vDisk.Id} on node {node}");
                             var partitions = await api.GetPartitions(vDisk);
@@ -87,15 +87,15 @@ namespace OldPartitionsRemover
                 var partitionObject = await api.GetPartition(vDisk, partition);
                 if (partitionObject is null)
                     LogError($"Failed to get partition {partition} on {vDisk}");
-                else if (GetDateTimeFromTimestamp(partitionObject.Timestamp) < configuration.Threshold)
+                else if (GetDateTimeFromTimestamp(partitionObject?.Timestamp) < configuration.Threshold)
                 {
-                    await api.DeletePartition(vDisk, partitionObject.Timestamp);
+                    await api.DeletePartition(vDisk, partitionObject?.Timestamp);
                     LogInfo($"Deleted partition {partition} on {vDisk}");
                 }
             }
         }
 
-        private static DateTime GetDateTimeFromTimestamp(long p) => new DateTime(1970, 1, 1).AddSeconds(p);
+        private static DateTime GetDateTimeFromTimestamp(long? p) => new DateTime(1970, 1, 1).AddSeconds(p.GetValueOrDefault(0));
 
         private static void LogError(string text)
         {

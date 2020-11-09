@@ -19,12 +19,12 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
 
         public DiskDir ParseDisk(Directory diskDir, ConnectionInfo connectionConfiguration)
         {
-            if (diskDir == null)
+            if (diskDir.Path == null)
                 return null;
 
             var dirs = diskDir.Children;
             var bobDir = dirs.FirstOrDefault(re => re.Name == "bob");
-            if (bobDir is null)
+            if (bobDir.Path is null)
                 return null;
             logger.LogDebug($"Found disk dir {diskDir.Path}");
             var bob = ParseBob(bobDir, connectionConfiguration);
@@ -36,7 +36,7 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
         private BobDir ParseBob(Directory bobDir,
                                 ConnectionInfo connectionConfiguration)
         {
-            if (bobDir == null)
+            if (bobDir.Path == null)
                 return null;
 
             logger.LogDebug($"Found bob dir {bobDir.Path}");
@@ -55,7 +55,7 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
         private VDiskDir ParseVDisk(Directory vDiskDir,
                                     ConnectionInfo connectionConfiguration)
         {
-            if (vDiskDir == null
+            if (vDiskDir.Path == null
                 || !int.TryParse(vDiskDir.Name, out var id))
                 return null;
 
@@ -76,7 +76,7 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
                                             ConnectionInfo connectionConfiguration)
         {
             PartitionDir result = null;
-            if (partitionDir != null)
+            if (partitionDir.Path != null)
             {
                 logger.LogDebug($"Found partition dir {partitionDir.Path}");
                 result = new PartitionDir(partitionDir.Name, new RsyncEntry(connectionConfiguration,
@@ -88,7 +88,7 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
         private AlienDir ParseAlien(Directory alienDir,
                                     ConnectionInfo connectionConfiguration)
         {
-            if (alienDir == null)
+            if (alienDir.Path == null)
                 return null;
 
             logger.LogDebug($"Found alien dir {alienDir.Path}");

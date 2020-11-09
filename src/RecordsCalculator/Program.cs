@@ -9,6 +9,9 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BobApi;
 using BobApi.Entities;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Console;
 using Newtonsoft.Json;
 
 namespace RecordsCalculator
@@ -40,78 +43,33 @@ namespace RecordsCalculator
             configuration = args.Any(s => s.EndsWith(".json"))
                 ? Configuration.FromJsonFile(args.First(s => s.EndsWith(".json")))
                 : Configuration.FromCommandLineArguments(args);
-            await RemoveOldPartitions();
+            await CountRecords();
         }
 
-        private static async Task RemoveOldPartitions()
+        private static async Task CountRecords()
         {
-            if (configuration is null || configuration.Nodes.Count == 0)
-            {
-                LogError("Bad configuration");
-                return;
-            }
-
-            ulong recordsCountWithReplicas = 0;
-            var countByVdiskId = new Dictionary<int, ulong>();
+            var services = new ServiceCollection();
+            services.AddLogging(b => b.AddConsole());
+            services.AddTransient<ClusterRecordsCounter>();
+            var prov = services.BuildServiceProvider();
+            var crc = prov.GetRequiredService<ClusterRecordsCounter>();
             foreach (var node in configuration.Nodes)
             {
-                using var api = new BobApiClient(node.Address);
-                var status = await api.GetStatus();
-                if (status == null)
-                    continue;
-                foreach (var vDisk in status.VDisks)
+                try
                 {
-                    foreach (var replica in vDisk.Replicas)
-                    {
-                        if (replica.Node == status.Name)
-                        {
-                            LogInfo($"Processing replica of vdisk {vDisk.Id} on node {node}");
-                            var partitions = await api.GetPartitions(vDisk);
-                            if (partitions == null)
-                                LogError($"Partitions for {vDisk} not found");
-                            else
-                            {
-                                LogInfo($"Found {partitions.Count} partitions on {vDisk}");
-                                ulong count = await CountRecordsOnReplica(node.Address, vDisk, partitions);
-                                recordsCountWithReplicas += count;
-                                if (countByVdiskId.ContainsKey(vDisk.Id))
-                                    countByVdiskId[vDisk.Id] = Math.Max(countByVdiskId[vDisk.Id], count);
-                                else
-                                    countByVdiskId.Add(vDisk.Id, count);
-                            }
-                        }
-                    }
+                    var (max, total) = await crc.CountRecordsInCluster(node.Address);
+                    LogInfo($"Parsed cluster info from node {node.Address}");
+                    Console.WriteLine($"Total records count: {max}");
+                    Console.WriteLine($"Total records count with replicas: {total}");
+                    return;
+                }
+                catch (Exception e)
+                {
+                    LogError($"Failed to parse node from address {node.Address}: {e.Message}");
                 }
             }
-
-            var recordsCount = countByVdiskId.Values.Aggregate((ulong)0, (s, n) => s + n);
-            Console.WriteLine($"Total records count: {recordsCount}");
-            Console.WriteLine($"Total records count with replicas: {recordsCountWithReplicas}");
         }
 
-        private static async Task<ulong> CountRecordsOnReplica(Uri uri, VDisk vDisk, List<string> partitions)
-        {
-            using var api = new BobApiClient(uri);
-            var vDiskRecordsByPartitions = new Dictionary<long, ulong>();
-            foreach (var partition in partitions)
-            {
-                var partitionObject = await api.GetPartition(vDisk, partition);
-                if (partitionObject is null)
-                    LogError($"Failed to get partition {partition} on {vDisk}");
-                else
-                {
-                    LogInfo(
-                        $"Found {partitionObject.RecordsCount} records on partition {partition} on {vDisk}");
-                    if (vDiskRecordsByPartitions.ContainsKey(partitionObject.Timestamp))
-                        vDiskRecordsByPartitions[partitionObject.Timestamp] =
-                            vDiskRecordsByPartitions[partitionObject.Timestamp] + partitionObject.RecordsCount;
-                    else
-                        vDiskRecordsByPartitions.Add(partitionObject.Timestamp, partitionObject.RecordsCount);
-                }
-            }
-
-            return vDiskRecordsByPartitions.Values.Aggregate((ulong)0, (s, n) => s + n);
-        }
 
         private static void LogError(string text)
         {

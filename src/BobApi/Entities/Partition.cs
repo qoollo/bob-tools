@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace BobApi
 {
-    public class Partition
+    public struct Partition
     {
         [JsonProperty("vdisk_id")]
         public string VDiskId { get; set; }

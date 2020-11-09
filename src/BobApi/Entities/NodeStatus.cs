@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace BobApi.Entities
 {
-    public class NodeStatus
+    public struct Node
     {
         public string Name { get; set; }
         public string Address { get; set; }

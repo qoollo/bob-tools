@@ -1,6 +1,6 @@
 namespace BobApi.Entities
 {
-    public class Replica
+    public struct Replica
     {
         public string Node { get; set; }
         public string Disk { get; set; }

@@ -20,19 +20,29 @@ namespace BobApi
             };
         }
 
-        public async Task<NodeStatus> GetStatus()
+        public async Task<Node?> GetStatus()
         {
             try
             {
                 var response = await client.GetAsync("status");
                 if (response.IsSuccessStatusCode)
                     return await response.Content.ReadAsStringAsync()
-                        .ContinueWith(t => JsonConvert.DeserializeObject<NodeStatus>(t.Result));
+                        .ContinueWith(t => JsonConvert.DeserializeObject<Node>(t.Result));
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException) { }
+            return null;
+        }
+
+        public async Task<List<Node>> GetNodes()
+        {
+            try
             {
-                return null;
+                var response = await client.GetAsync("nodes");
+                if (response.IsSuccessStatusCode)
+                    return await response.Content.ReadAsStringAsync()
+                        .ContinueWith(t => JsonConvert.DeserializeObject<List<Node>>(t.Result));
             }
+            catch (HttpRequestException) { }
             return null;
         }
 
@@ -59,7 +69,6 @@ namespace BobApi
             var response = await client.GetAsync($"vdisks/{vDisk.Id}/partitions");
             if (response.IsSuccessStatusCode)
             {
-                Console.WriteLine(response.Content.ReadAsStringAsync().Result);
                 return await response.Content.ReadAsStringAsync()
                     .ContinueWith(t => JsonConvert.DeserializeAnonymousType(t.Result, new
                     {
@@ -71,12 +80,12 @@ namespace BobApi
             return null;
         }
 
-        public async Task DeletePartition(VDisk vDisk, long partition)
+        public async Task DeletePartition(VDisk vDisk, long? partition)
         {
             await client.DeleteAsync($"vdisks/{vDisk.Id}/partitions/{partition}");
         }
 
-        public async Task<Partition> GetPartition(VDisk vDisk, string partition)
+        public async Task<Partition?> GetPartition(VDisk vDisk, string partition)
         {
             var result = await client.GetAsync($"vdisks/{vDisk.Id}/partitions/{partition}");
             if (!result.IsSuccessStatusCode)
@@ -84,6 +93,20 @@ namespace BobApi
             var content = await result.Content.ReadAsStringAsync();
             return JsonConvert.DeserializeObject<Partition>(content);
 
+        }
+
+        public async Task<long?> CountRecordsOnVDisk(VDisk vDisk)
+        {
+            try
+            {
+                var result = await client.GetAsync($"vdisks/{vDisk.Id}/records/count");
+                if (!result.IsSuccessStatusCode)
+                    return null;
+                return long.Parse(await result.Content.ReadAsStringAsync());
+            }
+            catch (HttpRequestException) { }
+            catch (TaskCanceledException) { }
+            return null;
         }
 
         public void Dispose()

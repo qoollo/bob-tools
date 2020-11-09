@@ -53,12 +53,12 @@ namespace DiskStatusAnalyzer
                 new Uri($"http://{inputNode.InnerNetworkHost}"),
                 config);
             var diskDirs = new List<DiskDir>();
-            foreach (var vDisk in status.VDisks)
+            foreach (var vDisk in status?.VDisks)
             {
                 var dirs = await api.GetDirectories(vDisk);
                 foreach (var replica in vDisk.Replicas)
                 {
-                    if (replica.Node != status.Name)
+                    if (replica.Node != status?.Name)
                         continue;
                     var parentPath = replica.Path;
                     var name = $"path {replica.Path} on node {hostUri}";
@@ -69,7 +69,7 @@ namespace DiskStatusAnalyzer
                         continue;
                     }
                     var baseDir = dirs.FirstOrDefault(re => re.Path.TrimEnd('/') == replica.Path.TrimEnd('/'));
-                    if (baseDir != null)
+                    if (baseDir.Path != null)
                     {
                         logger.LogInformation($"Found dir for {name}");
                         var dir = nodeStructureCreator.ParseDisk(baseDir, connectionConfiguration);
@@ -85,7 +85,7 @@ namespace DiskStatusAnalyzer
                         logger.LogWarning($"Dir for {name} no found");
                 }
             }
-            return new Node(hostUri, status.Name, diskDirs);
+            return new Node(hostUri, status?.Name, diskDirs);
         }
     }
 }
