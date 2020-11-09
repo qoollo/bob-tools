@@ -22,15 +22,16 @@ namespace DiskStatusAnalyzer
 
         public async Task CopyAlienInformation(List<Node> nodes, Configuration config)
         {
-            var restartInfos = new List<RestartInfo>();
+            var tasks = new List<Task<List<RestartInfo>>>();
             foreach (var node in nodes)
             {
                 logger.LogInformation($"Searching for aliens on {node}");
-                restartInfos.AddRange(await CopyAliensFromNode(node, nodes, config));
+                tasks.Add(CopyAliensFromNode(node, nodes, config));
             }
-            if (restartInfos.Count > 0)
+            var restartInfos = (await Task.WhenAll(tasks)).SelectMany(l => l);
+            if (restartInfos.Any())
             {
-                logger.LogInformation($"Restart actions: {restartInfos.Count}");
+                logger.LogInformation($"Restart actions: {restartInfos.Count()}");
                 foreach (var ri in restartInfos.Distinct())
                 {
                     logger.LogInformation($"Restart action: {ri}");
@@ -39,18 +40,19 @@ namespace DiskStatusAnalyzer
             }
         }
 
-        private async Task<List<RestartInfo>> CopyAliensFromNode(Node node, List<Node> nodes, Configuration config)
+        private Task<List<RestartInfo>> CopyAliensFromNode(Node node, List<Node> nodes, Configuration config)
         {
             var result = new List<RestartInfo>();
+            var tasks = new List<Task<List<RestartInfo>>>();
             foreach (var diskDir in node.DiskDirs)
             {
                 if (diskDir.Alien == null) continue;
                 foreach (var alienNode in diskDir.Alien.Nodes)
                 {
-                    result.AddRange(await CopyAlien(alienNode, nodes, config));
+                    tasks.Add(CopyAlien(alienNode, nodes, config));
                 }
             }
-            return result;
+            return Task.WhenAll(tasks).ContinueWith(t => t.Result.SelectMany(_ => _).ToList());
         }
 
         private async Task<List<RestartInfo>> CopyAlien(BobDir alienNode, List<Node> nodes, Configuration config)
