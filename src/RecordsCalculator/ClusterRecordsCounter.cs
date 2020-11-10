@@ -30,7 +30,7 @@ public class ClusterRecordsCounter
         {
             var url = new Uri($"{baseNode.Scheme}://{n.Address}");
             var addr = $"{baseNode.Scheme}://{url.Host}:{baseNode.Port}";
-            logger.LogInformation(addr);
+            logger.LogInformation($"Found cluster node {addr}");
             return new BobApiClient(new Uri(addr));
         });
 
