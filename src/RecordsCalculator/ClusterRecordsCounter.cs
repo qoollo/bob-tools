@@ -1,7 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BobApi;
+using BobApi.Entities;
 using Microsoft.Extensions.Logging;
 
 public class ClusterRecordsCounter
@@ -32,6 +34,11 @@ public class ClusterRecordsCounter
             return new BobApiClient(new Uri(addr));
         });
 
+        return await CountRecords(apiByName, vdisks);
+    }
+
+    public async Task<(long max, long total)> CountRecords(Dictionary<string, BobApiClient> apiByName, IEnumerable<VDisk> vdisks)
+    {
         var unique = 0L;
         var withReplicas = 0L;
         foreach (var vdisk in vdisks)
