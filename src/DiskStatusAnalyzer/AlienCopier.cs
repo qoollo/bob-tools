@@ -22,7 +22,7 @@ namespace DiskStatusAnalyzer
 
         public async Task CopyAlienInformation(List<NodeWithDirs> nodes, Configuration config)
         {
-            var tasks = new List<Task<List<RestartInfo>>>();
+            var tasks = new List<Task<List<RestartInfo?>>>();
             foreach (var node in nodes)
             {
                 logger.LogInformation($"Searching for aliens on {node}");
@@ -32,18 +32,18 @@ namespace DiskStatusAnalyzer
             if (restartInfos.Any())
             {
                 logger.LogInformation($"Restart actions: {restartInfos.Count()}");
-                foreach (var ri in restartInfos.Distinct())
+                foreach (var ri in restartInfos.Distinct().Where(_ => _ != null))
                 {
                     logger.LogInformation($"Restart action: {ri}");
-                    logger.LogInformation($"Restart action: {ri}, result: {await ri.Invoke()}");
+                    logger.LogInformation($"Restart action: {ri}, result: {await ri?.Invoke()}");
                 }
             }
         }
 
-        private Task<List<RestartInfo>> CopyAliensFromNode(NodeWithDirs node, List<NodeWithDirs> nodes, Configuration config)
+        private Task<List<RestartInfo?>> CopyAliensFromNode(NodeWithDirs node, List<NodeWithDirs> nodes, Configuration config)
         {
-            var result = new List<RestartInfo>();
-            var tasks = new List<Task<List<RestartInfo>>>();
+            var result = new List<RestartInfo?>();
+            var tasks = new List<Task<RestartInfo?[]>>();
             foreach (var diskDir in node.DiskDirs)
             {
                 if (diskDir.Alien == null) continue;
@@ -55,25 +55,22 @@ namespace DiskStatusAnalyzer
             return Task.WhenAll(tasks).ContinueWith(t => t.Result.SelectMany(_ => _).ToList());
         }
 
-        private async Task<List<RestartInfo>> CopyAlien(BobDir alienNode, List<NodeWithDirs> nodes, Configuration config)
+        private Task<RestartInfo?[]> CopyAlien(BobDir alienNode, List<NodeWithDirs> nodes, Configuration config)
         {
-            var result = new List<RestartInfo>();
-            var targetNode = nodes.FirstOrDefault(n => n.Name == alienNode.Name);
-            logger.LogInformation($"Found target {targetNode} for alien");
-            if (targetNode == null) return result;
-            foreach (var vDisk in alienNode.VDisks)
+            var target = nodes.FirstOrDefault(n => n.Name == alienNode.Name);
+            logger.LogInformation($"Found target {target} for alien");
+            if (target == null) return Task.FromResult(new RestartInfo?[0]);
+            return Task.WhenAll(alienNode.VDisks.Select(async vd =>
             {
-                result.AddRange(await CopyAlienFromVDisk(vDisk, config, targetNode));
-
+                var res = await CopyAlienFromVDisk(vd, config, target);
                 if (config.RemoveCopiedFiles)
-                    await RemoveCopiedData(vDisk);
-            }
-            return result;
+                    await RemoveCopiedData(vd);
+                return res;
+            }));
         }
 
-        private async Task<List<RestartInfo>> CopyAlienFromVDisk(VDiskDir vDisk, Configuration config, NodeWithDirs targetNode)
+        private async Task<RestartInfo?> CopyAlienFromVDisk(VDiskDir vDisk, Configuration config, NodeWithDirs targetNode)
         {
-            var result = new List<RestartInfo>();
             var targetVDisk = GetTargetVDisk(vDisk, targetNode);
             logger.LogInformation($"Checking copy from {vDisk} to {targetVDisk}");
             if (ContainsNonCopiedPartition(vDisk, targetVDisk))
@@ -88,12 +85,12 @@ namespace DiskStatusAnalyzer
                         logger.LogInformation($"Successfully copied partitions from {vDisk}");
                         if (config.RestartAfterCopy)
                         {
-                            result.Add(new RestartInfo(targetNode, vDisk));
+                            return new RestartInfo(targetNode, vDisk);
                         }
                     }
                 }
             }
-            return result;
+            return null;
         }
 
         private async Task RemoveCopiedData(VDiskDir vDisk)
