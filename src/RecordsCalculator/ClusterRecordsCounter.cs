@@ -41,15 +41,27 @@ public class ClusterRecordsCounter
     {
         var unique = 0L;
         var withReplicas = 0L;
+        var nodesToRemove = new List<string>();
+        foreach (var (name, api) in apiByName)
+        {
+            var status = await api.GetStatus();
+            if (status is null)
+            {
+                logger.LogInformation($"Removing unavailable node {name}");
+                nodesToRemove.Add(name);
+            }
+        }
+        foreach(var name in nodesToRemove)
+            apiByName.Remove(name);
         foreach (var vdisk in vdisks)
         {
             var maxCount = 0L;
             var totalCount = 0L;
             foreach (var replica in vdisk.Replicas)
             {
-                if (!apiByName.ContainsKey(replica.Node))
+                if (!apiByName.ContainsKey(replica.Node) && !nodesToRemove.Contains(replica.Node))
                     logger.LogWarning($"Node {replica.Node} mentioned in replicas of vdisk {vdisk.Id} not found");
-                else
+                else if (apiByName.ContainsKey(replica.Node))
                 {
                     var countObj = await apiByName[replica.Node].CountRecordsOnVDisk(vdisk);
                     if (countObj is null)

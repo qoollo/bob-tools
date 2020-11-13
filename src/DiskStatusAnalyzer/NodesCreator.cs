@@ -27,7 +27,7 @@ namespace DiskStatusAnalyzer
         public async Task<List<NodeWithDirs>> CreateNodeStructures(Configuration config)
         {
             var nodes = new List<NodeWithDirs>();
-            foreach (var inputNode in config.NodeInfos)
+            foreach (var inputNode in config.Nodes)
             {
                 logger.LogInformation($"Creating node {inputNode}");
                 var info = GetConnectionInfo(config, inputNode);

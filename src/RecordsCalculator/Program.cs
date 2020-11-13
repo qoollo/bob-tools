@@ -49,7 +49,7 @@ namespace RecordsCalculator
             services.AddLogging(b => b.AddConsole());
             services.AddTransient<ClusterRecordsCounter>();
             provider = services.BuildServiceProvider();
-            logger = provider.GetRequiredService<ILogger>();
+            logger = provider.GetRequiredService<ILogger<Program>>();
             configuration = args.Any(s => s.EndsWith(".json"))
                 ? Configuration.FromJsonFile(args.First(s => s.EndsWith(".json")))
                 : Configuration.FromCommandLineArguments(args);

@@ -4,7 +4,7 @@ namespace DiskStatusAnalyzer
 {
     public class Configuration
     {
-        public List<NodeInfo> NodeInfos { get; set; }
+        public List<NodeInfo> Nodes { get; set; }
         public string RsyncCmd { get; set; } = "rsync";
         public string SshCmd { get; set; } = "ssh";
         public string PathToSshKey { get; set; }
