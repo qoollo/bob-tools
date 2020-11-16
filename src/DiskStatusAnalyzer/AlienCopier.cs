@@ -125,9 +125,9 @@ namespace DiskStatusAnalyzer
             if (filesToRemove.Count > 0)
             {
                 logger.LogInformation($"Removing files {string.Join(", ", filesToRemove)}");
-                if (!await rsyncWrapper.RemoveFiles(vDisk,
-
-                                                    filesToRemove.Select(f => Path.Combine(vDisk.Path, f.Trim('/')))))
+                if (!await rsyncWrapper.RemoveFiles(
+                    vDisk,
+                    filesToRemove.Select(f => Path.Combine(vDisk.Path, f.Trim('/')))))
                     logger.LogError($"Failed to remove files");
             }
         }

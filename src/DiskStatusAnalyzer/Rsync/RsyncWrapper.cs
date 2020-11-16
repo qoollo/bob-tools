@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using DiskStatusAnalyzer.Rsync.Entities;
 using Microsoft.Extensions.Logging;
@@ -16,6 +17,8 @@ namespace DiskStatusAnalyzer.Rsync
         private static readonly HashSet<string> ExcludedFiles = new HashSet<string> { "*synced_files", "*lock" };
         private static readonly HashSet<string> ForbiddenNames = new HashSet<string> { "." };
         private readonly ILogger<RsyncWrapper> logger;
+
+        private static SemaphoreSlim sshThrottler = new SemaphoreSlim(10);
 
         public RsyncWrapper(ILogger<RsyncWrapper> logger)
         {
@@ -83,7 +86,8 @@ namespace DiskStatusAnalyzer.Rsync
             return InvokeSshCommand(connectionInfo, command);
         }
 
-        public Task<bool> InvokeSshCommand(ConnectionInfo configuration, string command)
+
+        public async Task<bool> InvokeSshCommand(ConnectionInfo configuration, string command)
         {
             var process = configuration.GetSshProcess(command, false);
             LogProcessStart(process);
@@ -96,11 +100,19 @@ namespace DiskStatusAnalyzer.Rsync
                 tcs.SetResult(process.ExitCode == 0);
                 process.Dispose();
             };
-            process.Start();
-            return tcs.Task;
+            await sshThrottler.WaitAsync();
+            try
+            {
+                process.Start();
+                return await tcs.Task;
+            }
+            finally
+            {
+                sshThrottler.Release();
+            }
         }
 
-        public Task<List<string>> InvokeSshCommandWithOutput(ConnectionInfo configuration,
+        public async Task<List<string>> InvokeSshCommandWithOutput(ConnectionInfo configuration,
                                                              string command)
         {
             var process = configuration.GetSshProcess(command, true);
@@ -118,8 +130,16 @@ namespace DiskStatusAnalyzer.Rsync
                 tcs.SetResult(result);
                 process.Dispose();
             };
-            process.Start();
-            return tcs.Task;
+            await sshThrottler.WaitAsync();
+            try
+            {
+                process.Start();
+                return await tcs.Task;
+            }
+            finally
+            {
+                sshThrottler.Release();
+            }
         }
 
         private void LogProcessStart(Process process)
