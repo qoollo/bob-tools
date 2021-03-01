@@ -72,21 +72,23 @@ namespace DiskStatusAnalyzer
         private async Task<RestartInfo?> CopyAlienFromVDisk(VDiskDir vDisk, Configuration config, NodeWithDirs targetNode)
         {
             var targetVDisk = GetTargetVDisk(vDisk, targetNode);
-            logger.LogInformation($"Checking copy from {vDisk} to {targetVDisk}");
-            if (ContainsNonCopiedPartition(vDisk, targetVDisk))
+            if (targetVDisk == null)
             {
-                logger.LogInformation($"Found not copied partition on {vDisk}");
-                if (config.CopyAliens)
+                logger.LogError($"VDisk {vDisk.Id} not found on target {targetNode.Name}");
+                return null;
+            }
+            logger.LogInformation($"Checking copy from {vDisk} to {targetVDisk}");
+            logger.LogInformation($"Found not copied partition on {vDisk}");
+            if (config.CopyAliens)
+            {
+                if (!await rsyncWrapper.Copy(vDisk, targetVDisk))
+                    logger.LogError($"Error copying {vDisk} to {targetVDisk}");
+                else
                 {
-                    if (!await rsyncWrapper.Copy(vDisk, targetVDisk))
-                        logger.LogError($"Error copying {vDisk} to {targetVDisk}");
-                    else
+                    logger.LogInformation($"Successfully copied partitions from {vDisk}");
+                    if (config.RestartAfterCopy)
                     {
-                        logger.LogInformation($"Successfully copied partitions from {vDisk}");
-                        if (config.RestartAfterCopy)
-                        {
-                            return new RestartInfo(targetNode, vDisk);
-                        }
+                        return new RestartInfo(targetNode, vDisk);
                     }
                 }
             }
