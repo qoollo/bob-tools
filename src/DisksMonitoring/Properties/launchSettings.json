@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DisksMonitoring": {
+      "commandName": "Project",
+      "commandLineArgs": "80"
+    }
+  }
+}

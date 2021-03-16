@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using BobApi.Entities;
 using Newtonsoft.Json;
+using Path = System.IO.Path;
 
 namespace BobApi
 {
@@ -44,6 +45,26 @@ namespace BobApi
             }
             catch (HttpRequestException) { }
             return null;
+        }
+
+        public async Task<List<Disk>> GetDisksToMonitor()
+        {
+            try
+            {
+                using (var response = await client.GetAsync("disks/list"))
+                {
+                    if (response.IsSuccessStatusCode)
+                        return await response.Content.ReadAsStringAsync().ContinueWith(t => JsonConvert.DeserializeObject<List<Disk>>(t.Result));
+                }
+            }
+            catch (HttpRequestException) { }
+            return null;
+        }
+
+        public async Task<bool> StartDisk(string name)
+        {
+            using (var response = await client.PostAsync($"disks/{name}/start", new StringContent("")))
+                return response.IsSuccessStatusCode;
         }
 
         public async Task<List<Directory>> GetDirectories(VDisk vdisk)
@@ -112,6 +133,11 @@ namespace BobApi
         public void Dispose()
         {
             client?.Dispose();
+        }
+
+        public override string ToString()
+        {
+            return client.BaseAddress.ToString();
         }
     }
 }
