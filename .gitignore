@@ -7,3 +7,4 @@ riderModule.iml
 /publish
 DiskStatusAnalyzer.sln.DotSettings.user
 /src/DiskStatusAnalyzer/logs
+.vs/
