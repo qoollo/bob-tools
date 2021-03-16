@@ -37,6 +37,8 @@ namespace DisksMonitoring.Config
 
         public string MountPointPermissions { get; set; } = "777";
         public string MountPointOwner { get; set; } = "root:root";
+        public string BobDirPermissions { get; set; } = "777";
+        public string BobDirOwner { get; set; } = "root:root";
         public string FstabOptions { get; set; } = "nofail";
         public HashSet<BobDisk> MonitoringEntries { get; set; } = new HashSet<BobDisk>();
         public HashSet<UUID> KnownUuids { get; set; } = new HashSet<UUID>();

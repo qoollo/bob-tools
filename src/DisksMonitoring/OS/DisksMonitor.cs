@@ -64,7 +64,7 @@ namespace DisksMonitoring.OS
                         {
                             var bobPath = neededInfoStorage.FindBobPath(volume);
                             if (bobPath != null)
-                                bobPathPreparer.PrepareBobPath(bobPath);
+                                await bobPathPreparer.PrepareBobPath(bobPath);
                             else
                                 logger.LogInformation($"No bobpath found for {volume}");
                         }

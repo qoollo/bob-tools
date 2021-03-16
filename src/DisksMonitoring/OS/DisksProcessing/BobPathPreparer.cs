@@ -1,5 +1,7 @@
-﻿using DisksMonitoring.OS.DisksFinding;
+﻿using DisksMonitoring.Config;
+using DisksMonitoring.OS.DisksFinding;
 using DisksMonitoring.OS.DisksProcessing.Entities;
+using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -11,14 +13,18 @@ namespace DisksMonitoring.OS.DisksProcessing
 {
     class BobPathPreparer
     {
+        private readonly ProcessInvoker processInvoker;
+        private readonly Configuration configuration;
         private readonly ILogger<BobPathPreparer> logger;
 
-        public BobPathPreparer(ILogger<BobPathPreparer> logger)
+        public BobPathPreparer(ProcessInvoker processInvoker, Configuration configuration, ILogger<BobPathPreparer> logger)
         {
+            this.processInvoker = processInvoker;
+            this.configuration = configuration;
             this.logger = logger;
         }
 
-        public void PrepareBobPath(BobPath bobPath)
+        public async Task PrepareBobPath(BobPath bobPath)
         {
             try
             {
@@ -29,6 +35,8 @@ namespace DisksMonitoring.OS.DisksProcessing
                     Directory.Delete(path, true);
                 }
                 Directory.CreateDirectory(path);
+                await processInvoker.InvokeSudoProcess("chmod", configuration.MountPointPermissions, "-R", path);
+                await processInvoker.InvokeSudoProcess("chown", configuration.MountPointOwner, "-R", path);
                 logger.LogInformation($"Created {bobPath}");
             }
             catch (Exception)
