@@ -46,7 +46,7 @@ namespace DisksMonitoring
 
         static async Task Main(string[] args)
         {
-            const string help == "--help";
+            const string help = "--help";
             const string levelArgPrefix = "--level";
             const string genOnlyOption = "--gen-only";
 
