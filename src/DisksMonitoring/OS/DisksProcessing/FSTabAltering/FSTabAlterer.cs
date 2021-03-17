@@ -42,7 +42,7 @@ namespace DisksMonitoring.OS.DisksProcessing.FSTabAltering
             int added = newRecords.Count;
             int removed = 0;
             foreach (var line in oldContent)
-                if (line.StartsWith(commentStart) || oldRecords.Contains(new FSTabRecord(line)))
+                if (line.StartsWith(commentStart) || !FSTabRecord.TryParse(line, out var rec) || oldRecords.Contains(rec))
                     newContent.AppendLine(line);
                 else
                     removed++;
@@ -105,10 +105,10 @@ namespace DisksMonitoring.OS.DisksProcessing.FSTabAltering
         {
             var lines = await File.ReadAllLinesAsync(fsTabFilename);
             var res = new HashSet<FSTabRecord>();
-            foreach (var line in lines)
+            foreach (var line in lines.Where(l => !string.IsNullOrWhiteSpace(l)))
             {
-                if (!line.StartsWith(commentStart))
-                    res.Add(new FSTabRecord(line));
+                if (!line.StartsWith(commentStart) && FSTabRecord.TryParse(line, out var rec))
+                    res.Add(rec);
             }
             foreach (var record in res)
                 logger.LogDebug($"FSTab line: {record}");

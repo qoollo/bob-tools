@@ -44,18 +44,32 @@ namespace DisksMonitoring
             logger = serviceProvider.GetRequiredService<ILogger<Program>>();
         }
 
-        static async Task<int> Main(string[] args)
+        static async Task Main(string[] args)
         {
+            const string help == "--help";
+            const string levelArgPrefix = "--level";
+            const string genOnlyOption = "--gen-only";
+
+            if (args.Contains(help))
+            {
+                Console.WriteLine($"Available options: --level=LOGLEVEL, --gen-only");
+                return;
+            }
+
             LogLevel level = LogLevel.Information;
-            if (args.Length > 0 && Enum.TryParse<LogLevel>(args[0], true, out var argLevel))
+            var levelArg = args.FirstOrDefault(arg => arg.StartsWith(levelArgPrefix));
+            if (levelArg != null && levelArg.Length > levelArgPrefix.Length + 1 && Enum.TryParse<LogLevel>(levelArg.Substring(levelArgPrefix.Length + 1), true, out var argLevel))
                 level = argLevel;
             Initialize(level);
+
             var monitor = serviceProvider.GetRequiredService<DisksMonitor>();
             var bobApiClient = new BobApiClient(new Uri("http://127.0.0.1:8000"));
             var configuration = await GetConfiguration(bobApiClient);
+            if (args.Contains(genOnlyOption))
+                return;
+
             var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
             var lastInfo = new HashSet<BobDisk>();
-
             logger.LogInformation("Start monitor");
             while (true)
             {

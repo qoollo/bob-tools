@@ -8,7 +8,7 @@ namespace DisksMonitoring.OS.DisksProcessing.FSTabAltering
 {
     class FSTabRecord : IEquatable<FSTabRecord>
     {
-        public FSTabRecord(string line)
+        private FSTabRecord(string line)
         {
             var elems = line.Split(new char[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
             int addition = 0;
@@ -24,8 +24,8 @@ namespace DisksMonitoring.OS.DisksProcessing.FSTabAltering
                 MountPath = null;
             Filesystem = new Filesystem(elems[2]);
             Options = addition == 1 ? "" : elems[3];
-            Dump = elems[4 - addition] == "1";
-            Pass = elems[5 - addition] == "1";
+            Dump = int.Parse(elems[4 - addition]);
+            Pass = int.Parse(elems[5 - addition]);
         }
 
         public FSTabRecord(Volume volume, string options)
@@ -34,16 +34,16 @@ namespace DisksMonitoring.OS.DisksProcessing.FSTabAltering
             MountPath = volume.MountPath;
             Filesystem = volume.FileSystem.Value;
             Options = options ?? "";
-            Dump = false;
-            Pass = false;
+            Dump = 0;
+            Pass = 0;
         }
 
         public FSTabId Id { get; }
         public MountPath? MountPath { get; }
         public Filesystem Filesystem { get; }
         public string Options { get; set; }
-        public bool Dump { get; }
-        public bool Pass { get; }
+        public int Dump { get; }
+        public int Pass { get; }
 
         public override bool Equals(object obj)
         {
@@ -68,7 +68,22 @@ namespace DisksMonitoring.OS.DisksProcessing.FSTabAltering
 
         public override string ToString()
         {
-            return $"{Id}\t{(MountPath is null ? "none" : MountPath?.Path)}\t{(string)Filesystem}\t{Options}\t{(Dump ? "1" : "0")}\t{(Pass ? "1" : "0")}";
+            return $"{Id}\t{(MountPath is null ? "none" : MountPath?.Path)}\t{(string)Filesystem}\t{Options}\t{Dump}\t{Pass}";
+        }
+
+        public static bool TryParse(string line, out FSTabRecord record)
+        {
+            record = null;
+            try
+            {
+                record = new FSTabRecord(line);
+                return true;
+            }
+            catch
+            {
+
+            }
+            return false;
         }
     }
 }

@@ -48,6 +48,13 @@ namespace DisksMonitoring.OS.DisksProcessing
                 {
                     await processInvoker.InvokeSudoProcess("mkdir", path);
                 }
+                try
+                {
+                    logger.LogInformation($"Trying to unmount previous disks in {path}");
+                    await processInvoker.InvokeSudoProcess("umount", path);
+                    logger.LogInformation($"Successfully umounted previous disks in {path}");
+                }
+                catch { }
                 await processInvoker.InvokeSudoProcess("mount", volume.DevPath.Path, path);
                 await processInvoker.InvokeSudoProcess("chmod", configuration.MountPointPermissions, "-R", path);
                 await processInvoker.InvokeSudoProcess("chown", configuration.MountPointOwner, "-R", path);
