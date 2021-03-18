@@ -8,6 +8,8 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
 
         public DevPath(string data)
         {
+            if (data is null || data.Length == 0 || !data.StartsWith('/'))
+                throw new ArgumentException($"No dev path provided");
             this.data = data;
         }
 
