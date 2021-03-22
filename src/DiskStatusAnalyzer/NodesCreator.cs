@@ -77,7 +77,7 @@ namespace DiskStatusAnalyzer
                     if (baseDir.Path != null)
                     {
                         logger.LogInformation($"Found dir for {name}");
-                        var dir = nodeStructureCreator.ParseDisk(baseDir, info);
+                        var dir = nodeStructureCreator.ParseDisk(replica.Disk, baseDir, info);
                         if (dir != null)
                         {
                             logger.LogInformation($"Successfully read structure of {name}");

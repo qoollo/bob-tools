@@ -98,6 +98,8 @@ namespace DiskStatusAnalyzer
         private static async Task<List<NodeWithDirs>> FindNodes(CommonOptions options)
         {
             var config = await FindConfig(options);
+            if (config == null)
+                return null;
             return await FindNodes(config);
         }
 

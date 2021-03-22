@@ -17,7 +17,7 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
             this.logger = logger;
         }
 
-        public DiskDir ParseDisk(Directory diskDir, ConnectionInfo connectionConfiguration)
+        public DiskDir ParseDisk(string diskName, Directory diskDir, ConnectionInfo connectionConfiguration)
         {
             if (diskDir.Path == null)
                 return null;
@@ -26,11 +26,11 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
             var bobDir = dirs.FirstOrDefault(re => re.Name == "bob");
             if (bobDir.Path is null)
                 return null;
-            logger.LogDebug($"Found disk dir {diskDir.Path}");
+            logger.LogDebug($"Found disk {diskName} dir {diskDir.Path}");
             var bob = ParseBob(bobDir, connectionConfiguration);
             var alienDir = dirs.FirstOrDefault(re => re.Name == "alien");
             var alien = ParseAlien(alienDir, connectionConfiguration);
-            return new DiskDir(diskDir.Name, bob, alien, new RsyncEntry(connectionConfiguration, diskDir));
+            return new DiskDir(diskName, bob, alien, new RsyncEntry(connectionConfiguration, diskDir));
         }
 
         private BobDir ParseBob(Directory bobDir,
