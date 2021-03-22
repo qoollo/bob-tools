@@ -1,4 +1,6 @@
 ﻿using BobApi;
+using CommandLine;
+using DisksMonitoring.Bob;
 using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
 using DisksMonitoring.OS;
@@ -39,6 +41,7 @@ namespace DisksMonitoring
             services.AddTransient<ConfigGenerator>();
             services.AddTransient<BobPathPreparer>();
             services.AddSingleton<Configuration>();
+            services.AddTransient<DisksStarter>();
 
             serviceProvider = services.BuildServiceProvider();
             logger = serviceProvider.GetRequiredService<ILogger<Program>>();
@@ -46,28 +49,16 @@ namespace DisksMonitoring
 
         static async Task Main(string[] args)
         {
-            const string help = "--help";
-            const string levelArgPrefix = "--level";
-            const string genOnlyOption = "--gen-only";
+            var parsed = new Parser(cfg => cfg.CaseInsensitiveEnumValues = true).ParseArguments<MonitorOptions, GenerateOnlyOptions>(args);
+            await parsed.WithParsedAsync<MonitorOptions>(Monitor);
+            await parsed.WithParsedAsync<GenerateOnlyOptions>(GenerateConfiguration);
+        }
 
-            if (args.Contains(help))
-            {
-                Console.WriteLine($"Available options: --level=LOGLEVEL, --gen-only");
-                return;
-            }
-
-            LogLevel level = LogLevel.Information;
-            var levelArg = args.FirstOrDefault(arg => arg.StartsWith(levelArgPrefix));
-            if (levelArg != null && levelArg.Length > levelArgPrefix.Length + 1 && Enum.TryParse<LogLevel>(levelArg.Substring(levelArgPrefix.Length + 1), true, out var argLevel))
-                level = argLevel;
-            Initialize(level);
-
+        private static async Task Monitor(MonitorOptions options)
+        {
+            var configuration = await GenerateConfiguration(options);
             var monitor = serviceProvider.GetRequiredService<DisksMonitor>();
-            var bobApiClient = new BobApiClient(new Uri("http://127.0.0.1:8000"));
-            var configuration = await GetConfiguration(bobApiClient);
-            if (args.Contains(genOnlyOption))
-                return;
-
+            var disksStarter = serviceProvider.GetRequiredService<DisksStarter>();
             var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
             var lastInfo = new HashSet<BobDisk>();
             logger.LogInformation("Start monitor");
@@ -79,7 +70,7 @@ namespace DisksMonitoring
                     var deadInfo = await GetDeadInfo(configuration, lastInfo);
                     await monitor.CheckAndUpdate();
                     await configuration.SaveToFile(configFile);
-                    await StartDisks(monitor, bobApiClient, configuration, deadInfo);
+                    await disksStarter.StartDisks(GetBobApiClient(), deadInfo);
                 }
                 catch (Exception e)
                 {
@@ -91,21 +82,15 @@ namespace DisksMonitoring
             }
         }
 
-        private static async Task StartDisks(DisksMonitor monitor, BobApiClient bobApiClient, Configuration configuration, List<BobDisk> deadInfo)
+        private static async Task<Configuration> GenerateConfiguration(MonitorOptions options)
         {
-            var newDead = await configuration.GetDeadInfo();
-            foreach (var i in deadInfo.Except(newDead))
-            {
-                configuration.SaveUUID(await monitor.GetUUID(i));
-                logger.LogInformation($"Starting bobdisk {i}...");
-                int retry = 0;
-                while (!await bobApiClient.StartDisk(i.DiskNameInBob) && retry++ < configuration.StartRetryCount)
-                    logger.LogWarning($"Failed to start bobdisk in try {retry}, trying again");
-                if (retry == configuration.StartRetryCount)
-                    logger.LogError($"Failed to start bobdisk {i}");
-                else
-                    logger.LogInformation($"Bobdisk {i} started");
-            }
+            Initialize(options.LogLevel);
+            return await GetConfiguration(GetBobApiClient());
+        }
+
+        private static BobApiClient GetBobApiClient()
+        {
+            return new BobApiClient(new Uri("http://127.0.0.1:8000"));
         }
 
         private static async Task<List<BobDisk>> GetDeadInfo(Configuration configuration, HashSet<BobDisk> lastInfo)
@@ -143,6 +128,19 @@ namespace DisksMonitoring
             {
                 logger.LogInformation("Reading configuration done");
             }
+        }
+
+        [Verb("monitor", isDefault: true)]
+        public class MonitorOptions
+        {
+            [Option("log-level", HelpText = "Logging level", Default = LogLevel.Information)]
+            public LogLevel LogLevel { get; set; }
+        }
+
+        [Verb("generate-only", HelpText = "Perform only config generation")]
+        public class GenerateOnlyOptions : MonitorOptions
+        {
+
         }
     }
 }
