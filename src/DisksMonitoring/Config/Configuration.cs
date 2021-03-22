@@ -45,6 +45,7 @@ namespace DisksMonitoring.Config
         public int StartRetryCount { get; set; } = 10;
         public int MinCycleTimeSec { get; set; } = 5;
         public string Filesystem { get; set; } = "ext4";
+        public string PathToDiskStatusAnalyzer { get; set; } = null;
 
         public async Task ReadFromFile(string filename)
         {

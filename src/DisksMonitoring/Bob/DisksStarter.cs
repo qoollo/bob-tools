@@ -15,12 +15,14 @@ namespace DisksMonitoring.Bob
     {
         private readonly DisksMonitor disksMonitor;
         private readonly Configuration configuration;
+        private readonly DisksCopier disksCopier;
         private readonly ILogger<DisksStarter> logger;
 
-        public DisksStarter(DisksMonitor disksMonitor, Configuration configuration, ILogger<DisksStarter> logger)
+        public DisksStarter(DisksMonitor disksMonitor, Configuration configuration, DisksCopier disksCopier, ILogger<DisksStarter> logger)
         {
             this.disksMonitor = disksMonitor;
             this.configuration = configuration;
+            this.disksCopier = disksCopier;
             this.logger = logger;
         }
 
@@ -29,6 +31,7 @@ namespace DisksMonitoring.Bob
             var newDead = await configuration.GetDeadInfo();
             foreach (var i in deadInfo.Except(newDead))
             {
+                await disksCopier.CopyDataFromReplica(bobApiClient, i);
                 configuration.SaveUUID(await disksMonitor.GetUUID(i));
                 logger.LogInformation($"Starting bobdisk {i}...");
                 int retry = 0;
