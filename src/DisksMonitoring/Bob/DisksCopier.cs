@@ -42,31 +42,34 @@ namespace DisksMonitoring.Bob
             var destName = status?.Name;
             var diskName = bobDisk.DiskNameInBob;
             bool IsCurrent(Replica replica) => replica.Node == destName && replica.Disk == diskName;
-            var vdisk = status?.VDisks.Find(vd => vd.Replicas.Any(IsCurrent));
-            if (vdisk is null)
+            var vdisks = status?.VDisks.Where(vd => vd.Replicas.Any(IsCurrent));
+            if (!vdisks.Any())
             {
-                logger.LogError($"VDisk with replica ({diskName}, {destName}) not found");
+                logger.LogError($"VDisks with replica ({diskName}, {destName}) not found");
                 return;
             }
-            foreach (var replica in vdisk?.Replicas)
+            foreach (var vdisk in vdisks)
             {
-                logger.LogInformation($"Trying to copy from {replica.Node} to {destName}");
-                try
+                foreach (var replica in vdisk.Replicas)
                 {
-                    await PerformCopy(replica.Node, destName, diskName);
-                    logger.LogInformation($"Successfully copied data from {replica.Node} to {destName}");
-                    return;
-                }
-                catch (Exception e)
-                {
-                    logger.LogError($"Failed to copy from {replica.Node} to {destName}: {e.Message}");
+                    logger.LogInformation($"Trying to copy {vdisk} from {replica.Node} to {destName}");
+                    try
+                    {
+                        await PerformCopy(replica.Node, destName, vdisk.Id);
+                        logger.LogInformation($"Successfully copied {vdisk} from {replica.Node} to {destName}");
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogError($"Failed to copy {vdisk} from {replica.Node} to {destName}: {e.Message}");
+                    }
                 }
             }
         }
 
-        private async Task PerformCopy(string sourceName, string destName, string diskName)
+        private async Task PerformCopy(string sourceName, string destName, int vdiskId)
         {
-            await processInvoker.InvokeSudoProcess(configuration.PathToDiskStatusAnalyzer, $"-s {sourceName}", $"-d {destName}", $"-n {diskName}");
+            await processInvoker.InvokeSudoProcess(configuration.PathToDiskStatusAnalyzer, $"-s {sourceName}", $"-d {destName}", $"-v {vdiskId}");
         }
     }
 }
