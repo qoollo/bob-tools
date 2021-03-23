@@ -91,7 +91,7 @@ namespace DiskStatusAnalyzer
             var destNode = FindSingleNode(nodes, options.DestNodeName);
 
             var replicaCopier = serviceProvider.GetRequiredService<ReplicaCopier>();
-            if (srcNode == null || destNode == null || !await replicaCopier.Copy(srcNode, options.DiskName, destNode, options.DiskName))
+            if (srcNode == null || destNode == null || !await replicaCopier.Copy(srcNode, destNode, options.VDiskId))
                 logger.LogError("Copy failed");
         }
 
@@ -147,11 +147,11 @@ namespace DiskStatusAnalyzer
 
         }
 
-        [Verb("copy-disk", HelpText = "Copy disk content from one node to another")]
+        [Verb("copy-vdisk", HelpText = "Copy vdisk content from one node to another")]
         public class CopyDiskOptions : CommonOptions
         {
-            [Option('n', "name", Required = true, HelpText = "Disk name")]
-            public string DiskName { get; set; }
+            [Option('v', "vdisk-id", Required = true, HelpText = "VDisk id")]
+            public int VDiskId { get; set; }
 
             [Option('s', "src", Required = true, HelpText = "Source node name")]
             public string SourceNodeName { get; set; }
