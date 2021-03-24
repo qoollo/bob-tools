@@ -42,6 +42,7 @@ namespace DisksMonitoring
             services.AddTransient<BobPathPreparer>();
             services.AddSingleton<Configuration>();
             services.AddTransient<DisksStarter>();
+            services.AddTransient<DisksCopier>();
 
             serviceProvider = services.BuildServiceProvider();
             logger = serviceProvider.GetRequiredService<ILogger<Program>>();
@@ -49,14 +50,15 @@ namespace DisksMonitoring
 
         static async Task Main(string[] args)
         {
-            var parsed = new Parser(cfg => cfg.CaseInsensitiveEnumValues = true).ParseArguments<MonitorOptions, GenerateOnlyOptions>(args);
-            await parsed.WithParsedAsync<MonitorOptions>(Monitor);
-            await parsed.WithParsedAsync<GenerateOnlyOptions>(GenerateConfiguration);
+            var parsed = Parser.Default.ParseArguments<MonitorOptions, GenerateOnlyOptions>(args);
+            await Task.WhenAll(
+                parsed.WithParsedAsync<MonitorOptions>(Monitor),
+                parsed.WithParsedAsync<GenerateOnlyOptions>(ops => GenerateConfiguration(ops.LogLevel)));
         }
 
         private static async Task Monitor(MonitorOptions options)
         {
-            var configuration = await GenerateConfiguration(options);
+            var configuration = await GenerateConfiguration(options.LogLevel);
             var monitor = serviceProvider.GetRequiredService<DisksMonitor>();
             var disksStarter = serviceProvider.GetRequiredService<DisksStarter>();
             var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
@@ -82,9 +84,9 @@ namespace DisksMonitoring
             }
         }
 
-        private static async Task<Configuration> GenerateConfiguration(MonitorOptions options)
+        private static async Task<Configuration> GenerateConfiguration(LogLevel logLevel)
         {
-            Initialize(options.LogLevel);
+            Initialize(logLevel);
             return await GetConfiguration(GetBobApiClient());
         }
 
@@ -130,17 +132,18 @@ namespace DisksMonitoring
             }
         }
 
-        [Verb("monitor", isDefault: true)]
+        [Verb("monitor", isDefault: true, HelpText = "Monitor disks unplugging")]
         public class MonitorOptions
         {
-            [Option("log-level", HelpText = "Logging level", Default = LogLevel.Information)]
+            [Option("log-level", Required = false, HelpText = "Logging level", Default = LogLevel.Information)]
             public LogLevel LogLevel { get; set; }
         }
 
         [Verb("generate-only", HelpText = "Perform only config generation")]
-        public class GenerateOnlyOptions : MonitorOptions
+        public class GenerateOnlyOptions
         {
-
+            [Option("log-level", Required = false, HelpText = "Logging level", Default = LogLevel.Information)]
+            public LogLevel LogLevel { get; set; }
         }
     }
 }

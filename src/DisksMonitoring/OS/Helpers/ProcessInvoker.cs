@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,7 +21,12 @@ namespace DisksMonitoring.OS.Helpers
 
         public Task<string[]> InvokeSudoProcess(string command, params string[] args)
         {
-            var proc = GetSudoProcess(command, args);
+            return InvokeSudoProcessWithWD(command, null, args);
+        }
+
+        public Task<string[]> InvokeSudoProcessWithWD(string command, string workingDirectory, params string[] args)
+        {
+            var proc = GetSudoProcess(command, workingDirectory, args);
             logger.LogDebug($"Starting {command} with args {string.Join(", ", proc.StartInfo.ArgumentList.Skip(1))}");
             var tcs = CreateTCSForProcess(command, proc);
             proc.Start();
@@ -51,7 +57,7 @@ namespace DisksMonitoring.OS.Helpers
             return tcs;
         }
 
-        private static Process GetSudoProcess(string command, params string[] args)
+        private static Process GetSudoProcess(string command, string workingDirectory, params string[] args)
         {
             var res = new Process
             {
@@ -61,7 +67,8 @@ namespace DisksMonitoring.OS.Helpers
                     UseShellExecute = false,
                     CreateNoWindow = true,
                     RedirectStandardError = true,
-                    RedirectStandardOutput = true
+                    RedirectStandardOutput = true,
+                    WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory()
                 },
                 EnableRaisingEvents = true
             };

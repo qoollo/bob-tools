@@ -30,7 +30,7 @@ namespace DisksMonitoring.Bob
         {
             if (configuration.PathToDiskStatusAnalyzer == null || !File.Exists(configuration.PathToDiskStatusAnalyzer))
             {
-                logger.LogInformation($"DiskStatusAnalyzer path is not set or invalid, skipping copy");
+                logger.LogInformation($"DiskStatusAnalyzer path ({configuration.PathToDiskStatusAnalyzer}) is invalid, skipping copy");
                 return;
             }
             var status = await bobApiClient.GetStatus();
@@ -50,6 +50,21 @@ namespace DisksMonitoring.Bob
             }
             foreach (var vdisk in vdisks)
             {
+                string vdiskPath = Path.Combine(bobDisk.BobPath.Path, "bob", vdisk.Id.ToString());
+                try
+                {
+                    if (!System.IO.Directory.Exists(vdiskPath))
+                    {
+                        logger.LogInformation($"Creating vdisk dir {vdiskPath}");
+                        System.IO.Directory.CreateDirectory(vdiskPath);
+                    }
+                    else
+                        logger.LogDebug($"Directory for vdisk {vdiskPath} already exists");
+                }
+                catch (Exception e)
+                {
+                    logger.LogError($"Failed to create vdisk dir {vdiskPath}: {e.Message}");
+                }
                 foreach (var replica in vdisk.Replicas)
                 {
                     logger.LogInformation($"Trying to copy {vdisk} from {replica.Node} to {destName}");
@@ -69,7 +84,9 @@ namespace DisksMonitoring.Bob
 
         private async Task PerformCopy(string sourceName, string destName, int vdiskId)
         {
-            await processInvoker.InvokeSudoProcess(configuration.PathToDiskStatusAnalyzer, $"-s {sourceName}", $"-d {destName}", $"-v {vdiskId}");
+            string fullPath = Path.GetFullPath(configuration.PathToDiskStatusAnalyzer);
+            await processInvoker.InvokeSudoProcessWithWD(fullPath, Path.GetDirectoryName(fullPath),
+                "copy-vdisk", $"-s {sourceName}", $"-d {destName}", $"-v {vdiskId}");
         }
     }
 }

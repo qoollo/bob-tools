@@ -66,6 +66,7 @@ namespace DisksMonitoring.Config
                 throw new ArgumentException($"MountPointPermissions not set");
             MountPointOwner = parsed.MountPointOwner;
             MountPointPermissions = parsed.MountPointPermissions;
+            PathToDiskStatusAnalyzer = parsed.PathToDiskStatusAnalyzer;
         }
 
         public async Task SaveToFile(string filename)
