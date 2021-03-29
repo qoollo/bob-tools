@@ -1,4 +1,5 @@
-﻿using DisksMonitoring.Config;
+﻿using BobApi;
+using DisksMonitoring.Config;
 using DisksMonitoring.OS.DisksFinding;
 using DisksMonitoring.OS.DisksFinding.Entities;
 using DisksMonitoring.OS.Helpers;
@@ -26,7 +27,7 @@ namespace DisksMonitoring.OS.DisksProcessing
             this.configuration = configuration;
         }
 
-        public async Task MountVolume(Volume volume)
+        public async Task MountVolume(Volume volume, BobApiClient bobApiClient)
         {
             if (volume.IsMounted)
             {
@@ -43,21 +44,31 @@ namespace DisksMonitoring.OS.DisksProcessing
             if (mountPath != null)
             {
                 var path = mountPath?.Path;
-                logger.LogInformation($"Mounting {volume} to {mountPath}");
                 if (!Directory.Exists(path))
                 {
                     await processInvoker.InvokeSudoProcess("mkdir", path);
                 }
-                try
-                {
-                    logger.LogInformation($"Trying to unmount previous disks in {path}");
-                    await processInvoker.InvokeSudoProcess("umount", path);
-                    logger.LogInformation($"Successfully umounted previous disks in {path}");
-                }
-                catch { }
+                bool done = false;
+                while (!done)
+                    try
+                    {
+                        var bobDisk = neededInfoStorage.FindBobDisk(volume);
+                        if (bobDisk != null)
+                        {
+                            if (!await bobApiClient.StopDisk(bobDisk.DiskNameInBob))
+                                logger.LogWarning($"Failed to stop bobdisk {bobDisk}");
+                            else
+                                logger.LogInformation($"Successfully stoped bobdisk {bobDisk}");
+                        }
+                        logger.LogInformation($"Trying to unmount previous disks in {path}");
+                        await processInvoker.InvokeSudoProcess("umount", path);
+                        done = true;
+                        logger.LogInformation($"Successfully umounted previous disks in {path}");
+                    }
+                    catch { }
+                logger.LogInformation($"Mounting {volume} to {mountPath}");
                 await processInvoker.InvokeSudoProcess("mount", volume.DevPath.Path, path);
-                await processInvoker.InvokeSudoProcess("chmod", configuration.MountPointPermissions, "-R", path);
-                await processInvoker.InvokeSudoProcess("chown", configuration.MountPointOwner, "-R", path);
+                await processInvoker.SetDirPermissionsAndOwner(path, configuration.MountPointPermissions, configuration.MountPointOwner);
             }
             else
                 logger.LogInformation($"No mount path found for {volume}");

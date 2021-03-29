@@ -50,23 +50,13 @@ namespace DisksMonitoring.Bob
             }
             foreach (var vdisk in vdisks)
             {
-                string vdiskPath = Path.Combine(bobDisk.BobPath.Path, "bob", vdisk.Id.ToString());
-                try
-                {
-                    if (!System.IO.Directory.Exists(vdiskPath))
-                    {
-                        logger.LogInformation($"Creating vdisk dir {vdiskPath}");
-                        System.IO.Directory.CreateDirectory(vdiskPath);
-                    }
-                    else
-                        logger.LogDebug($"Directory for vdisk {vdiskPath} already exists");
-                }
-                catch (Exception e)
-                {
-                    logger.LogError($"Failed to create vdisk dir {vdiskPath}: {e.Message}");
-                }
+                var bobPath = Path.Combine(bobDisk.BobPath.Path, "bob");
+                await TryCreateDir(bobPath);
+                await TryCreateDir(Path.Combine(bobPath, vdisk.Id.ToString()));
                 foreach (var replica in vdisk.Replicas)
                 {
+                    if (replica.Node == destName)
+                        continue;
                     logger.LogInformation($"Trying to copy {vdisk} from {replica.Node} to {destName}");
                     try
                     {
@@ -80,6 +70,28 @@ namespace DisksMonitoring.Bob
                     }
                 }
             }
+        }
+
+        private async Task TryCreateDir(string path)
+        {
+            try
+            {
+                if (!System.IO.Directory.Exists(path))
+                    await CreateDir(path);
+                else
+                    logger.LogDebug($"Directory {path} already exists");
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"Failed to create dir {path}: {e.Message}");
+            }
+        }
+
+        private async Task CreateDir(string path)
+        {
+            logger.LogInformation($"Creating dir {path}");
+            System.IO.Directory.CreateDirectory(path);
+            await processInvoker.SetDirPermissionsAndOwner(path, configuration.BobDirPermissions, configuration.BobDirOwner);
         }
 
         private async Task PerformCopy(string sourceName, string destName, int vdiskId)

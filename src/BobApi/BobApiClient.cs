@@ -61,9 +61,23 @@ namespace BobApi
             return null;
         }
 
+        public async Task<List<Disk>> GetInactiveDisks()
+        {
+            var disks = await GetDisksToMonitor();
+            if (disks != null)
+                disks.RemoveAll(d => d.IsActive);
+            return disks;
+        }
+
         public async Task<bool> StartDisk(string name)
         {
             using (var response = await client.PostAsync($"disks/{name}/start", new StringContent("")))
+                return response.IsSuccessStatusCode;
+        }
+        
+        public async Task<bool> StopDisk(string name)
+        {
+            using (var response = await client.PostAsync($"disks/{name}/stop", new StringContent("")))
                 return response.IsSuccessStatusCode;
         }
 

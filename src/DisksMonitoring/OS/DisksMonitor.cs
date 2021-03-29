@@ -1,4 +1,5 @@
-﻿using DisksMonitoring.Entities;
+﻿using BobApi;
+using DisksMonitoring.Entities;
 using DisksMonitoring.OS.DisksFinding;
 using DisksMonitoring.OS.DisksFinding.Entities;
 using DisksMonitoring.OS.DisksProcessing;
@@ -35,11 +36,11 @@ namespace DisksMonitoring.OS
             this.logger = logger;
         }
 
-        public async Task CheckAndUpdate()
+        public async Task CheckAndUpdate(BobApiClient bobApiClient)
         {
             await PrepareDisks();
             await FormatDisks();
-            await MountDisks();
+            await MountDisks(bobApiClient);
             await AlterFSTab();
         }
 
@@ -50,7 +51,7 @@ namespace DisksMonitoring.OS
             return volume.UUID;
         }
 
-        private async Task MountDisks()
+        private async Task MountDisks(BobApiClient bobApiClient)
         {
             var disks = await FindDisks();
             foreach (var disk in disks)
@@ -59,7 +60,7 @@ namespace DisksMonitoring.OS
                 {
                     if (neededInfoStorage.ShouldBeProcessed(volume))
                     {
-                        await disksMounter.MountVolume(volume);
+                        await disksMounter.MountVolume(volume, bobApiClient);
                         if (!neededInfoStorage.IsProtected(volume))
                         {
                             var bobPath = neededInfoStorage.FindBobPath(volume);

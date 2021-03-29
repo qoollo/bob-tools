@@ -1,4 +1,5 @@
 ﻿using DisksMonitoring.Config;
+using DisksMonitoring.Entities;
 using DisksMonitoring.OS.DisksFinding;
 using DisksMonitoring.OS.DisksFinding.Entities;
 using DisksMonitoring.OS.DisksProcessing.Entities;
@@ -23,18 +24,20 @@ namespace DisksMonitoring.OS
 
         public MountPath? FindMountPath(Volume volume)
         {
-            var info = configuration.MonitoringEntries.FirstOrDefault(i => i.PhysicalId.Equals(volume.PhysicalId));
-            if (info != null)
-                return info.MountPath;
+            var bobDisk = FindBobDisk(volume);
+            if (bobDisk != null)
+                return bobDisk.MountPath;
             logger.LogDebug($"Mount path for {volume} not found");
             return null;
         }
 
         public BobPath FindBobPath(Volume volume)
         {
-            var info = configuration.MonitoringEntries.FirstOrDefault(i => i.PhysicalId.Equals(volume.PhysicalId));
-            return info?.BobPath;
+            var bobDisk = FindBobDisk(volume);
+            return bobDisk?.BobPath;
         }
+
+        public BobDisk FindBobDisk(Volume volume) => configuration.MonitoringEntries.FirstOrDefault(i => i.PhysicalId.Equals(volume.PhysicalId));
 
         public bool ShouldBeMounted(Volume volume) => FindMountPath(volume) != null;
 

@@ -1,5 +1,6 @@
 ﻿using BobApi;
 using CommandLine;
+using CommandLine.Text;
 using DisksMonitoring.Bob;
 using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
@@ -11,6 +12,7 @@ using DisksMonitoring.OS.DisksProcessing.FSTabAltering;
 using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -53,26 +55,25 @@ namespace DisksMonitoring
             var parsed = Parser.Default.ParseArguments<MonitorOptions, GenerateOnlyOptions>(args);
             await Task.WhenAll(
                 parsed.WithParsedAsync<MonitorOptions>(Monitor),
-                parsed.WithParsedAsync<GenerateOnlyOptions>(ops => GenerateConfiguration(ops.LogLevel)));
+                parsed.WithParsedAsync<GenerateOnlyOptions>(GenerateConfiguration));
         }
 
         private static async Task Monitor(MonitorOptions options)
         {
-            var configuration = await GenerateConfiguration(options.LogLevel);
+            var configuration = await GenerateConfiguration(options);
             var monitor = serviceProvider.GetRequiredService<DisksMonitor>();
             var disksStarter = serviceProvider.GetRequiredService<DisksStarter>();
             var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
-            var lastInfo = new HashSet<BobDisk>();
+            var client = GetBobApiClient(options.Port);
             logger.LogInformation("Start monitor");
             while (true)
             {
                 var sw = Stopwatch.StartNew();
                 try
                 {
-                    var deadInfo = await GetDeadInfo(configuration, lastInfo);
-                    await monitor.CheckAndUpdate();
+                    await monitor.CheckAndUpdate(client);
                     await configuration.SaveToFile(configFile);
-                    await disksStarter.StartDisks(GetBobApiClient(), deadInfo);
+                    await disksStarter.StartDisks(client);
                 }
                 catch (Exception e)
                 {
@@ -84,29 +85,15 @@ namespace DisksMonitoring
             }
         }
 
-        private static async Task<Configuration> GenerateConfiguration(LogLevel logLevel)
+        private static async Task<Configuration> GenerateConfiguration(MonitorOptions options)
         {
-            Initialize(logLevel);
-            return await GetConfiguration(GetBobApiClient());
+            Initialize(options.LogLevel);
+            return await GetConfiguration(GetBobApiClient(options.Port));
         }
 
-        private static BobApiClient GetBobApiClient()
+        private static BobApiClient GetBobApiClient(int port)
         {
-            return new BobApiClient(new Uri("http://127.0.0.1:8000"));
-        }
-
-        private static async Task<List<BobDisk>> GetDeadInfo(Configuration configuration, HashSet<BobDisk> lastInfo)
-        {
-            var deadInfo = await configuration.GetDeadInfo();
-            if (!lastInfo.SetEquals(deadInfo))
-            {
-                foreach (var i in deadInfo)
-                    logger.LogWarning($"Missing bobdisk: {i}");
-                lastInfo.Clear();
-                lastInfo.UnionWith(deadInfo);
-            }
-
-            return deadInfo;
+            return new BobApiClient(new Uri($"http://127.0.0.1:{port}"));
         }
 
         private static async Task<Configuration> GetConfiguration(BobApiClient bobApiClient)
@@ -115,9 +102,8 @@ namespace DisksMonitoring
             var configuration = serviceProvider.GetRequiredService<Configuration>();
             try
             {
-                await configuration.AddEntriesFromBob(bobApiClient);
-                await configuration.SaveKnownReadyUuids();
                 await configuration.ReadFromFile(configFile);
+                await configuration.AddEntriesFromBob(bobApiClient);
                 await configuration.SaveToFile(configFile);
                 return configuration;
             }
@@ -137,13 +123,14 @@ namespace DisksMonitoring
         {
             [Option("log-level", Required = false, HelpText = "Logging level", Default = LogLevel.Information)]
             public LogLevel LogLevel { get; set; }
+
+            [Option("port", Required = false, HelpText = "Local bob http api port", Default = 8000)]
+            public int Port { get; set; }
         }
 
         [Verb("generate-only", HelpText = "Perform only config generation")]
-        public class GenerateOnlyOptions
+        public class GenerateOnlyOptions : MonitorOptions
         {
-            [Option("log-level", Required = false, HelpText = "Logging level", Default = LogLevel.Information)]
-            public LogLevel LogLevel { get; set; }
         }
     }
 }

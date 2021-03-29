@@ -31,12 +31,15 @@ namespace DisksMonitoring.OS.DisksProcessing
                 string path = bobPath.Path;
                 if (Directory.Exists(path))
                 {
-                    logger.LogInformation($"Removing {bobPath}");
-                    Directory.Delete(path, true);
+                    var subDirs = Directory.GetDirectories(path);
+                    foreach (var subdir in subDirs)
+                    {
+                        logger.LogInformation($"Removing {bobPath}");
+                        Directory.Delete(path, true);
+                    }
                 }
                 Directory.CreateDirectory(path);
-                await processInvoker.InvokeSudoProcess("chmod", configuration.MountPointPermissions, "-R", path);
-                await processInvoker.InvokeSudoProcess("chown", configuration.MountPointOwner, "-R", path);
+                await processInvoker.SetDirPermissionsAndOwner(path, configuration.BobDirPermissions, configuration.BobDirOwner);
                 logger.LogInformation($"Created {bobPath}");
             }
             catch (Exception)

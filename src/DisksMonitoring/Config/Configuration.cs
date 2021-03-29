@@ -54,19 +54,12 @@ namespace DisksMonitoring.Config
 
             var content = await File.ReadAllTextAsync(filename);
             var parsed = deserializer.Deserialize<Configuration>(content);
-
-            FstabOptions = parsed.FstabOptions;
-            if (parsed.MonitoringEntries != null)
-                MonitoringEntries.UnionWith(parsed.MonitoringEntries);
-            if (parsed.KnownUuids != null)
-                KnownUuids.UnionWith(parsed.KnownUuids);
-            if (string.IsNullOrWhiteSpace(parsed.MountPointOwner))
-                throw new ArgumentException($"MountPointOwner not set");
-            if (string.IsNullOrWhiteSpace(parsed.MountPointPermissions))
-                throw new ArgumentException($"MountPointPermissions not set");
-            MountPointOwner = parsed.MountPointOwner;
-            MountPointPermissions = parsed.MountPointPermissions;
-            PathToDiskStatusAnalyzer = parsed.PathToDiskStatusAnalyzer;
+            foreach (var prop in GetType().GetProperties().Where(p => p.SetMethod != null && p.GetMethod != null))
+            {
+                var value = prop.GetValue(parsed);
+                if (value != null)
+                    prop.SetValue(this, value);
+            }
         }
 
         public async Task SaveToFile(string filename)
@@ -77,10 +70,22 @@ namespace DisksMonitoring.Config
 
         public async Task AddEntriesFromBob(BobApiClient bobApiClient)
         {
+            var disks = await disksFinder.FindDisks();
             var infos = await configGenerator.GenerateConfigFromBob(bobApiClient);
             foreach (var i in infos)
+            {
                 logger.LogInformation($"Received {i} from bob");
-            MonitoringEntries.UnionWith(infos);
+                var conflict = MonitoringEntries.FirstOrDefault(bd => bd.DiskNameInBob == i.DiskNameInBob && bd.BobPath.Equals(i.BobPath) && !bd.Equals(i));
+                if (conflict != null)
+                {
+                    logger.LogWarning($"Conflict: disk from bob {i} conflicts with disk from config {conflict}");
+                    continue;
+                }
+                var uuid = disks.SelectMany(d => d.Volumes).FirstOrDefault(v => v.PhysicalId.Equals(i.PhysicalId) && v.IsFormatted)?.UUID;
+                if (uuid != null)
+                    SaveUUID(uuid);
+                MonitoringEntries.Add(i);
+            }
         }
 
         public async Task SaveKnownReadyUuids()
@@ -89,8 +94,7 @@ namespace DisksMonitoring.Config
             foreach (var i in MonitoringEntries)
             {
                 var uuid = disks.SelectMany(d => d.Volumes).FirstOrDefault(v => v.PhysicalId.Equals(i.PhysicalId) && v.IsFormatted)?.UUID;
-                if (uuid != null)
-                    SaveUUID(uuid);
+
             }
         }
 
@@ -101,19 +105,6 @@ namespace DisksMonitoring.Config
                 logger.LogInformation($"Volume {uuid} saved");
                 KnownUuids.Add(uuid);
             }
-        }
-
-        public async Task<List<BobDisk>> GetDeadInfo()
-        {
-            var result = new List<BobDisk>();
-            var disks = await disksFinder.FindDisks();
-            foreach (var i in MonitoringEntries)
-            {
-                var vol = disks.SelectMany(d => d.Volumes).FirstOrDefault(v => v.PhysicalId.Equals(i.PhysicalId) && v.IsFormatted);
-                if (vol is null || !vol.IsMounted)
-                    result.Add(i);
-            }
-            return result;
         }
     }
 }

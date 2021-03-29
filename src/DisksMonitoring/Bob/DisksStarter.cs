@@ -2,12 +2,14 @@
 using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
 using DisksMonitoring.OS;
+using DisksMonitoring.OS.DisksFinding;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Markup;
 
 namespace DisksMonitoring.Bob
 {
@@ -17,21 +19,38 @@ namespace DisksMonitoring.Bob
         private readonly Configuration configuration;
         private readonly DisksCopier disksCopier;
         private readonly ILogger<DisksStarter> logger;
+        private readonly DisksFinder disksFinder;
 
-        public DisksStarter(DisksMonitor disksMonitor, Configuration configuration, DisksCopier disksCopier, ILogger<DisksStarter> logger)
+        public DisksStarter(DisksMonitor disksMonitor, Configuration configuration, DisksCopier disksCopier,
+            ILogger<DisksStarter> logger, DisksFinder disksFinder)
         {
             this.disksMonitor = disksMonitor;
             this.configuration = configuration;
             this.disksCopier = disksCopier;
             this.logger = logger;
+            this.disksFinder = disksFinder;
         }
 
-        public async Task StartDisks(BobApiClient bobApiClient, List<BobDisk> deadInfo)
+        public async Task StartDisks(BobApiClient bobApiClient)
         {
-            var newDead = await configuration.GetDeadInfo();
-            foreach (var i in deadInfo.Except(newDead))
+            var disksToStart = configuration.MonitoringEntries;
+            var disks = await disksFinder.FindDisks();
+            foreach (var i in disksToStart)
             {
-                await disksCopier.CopyDataFromReplica(bobApiClient, i);
+                var inactiveDisks = await bobApiClient.GetInactiveDisks();
+                if (inactiveDisks == null)
+                    return;
+                if (!inactiveDisks.Any(d => d.Name == i.DiskNameInBob))
+                    continue;
+
+                var disk = disks.FirstOrDefault(d => d.Volumes.Any(v => v.MountPath.Equals(i.MountPath) && v.IsMounted));
+                var volume = disk?.Volumes.First(v => v.MountPath.Equals(i.MountPath) && v.IsMounted);
+                if (disks.Count == 0 || !disks.Any(d => !d.NoVolumes && d.Volumes.Any(v => v.MountPath.Equals(i.MountPath) && v.IsMounted)))
+                    continue;
+
+                logger.LogInformation($"Trying to start disk {i}");
+                if (!configuration.KnownUuids.Contains(volume.UUID))
+                    await disksCopier.CopyDataFromReplica(bobApiClient, i);
                 configuration.SaveUUID(await disksMonitor.GetUUID(i));
                 logger.LogInformation($"Starting bobdisk {i}...");
                 int retry = 0;

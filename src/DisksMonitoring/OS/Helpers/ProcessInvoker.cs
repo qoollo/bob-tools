@@ -33,6 +33,12 @@ namespace DisksMonitoring.OS.Helpers
             return tcs.Task;
         }
 
+        public async Task SetDirPermissionsAndOwner(string path, string permissions, string owner)
+        {
+            await InvokeSudoProcess("chmod", permissions, "-R", path);
+            await InvokeSudoProcess("chown", owner, "-R", path);
+        }
+
         private TaskCompletionSource<string[]> CreateTCSForProcess(string name, Process proc)
         {
             var tcs = new TaskCompletionSource<string[]>();
@@ -41,7 +47,7 @@ namespace DisksMonitoring.OS.Helpers
             {
                 if (proc.ExitCode != 0)
                 {
-                    logger.LogError($"{name} process exited with code {proc.ExitCode}, stderr: {Environment.NewLine}{proc.StandardError.ReadToEnd()}");
+                    logger.LogDebug($"{name} process exited with code {proc.ExitCode}, stderr: {Environment.NewLine}{proc.StandardError.ReadToEnd()}");
                     tcs.SetException(new ProcessFailedException(proc.StartInfo));
                 }
                 else

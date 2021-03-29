@@ -11,5 +11,10 @@ namespace BobApi.Entities
         public string Name { get; set; }
         [JsonProperty("is_active")]
         public bool IsActive { get; set; }
+
+        public override string ToString()
+        {
+            return $"{Name}, {Path}, IsActive={IsActive}";
+        }
     }
 }
