@@ -9,9 +9,12 @@ namespace DisksMonitoring.Exceptions
     {
         private readonly ProcessStartInfo processStartInfo;
 
-        public ProcessFailedException(ProcessStartInfo processStartInfo)
+        public ProcessFailedException(ProcessStartInfo processStartInfo, int exitCode)
         {
             this.processStartInfo = processStartInfo;
+            ExitCode = exitCode;
         }
+
+        public int ExitCode { get; }
     }
 }

@@ -31,6 +31,7 @@ namespace DisksMonitoring.OS.DisksProcessing
             {
                 logger.LogInformation($"Creating primary volume on {physicalDisk}");
                 await CreatePrimaryVolume(physicalDisk);
+                logger.LogInformation($"Succeffully created primary volumd on {physicalDisk}");
             }
             else
                 logger.LogInformation($"{physicalDisk} contains mounted volume");
@@ -42,6 +43,7 @@ namespace DisksMonitoring.OS.DisksProcessing
             {
                 logger.LogInformation($"Formatting {volume}");
                 await FormatPartiton(volume);
+                logger.LogInformation($"Successfully formatted {volume} to {configuration.Filesystem}");
             }
             else
                 logger.LogInformation($"{volume} is already formatted");

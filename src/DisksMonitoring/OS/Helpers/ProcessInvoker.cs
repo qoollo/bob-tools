@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DisksMonitoring.OS.Helpers
@@ -48,7 +49,7 @@ namespace DisksMonitoring.OS.Helpers
                 if (proc.ExitCode != 0)
                 {
                     logger.LogDebug($"{name} process exited with code {proc.ExitCode}, stderr: {Environment.NewLine}{proc.StandardError.ReadToEnd()}");
-                    tcs.SetException(new ProcessFailedException(proc.StartInfo));
+                    tcs.SetException(new ProcessFailedException(proc.StartInfo, proc.ExitCode));
                 }
                 else
                 {

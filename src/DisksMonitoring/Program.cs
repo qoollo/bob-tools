@@ -31,7 +31,7 @@ namespace DisksMonitoring
         static void Initialize(LogLevel logLevel)
         {
             var services = new ServiceCollection();
-            services.AddLogging(c => c.AddConsole().SetMinimumLevel(logLevel));
+            services.AddLogging(c => c.AddConsole(ops => ops.TimestampFormat = "[hh:mm:ss] ").SetMinimumLevel(logLevel));
             services.AddTransient<LshwParser>();
             services.AddTransient<DisksFinder>();
             services.AddTransient<ProcessInvoker>();
