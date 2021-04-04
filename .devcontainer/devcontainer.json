@@ -1,0 +1,9 @@
+{
+    "name": "Bob-utils Dev",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "extensions": [
+        "ms-dotnettools.csharp"
+    ]
+}
