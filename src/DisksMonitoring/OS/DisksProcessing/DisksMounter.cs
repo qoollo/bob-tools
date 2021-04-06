@@ -63,10 +63,9 @@ namespace DisksMonitoring.OS.DisksProcessing
         {
             bool done = false;
             int count = 0;
-            while (!done && count < 5)
+            while (!done && count++ < configuration.MaxUmountRetries)
                 try
                 {
-                    count++;
                     await TryStopBobdisk(volume, bobApiClient);
                     logger.LogInformation($"Trying to unmount previous disks in {path}");
                     await processInvoker.InvokeSudoProcess("umount", path);
