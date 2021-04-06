@@ -38,7 +38,7 @@ namespace DisksMonitoring.Config
             return infos;
         }
 
-        private BobDisk FindInfo(Disk bobDisk, IList<PhysicalDisk> physicalDisks)
+        private static BobDisk FindInfo(Disk bobDisk, IList<PhysicalDisk> physicalDisks)
         {
             var path = new BobPath(bobDisk.Path);
             var disk = physicalDisks.Where(d => d.Volumes.Any(v => v.ContainsPath(path)))

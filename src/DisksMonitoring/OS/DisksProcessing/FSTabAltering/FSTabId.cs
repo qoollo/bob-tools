@@ -13,7 +13,7 @@ namespace DisksMonitoring.OS.DisksProcessing.FSTabAltering
         public FSTabId(string id)
         {
             if (id.StartsWith("UUID=", StringComparison.OrdinalIgnoreCase))
-                uuid = new UUID(id.Substring(5));
+                uuid = new UUID(id[5..]);
             else if (id.StartsWith("/dev"))
                 devPath = new DevPath(id);
         }

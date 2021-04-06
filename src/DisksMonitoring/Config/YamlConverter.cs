@@ -15,7 +15,7 @@ namespace DisksMonitoring.Config
         private delegate object Deserialize(string value);
         private delegate Scalar Serialize(object obj);
 
-        private Dictionary<Type, (Serialize s, Deserialize d)> data = new Dictionary<Type, (Serialize s, Deserialize d)>
+        private readonly Dictionary<Type, (Serialize s, Deserialize d)> data = new()
         {
             { typeof(PhysicalId), (CreateSerialize("physical_id"), PhysicalId.FromString) },
             { typeof(MountPath), (CreateSerialize("mount_path"), s => new MountPath(s)) },

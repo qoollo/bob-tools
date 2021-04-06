@@ -8,7 +8,7 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
 {
     class LshwNode
     {
-        private readonly List<LshwNode> children = new List<LshwNode>();
+        private readonly List<LshwNode> children = new();
 
         public LshwNode(string name)
         {

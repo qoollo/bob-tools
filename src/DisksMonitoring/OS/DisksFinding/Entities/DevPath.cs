@@ -34,5 +34,15 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
         }
 
         public string Path => data;
+
+        public static bool operator ==(DevPath left, DevPath right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(DevPath left, DevPath right)
+        {
+            return !(left == right);
+        }
     }
 }

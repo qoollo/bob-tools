@@ -16,5 +16,7 @@ namespace DisksMonitoring.Exceptions
         }
 
         public int ExitCode { get; }
+
+        public override string Message => base.Message + processStartInfo.ToString();
     }
 }

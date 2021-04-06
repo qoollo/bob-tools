@@ -8,7 +8,7 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
     class LshwParser
     {
         delegate bool OptionalParser(string line, out Token token);
-        private static readonly List<OptionalParser> parsers = new List<OptionalParser>
+        private static readonly List<OptionalParser> parsers = new()
         {
             CreateEOLParser(TokenType.Header, "*-"),
             CreateEOLParser(TokenType.LogicalName, "logical name:"),
@@ -37,9 +37,10 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
             if (tokens[pos].Type != TokenType.Header)
                 throw new Exception("Expected header");
 
-            var res = new List<LshwNode>();
-
-            res.Add(new LshwNode(tokens[pos].Value));
+            var res = new List<LshwNode>
+            {
+                new LshwNode(tokens[pos].Value)
+            };
 
             var topIndent = tokens[pos].Indentation;
             pos++;
@@ -56,7 +57,7 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
         }
 
 
-        private List<Token> Tokenize(IList<string> lines)
+        private static List<Token> Tokenize(IList<string> lines)
         {
             var res = new List<Token>();
             foreach (var line in lines)
@@ -77,7 +78,7 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
                 if (pos < 0)
                     return false;
 
-                token = new Token(type, line.Substring(pos + start.Length).Trim(), pos);
+                token = new Token(type, line[(pos + start.Length)..].Trim(), pos);
                 return true;
             }
             return f;

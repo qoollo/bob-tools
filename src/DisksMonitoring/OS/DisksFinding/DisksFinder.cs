@@ -36,7 +36,7 @@ namespace DisksMonitoring.OS.DisksFinding
             return physicalDisks;
         }
 
-        private PhysicalId CollectPhysicalId(LshwNode node)
+        private static PhysicalId CollectPhysicalId(LshwNode node)
         {
             var physIds = new Stack<string>();
             string physId;
@@ -62,7 +62,7 @@ namespace DisksMonitoring.OS.DisksFinding
             return new PhysicalDisk(physicalId, new DevPath(devPath), volumes);
         }
 
-        private Volume ParseVolume(LshwNode volumeNode, PhysicalId diskPhysicalId)
+        private static Volume ParseVolume(LshwNode volumeNode, PhysicalId diskPhysicalId)
         {
             var physicalIdStr = volumeNode.FindSingleValue(TokenType.PhysicalId);
             var devPath = GetDevPath(volumeNode);
@@ -87,7 +87,7 @@ namespace DisksMonitoring.OS.DisksFinding
                               mountOptions is null ? null : new MountOptions(mountOptions));
         }
 
-        private LogicalVolume ParseLogicalVolume(LshwNode logicalVolumeNode, PhysicalId volumePhysicalId)
+        private static LogicalVolume ParseLogicalVolume(LshwNode logicalVolumeNode, PhysicalId volumePhysicalId)
         {
             var physicalId = logicalVolumeNode.FindSingleValue(TokenType.PhysicalId);
             var devPath = GetDevPath(logicalVolumeNode);
