@@ -18,5 +18,4 @@
     <Configurations>Debug;Release</Configurations>
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
-
 </Project>
