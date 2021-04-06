@@ -13,3 +13,7 @@ Tool for removing all partitions in cluster older than provided date.
 ## Disk status analyzzer
 
 Tool for copying aliens.
+
+## Disks monitoring
+
+Tool for discovery, formatting and mounting of new disks
