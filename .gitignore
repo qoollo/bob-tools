@@ -8,3 +8,4 @@ riderModule.iml
 DiskStatusAnalyzer.sln.DotSettings.user
 /src/DiskStatusAnalyzer/logs
 .vs/
+.vscode/

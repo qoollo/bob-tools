@@ -77,15 +77,14 @@ namespace DisksMonitoring.OS.DisksFinding
             var logicalVolumeNodes = volumeNode.Children;
             var logicalVolumes = logicalVolumeNodes.Select(lv => ParseLogicalVolume(lv, physicalId)).ToList();
             var mountOptions = volumeNode.FindSingleValue(TokenType.MountOptions);
-            return new Volume(
-                physicalId,
-                new DevPath(devPath),
-                new UUID(uuid),
-                state is null ? State.NotMounted : Enum.Parse<State>(state, true),
-                mountPath is null ? (MountPath?)null : new MountPath(mountPath),
-                filesystem is null ? (Filesystem?)null : new Filesystem(filesystem),
-                logicalVolumes,
-                mountOptions is null ? (MountOptions?)null : new MountOptions(mountOptions));
+            return new Volume(physicalId,
+                              new DevPath(devPath),
+                              new UUID(uuid),
+                              state is null ? State.NotMounted : Enum.Parse<State>(state, true),
+                              mountPath is null ? null : new MountPath(mountPath),
+                              filesystem is null ? null : new Filesystem(filesystem),
+                              logicalVolumes,
+                              mountOptions is null ? null : new MountOptions(mountOptions));
         }
 
         private LogicalVolume ParseLogicalVolume(LshwNode logicalVolumeNode, PhysicalId volumePhysicalId)

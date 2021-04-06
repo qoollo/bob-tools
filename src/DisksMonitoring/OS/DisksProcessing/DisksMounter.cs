@@ -30,7 +30,7 @@ namespace DisksMonitoring.OS.DisksProcessing
 
         public async Task MountVolume(Volume volume, BobApiClient bobApiClient)
         {
-            if (volume.IsMounted)
+            if (volume.IsMounted && !volume.IsReadOnly)
             {
                 logger.LogDebug($"{volume} is already mounted");
                 return;
@@ -49,40 +49,43 @@ namespace DisksMonitoring.OS.DisksProcessing
                 {
                     await processInvoker.InvokeSudoProcess("mkdir", path);
                 }
-                await TryCleanPreviousData(volume, bobApiClient, path);
-                logger.LogInformation($"Mounting {volume} to {mountPath}");
-                await processInvoker.InvokeSudoProcess("mount", volume.DevPath.Path, path);
-                await processInvoker.SetDirPermissionsAndOwner(path, configuration.MountPointPermissions, configuration.MountPointOwner);
-                logger.LogInformation($"Successfully mounted {volume} to {mountPath}");
+                if (await TryCleanPreviousData(volume, bobApiClient, path))
+                {
+                    logger.LogInformation($"Mounting {volume} to {mountPath}");
+                    await processInvoker.InvokeSudoProcess("mount", volume.DevPath.Path, path);
+                    await processInvoker.SetDirPermissionsAndOwner(path, configuration.MountPointPermissions, configuration.MountPointOwner);
+                    logger.LogInformation($"Successfully mounted {volume} to {mountPath}");
+                }
             }
             else
                 logger.LogInformation($"No mount path found for {volume}");
         }
 
-        private async Task TryCleanPreviousData(Volume volume, BobApiClient bobApiClient, string path)
+        private async Task<bool> TryCleanPreviousData(Volume volume, BobApiClient bobApiClient, string path)
         {
-            bool done = false;
             int count = 0;
-            while (!done && count++ < configuration.MaxUmountRetries)
-                try
-                {
-                    await TryStopBobdisk(volume, bobApiClient);
-                    logger.LogInformation($"Trying to unmount previous disks in {path}");
-                    await processInvoker.InvokeSudoProcess("umount", path);
-                    done = true;
-                    logger.LogInformation($"Successfully umounted previous disks in {path}");
-                }
-                catch (ProcessFailedException e) when (e.ExitCode == 32)
-                {
-                    await Task.Delay(1000);
-                }
-                catch
-                {
-                    done = true;
-                }
+            if (await TryStopBobdisk(volume, bobApiClient))
+                while (count++ < configuration.MaxUmountRetries)
+                    try
+                    {
+                        logger.LogInformation($"Trying to unmount previous disks in {path}");
+                        await processInvoker.InvokeSudoProcess("umount", path);
+                        logger.LogInformation($"Successfully umounted previous disks in {path}");
+                        return true;
+                    }
+                    catch (ProcessFailedException e) when (e.ExitCode == 32)
+                    {
+                        await Task.Delay(1000);
+                    }
+                    catch(Exception e)
+                    {
+                        logger.LogError($"Error while unmounting previous disk: {e.Message}");
+                        return false;
+                    }
+            return false;
         }
 
-        private async Task TryStopBobdisk(Volume volume, BobApiClient bobApiClient)
+        private async Task<bool> TryStopBobdisk(Volume volume, BobApiClient bobApiClient)
         {
             var bobDisk = neededInfoStorage.FindBobDisk(volume);
             if (bobDisk != null)
@@ -94,12 +97,15 @@ namespace DisksMonitoring.OS.DisksProcessing
                         logger.LogWarning($"Failed to stop bobdisk {bobDisk}");
                     else
                         logger.LogInformation($"Successfully stoped bobdisk {bobDisk}");
+                    return true;
                 }
                 catch (Exception e)
                 {
                     logger.LogError($"Error stopping bobdisk: {e.Message}");
+                    return false;
                 }
             }
+            return true;
         }
     }
 }
