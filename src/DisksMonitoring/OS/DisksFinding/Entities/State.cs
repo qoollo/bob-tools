@@ -8,6 +8,7 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
     {
         NotMounted,
         Mounted,
-        Clean
+        Clean,
+        Unknown
     }
 }

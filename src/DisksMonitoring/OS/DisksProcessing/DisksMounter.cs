@@ -1,15 +1,15 @@
-﻿using BobApi;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using BobApi;
 using DisksMonitoring.Config;
 using DisksMonitoring.Exceptions;
 using DisksMonitoring.OS.DisksFinding;
 using DisksMonitoring.OS.DisksFinding.Entities;
 using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DisksMonitoring.OS.DisksProcessing
 {
@@ -62,9 +62,11 @@ namespace DisksMonitoring.OS.DisksProcessing
         private async Task TryCleanPreviousData(Volume volume, BobApiClient bobApiClient, string path)
         {
             bool done = false;
-            while (!done)
+            int count = 0;
+            while (!done && count < 5)
                 try
                 {
+                    count++;
                     await TryStopBobdisk(volume, bobApiClient);
                     logger.LogInformation($"Trying to unmount previous disks in {path}");
                     await processInvoker.InvokeSudoProcess("umount", path);

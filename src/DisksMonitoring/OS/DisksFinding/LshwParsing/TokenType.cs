@@ -10,6 +10,7 @@
         LastMountPoint,
         State,
         MountFsType,
-        Filesystem
+        Filesystem,
+        MountOptions
     }
 }

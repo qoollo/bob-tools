@@ -8,7 +8,7 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
     class Volume
     {
         public Volume(PhysicalId physicalId, DevPath devPath, UUID uUID, State state, MountPath? mountPath, Filesystem? fileSystem,
-            IList<LogicalVolume> logicalVolumes)
+            IList<LogicalVolume> logicalVolumes, MountOptions? mountOptions)
         {
             PhysicalId = physicalId;
             DevPath = devPath;
@@ -17,6 +17,7 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
             MountPath = mountPath;
             FileSystem = fileSystem;
             LogicalVolumes = logicalVolumes;
+            MountOptions = mountOptions;
         }
 
         public PhysicalId PhysicalId { get; }
@@ -26,10 +27,11 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
         public MountPath? MountPath { get; }
         public Filesystem? FileSystem { get; }
         public IList<LogicalVolume> LogicalVolumes { get; }
+        public MountOptions? MountOptions { get; }
 
         public bool IsFormatted => FileSystem != null || LogicalVolumes.Count != 0;
         public bool Mountable => LogicalVolumes.Count == 0;
-        public bool IsMounted => State == State.Mounted;
+        public bool IsMounted => State == State.Mounted && MountOptions?.IsRO != true;
 
         public bool ContainsPath(BobPath path)
         {

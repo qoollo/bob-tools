@@ -18,7 +18,8 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
             CreateSpaceParser(TokenType.LastMountPoint, "lastmountpoint="),
             CreateSpaceParser(TokenType.State, "state="),
             CreateSpaceParser(TokenType.MountFsType, "mount.fstype="),
-            CreateSpaceParser(TokenType.Filesystem, "filesystem=")
+            CreateSpaceParser(TokenType.Filesystem, "filesystem="),
+            CreateSpaceParser(TokenType.MountOptions, "mount.options=")
         };
 
         public List<LshwNode> Parse(IList<string> lines)
