@@ -1,9 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>netcoreapp3.1</TargetFramework>
-        <Version>1.0.0.0</Version>
+      <OutputType>Exe</OutputType>
+      <TargetFramework>net5.0</TargetFramework>
+      <PublishSingleFile>true</PublishSingleFile>
+      <SelfContained>true</SelfContained>
+      <PublishTrimmed>true</PublishTrimmed>
+      <PublishReadyToRun>true</PublishReadyToRun>
+      <Configurations>Debug;Release</Configurations>
+      <Version>1.0.0.0</Version>
+      <InvariantGlobalization>true</InvariantGlobalization>
     </PropertyGroup>
 
     <ItemGroup>
@@ -25,7 +31,8 @@
     <ItemGroup>
       <ProjectReference Include="..\BobApi\BobApi.csproj" />
     </ItemGroup>
-
+  <PropertyGroup>
+  </PropertyGroup>
     <ItemGroup>
       <None Update="appsettings.json">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
