@@ -90,13 +90,11 @@ namespace BobApi
             return null;
         }
 
-        public async Task<Directory?> GetAlienDirectory()
+        public async Task<Directory> GetAlienDirectory()
         {
-            var response = await client.GetAsync($"alien/dir");
-            if (response.IsSuccessStatusCode)
-                return await response.Content.ReadAsStringAsync()
-                    .ContinueWith(t => JsonConvert.DeserializeObject<Directory>(t.Result));
-            return null;
+            var response = await client.GetAsync("alien/dir");
+            var content = await response.Content.ReadAsStringAsync();
+            return JsonConvert.DeserializeObject<Directory>(content);
         }
 
         public async Task<List<VDisk>> GetVDisks()
