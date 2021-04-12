@@ -90,7 +90,10 @@ namespace DiskStatusAnalyzer
                         logger.LogWarning($"Dir for {name} no found");
                 }
             }
-            return new NodeWithDirs(info.Uri, status?.Name, diskDirs);
+
+            var alienDir = await api.GetAlienDirectory();
+            var alien = nodeStructureCreator.ParseAlien(alienDir, info);
+            return new NodeWithDirs(info.Uri, status?.Name, diskDirs, alien);
         }
     }
 }

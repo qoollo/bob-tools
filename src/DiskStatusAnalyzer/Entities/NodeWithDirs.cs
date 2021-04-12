@@ -15,16 +15,19 @@ namespace DiskStatusAnalyzer.Entities
 
         public NodeWithDirs(Uri uri,
                     string name,
-                    List<DiskDir> diskDirs)
+                    List<DiskDir> diskDirs,
+                    AlienDir alienDir)
         {
             Uri = uri;
             Name = name;
             DiskDirs = diskDirs;
+            AlienDir = alienDir;
         }
 
         public Uri Uri { get; }
         public string Name { get; }
         public List<DiskDir> DiskDirs { get; }
+        public AlienDir AlienDir { get; }
 
         public override string ToString()
         {

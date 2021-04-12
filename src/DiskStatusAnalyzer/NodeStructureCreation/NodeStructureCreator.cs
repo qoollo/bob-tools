@@ -28,11 +28,27 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
                 return null;
             logger.LogDebug($"Found disk {diskName} dir {diskDir.Path}");
             var bob = ParseBob(bobDir, connectionConfiguration);
-            var alienDir = dirs.FirstOrDefault(re => re.Name == "alien");
-            var alien = ParseAlien(alienDir, connectionConfiguration);
-            return new DiskDir(diskName, bob, alien, new RsyncEntry(connectionConfiguration, diskDir));
+            return new DiskDir(diskName, bob, new RsyncEntry(connectionConfiguration, diskDir));
         }
 
+        public AlienDir ParseAlien(Directory alienDir, ConnectionInfo connectionConfiguration)
+        {
+            if (alienDir.Path == null)
+                return null;
+
+            logger.LogDebug($"Found alien dir {alienDir.Path}");
+            var dirs = alienDir.Children;
+            var nodes = new List<BobDir>(dirs.Count);
+            foreach (var dir in dirs)
+            {
+                var bob = ParseBob(dir, connectionConfiguration);
+                if (bob != null)
+                    nodes.Add(bob);
+            }
+
+            return new AlienDir(nodes, new RsyncEntry(connectionConfiguration, alienDir));
+        }
+        
         private BobDir ParseBob(Directory bobDir,
                                 ConnectionInfo connectionConfiguration)
         {
@@ -85,23 +101,5 @@ namespace DiskStatusAnalyzer.NodeStructureCreation
             return result;
         }
 
-        private AlienDir ParseAlien(Directory alienDir,
-                                    ConnectionInfo connectionConfiguration)
-        {
-            if (alienDir.Path == null)
-                return null;
-
-            logger.LogDebug($"Found alien dir {alienDir.Path}");
-            var dirs = alienDir.Children;
-            var nodes = new List<BobDir>(dirs.Count);
-            foreach (var dir in dirs)
-            {
-                var bob = ParseBob(dir, connectionConfiguration);
-                if (bob != null)
-                    nodes.Add(bob);
-            }
-
-            return new AlienDir(nodes, new RsyncEntry(connectionConfiguration, alienDir));
-        }
     }
 }

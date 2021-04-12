@@ -44,13 +44,9 @@ namespace DiskStatusAnalyzer
         {
             var result = new List<RestartInfo?>();
             var tasks = new List<Task<RestartInfo?[]>>();
-            foreach (var diskDir in node.DiskDirs)
+            foreach (var alienNode in node.AlienDir.Nodes)
             {
-                if (diskDir.Alien == null) continue;
-                foreach (var alienNode in diskDir.Alien.Nodes)
-                {
-                    tasks.Add(CopyAlien(alienNode, nodes, config));
-                }
+                tasks.Add(CopyAlien(alienNode, nodes, config));
             }
             return Task.WhenAll(tasks).ContinueWith(t => t.Result.SelectMany(_ => _).ToList());
         }
