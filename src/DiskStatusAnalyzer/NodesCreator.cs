@@ -90,6 +90,7 @@ namespace DiskStatusAnalyzer
                         logger.LogWarning($"Dir for {name} no found");
                 }
             }
+            
             return new NodeWithDirs(info.Uri, status?.Name, diskDirs);
         }
     }

@@ -74,7 +74,7 @@ namespace BobApi
             using (var response = await client.PostAsync($"disks/{name}/start", new StringContent("")))
                 return response.IsSuccessStatusCode;
         }
-        
+
         public async Task<bool> StopDisk(string name)
         {
             using (var response = await client.PostAsync($"disks/{name}/stop", new StringContent("")))
@@ -87,6 +87,15 @@ namespace BobApi
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadAsStringAsync()
                     .ContinueWith(t => JsonConvert.DeserializeObject<List<Directory>>(t.Result));
+            return null;
+        }
+
+        public async Task<Directory?> GetAlienDirectory()
+        {
+            var response = await client.GetAsync($"alien/dir");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadAsStringAsync()
+                    .ContinueWith(t => JsonConvert.DeserializeObject<Directory>(t.Result));
             return null;
         }
 
