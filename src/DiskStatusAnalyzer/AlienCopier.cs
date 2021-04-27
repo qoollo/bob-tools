@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using DiskStatusAnalyzer.Entities;
 using DiskStatusAnalyzer.Rsync;
 using Microsoft.Extensions.Logging;
+using BobApi;
 
 namespace DiskStatusAnalyzer
 {
@@ -40,23 +41,32 @@ namespace DiskStatusAnalyzer
             }
         }
 
-        private Task<List<RestartInfo?>> CopyAliensFromNode(NodeWithDirs node, List<NodeWithDirs> nodes, Configuration config)
+        private async Task<List<RestartInfo?>> CopyAliensFromNode(NodeWithDirs node, List<NodeWithDirs> nodes, Configuration config)
         {
             var result = new List<RestartInfo?>();
+
+            var client = new BobApiClient(node.Uri);
+            var disks = await client.GetDisksToMonitor();
+            var alienDisk = disks.FirstOrDefault(d => d.Path == node.AlienDir.Path).Name;
+            if (alienDisk == null) return result;
+
+            await client.StopDisk(alienDisk);
+            await client.StartDisk(alienDisk);
+
             var tasks = new List<Task<RestartInfo?[]>>();
             foreach (var alienNode in node.AlienDir.Nodes)
             {
                 tasks.Add(CopyAlien(alienNode, nodes, config));
             }
-            return Task.WhenAll(tasks).ContinueWith(t => t.Result.SelectMany(_ => _).ToList());
+            return await Task.WhenAll(tasks).ContinueWith(t => t.Result.SelectMany(_ => _).ToList());
         }
 
-        private Task<RestartInfo?[]> CopyAlien(BobDir alienNode, List<NodeWithDirs> nodes, Configuration config)
+        private async Task<RestartInfo?[]> CopyAlien(BobDir alienNode, List<NodeWithDirs> nodes, Configuration config)
         {
             var target = nodes.FirstOrDefault(n => n.Name == alienNode.Name);
             logger.LogInformation($"Found target {target} for alien");
-            if (target == null) return Task.FromResult(new RestartInfo?[0]);
-            return Task.WhenAll(alienNode.VDisks.Select(async vd =>
+            if (target == null) return new RestartInfo?[0];
+            return await Task.WhenAll(alienNode.VDisks.Select(async vd =>
             {
                 var res = await CopyAlienFromVDisk(vd, config, target);
                 if (config.RemoveCopiedFiles)

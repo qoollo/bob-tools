@@ -33,6 +33,7 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
         public bool Mountable => LogicalVolumes.Count == 0;
         public bool IsMounted => State == State.Mounted;
         public bool IsReadOnly => MountOptions?.IsRO == true;
+        public bool IsClean => State == State.Clean;
 
         public bool ContainsPath(BobPath path)
         {

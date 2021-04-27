@@ -11,6 +11,7 @@
         State,
         MountFsType,
         Filesystem,
-        MountOptions
+        MountOptions,
+        Product
     }
 }

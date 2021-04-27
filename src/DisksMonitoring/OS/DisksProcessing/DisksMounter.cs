@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BobApi;
@@ -19,13 +20,17 @@ namespace DisksMonitoring.OS.DisksProcessing
         private readonly ILogger<DisksMounter> logger;
         private readonly NeededInfoStorage neededInfoStorage;
         private readonly Configuration configuration;
+        private readonly DisksFinder disksFinder;
 
-        public DisksMounter(ProcessInvoker processInvoker, ILogger<DisksMounter> logger, NeededInfoStorage neededInfoStorage, Configuration configuration)
+        public DisksMounter(ProcessInvoker processInvoker, ILogger<DisksMounter> logger,
+            NeededInfoStorage neededInfoStorage, Configuration configuration,
+            DisksFinder disksFinder)
         {
             this.processInvoker = processInvoker;
             this.logger = logger;
             this.neededInfoStorage = neededInfoStorage;
             this.configuration = configuration;
+            this.disksFinder = disksFinder;
         }
 
         public async Task MountVolume(Volume volume, BobApiClient bobApiClient)
@@ -49,7 +54,7 @@ namespace DisksMonitoring.OS.DisksProcessing
                 {
                     await processInvoker.InvokeSudoProcess("mkdir", path);
                 }
-                if (await TryCleanPreviousData(volume, bobApiClient, path))
+                if (await TryCleanPreviousData(volume, bobApiClient, mountPath.Value) && !volume.IsMounted)
                 {
                     logger.LogInformation($"Mounting {volume} to {mountPath}");
                     await processInvoker.InvokeSudoProcess("mount", volume.DevPath.Path, path);
@@ -61,27 +66,31 @@ namespace DisksMonitoring.OS.DisksProcessing
                 logger.LogInformation($"No mount path found for {volume}");
         }
 
-        private async Task<bool> TryCleanPreviousData(Volume volume, BobApiClient bobApiClient, string path)
+        private async Task<bool> TryCleanPreviousData(Volume volume, BobApiClient bobApiClient, MountPath path)
         {
             int count = 0;
-            if (await TryStopBobdisk(volume, bobApiClient))
-                while (count++ < configuration.MaxUmountRetries)
-                    try
+            await TryStopBobdisk(volume, bobApiClient);
+            while (count++ < configuration.MaxUmountRetries)
+                try
+                {
+                    var disks = await disksFinder.FindDisks();
+                    if (disks.Any(d => d.Volumes.Count > 0 && d.Volumes.Any(v => v.MountPath?.Equals(path) == true && v.IsMounted)))
                     {
                         logger.LogInformation($"Trying to unmount previous disks in {path}");
-                        await processInvoker.InvokeSudoProcess("umount", path);
+                        await processInvoker.InvokeSudoProcess("umount", path.ToString());
                         logger.LogInformation($"Successfully umounted previous disks in {path}");
-                        return true;
                     }
-                    catch (ProcessFailedException e) when (e.ExitCode == 32)
-                    {
-                        await Task.Delay(1000);
-                    }
-                    catch(Exception e)
-                    {
-                        logger.LogError($"Error while unmounting previous disk: {e.Message}");
-                        return false;
-                    }
+                    return true;
+                }
+                catch (ProcessFailedException e) when (e.ExitCode == 32)
+                {
+                    await Task.Delay(1000);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError($"Error while unmounting previous disk: {e.Message}");
+                    return false;
+                }
             return false;
         }
 

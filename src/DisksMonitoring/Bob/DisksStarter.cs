@@ -45,7 +45,8 @@ namespace DisksMonitoring.Bob
 
                 var disk = disks.FirstOrDefault(d => d.Volumes.Any(v => v.MountPath.Equals(i.MountPath) && v.IsMounted));
                 var volume = disk?.Volumes.First(v => v.MountPath.Equals(i.MountPath) && v.IsMounted);
-                if (disks.Count == 0 || !disks.Any(d => !d.NoVolumes && d.Volumes.Any(v => v.MountPath.Equals(i.MountPath) && v.IsMounted)))
+                if (disks.Count == 0 
+                    || !disks.Any(d => !d.NoVolumes && d.Volumes.Any(v => v.MountPath.Equals(i.MountPath) && v.IsMounted && !v.IsReadOnly)))
                     continue;
 
                 logger.LogInformation($"Trying to start disk {i}");

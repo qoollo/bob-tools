@@ -14,6 +14,7 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
             CreateEOLParser(TokenType.LogicalName, "logical name:"),
             CreateEOLParser(TokenType.PhysicalId, "physical id:"),
             CreateEOLParser(TokenType.Serial, "serial:"),
+            CreateEOLParser(TokenType.Product, "product:"),
             CreateSpaceParser(TokenType.GUID, "guid="),
             CreateSpaceParser(TokenType.LastMountPoint, "lastmountpoint="),
             CreateSpaceParser(TokenType.State, "state="),
