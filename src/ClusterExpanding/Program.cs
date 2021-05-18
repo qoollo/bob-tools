@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using System.IO;
 using Serilog;
+using Serilog.Context;
 using ProgramLogger = Microsoft.Extensions.Logging.ILogger<ClusterExpanding.Program>;
 using CommandLine;
 using BobApi.BobEntities;
@@ -25,9 +27,46 @@ namespace ClusterExpanding
 
         private static async Task ExpandCluster(ExpandClusterOptions options)
         {
-            logger.LogInformation($"Expanding cluster from {options.OldConfigPath} to {options.NewConfigPath}");
+            logger.LogDebug($"Expanding cluster from {options.OldConfigPath} to {options.NewConfigPath}");
             var oldConfig = await ClusterConfiguration.FromYamlFile(options.OldConfigPath);
             var newConfig = await ClusterConfiguration.FromYamlFile(options.NewConfigPath);
+            foreach (var vdisk in newConfig.VDisks)
+            {
+                using var _ = logger.BeginScope("VDisk {vdiskId}", vdisk.Id); 
+                logger.LogDebug("Analyzing vdisk from new config");
+                var oldVdisk = oldConfig.VDisks.Find(vd => vd.Id == vdisk.Id);
+                if (oldVdisk != null)
+                {
+                    foreach (var replica in vdisk.Replicas)
+                    {
+                        using var __ = logger.BeginScope("Replica = {replicaNode}-{replicaDisk}", replica.Node, replica.Disk);
+                        logger.LogDebug("Analyzing replica from new config");
+                        var node = newConfig.Nodes.Find(n => n.Name == replica.Node);
+                        var disk = node.Disks.Find(d => d.Name == replica.Disk);
+                        using var ___ = logger.BeginScope("Path = {replicaPath}", disk.Path);
+                        var oldReplica = oldVdisk.Replicas.Find(r => r.Node == replica.Node && r.Disk == replica.Disk);
+                        if (oldReplica != null)
+                        {
+                            logger.LogDebug("Found replica in old config");
+                            var oldNode = oldConfig.Nodes.Find(n => n.Name == oldReplica.Node);
+                            var oldDisk = oldNode.Disks.Find(d => d.Name == oldReplica.Disk);
+                            using var ____ = logger.BeginScope("OldPath = {oldReplicaPath}", oldDisk.Path);
+                            if (disk.Path != oldDisk.Path)
+                            {
+                                logger.LogWarning("Replica's directory has changed");
+                            }
+                            else
+                                logger.LogDebug("Replica is in the same directory");
+                        }
+                        else
+                        {
+                            logger.LogWarning("Replica not found in old config, restoring data...");
+                        }
+                    }
+                }
+                else
+                    logger.LogDebug($"Vdisk not found in old config");
+            }
         }
 
         private static IServiceProvider CreateServiceProvider()
@@ -39,17 +78,13 @@ namespace ClusterExpanding
             return result;
         }
 
-        static IConfiguration GetConfiguration()
-        {
-            return new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json", false)
-                .Build();
-        }
-
         static void AddSerilog(IServiceCollection services)
         {
+            var template = "[{Timestamp:HH:mm:ss} {Level:u3}] {Scope}{NewLine}\t{Message:lj}{NewLine}{Exception}";
             var logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(GetConfiguration())
+                .Enrich.FromLogContext()
+                .MinimumLevel.Debug()
+                .WriteTo.Console(outputTemplate: template)
                 .CreateLogger();
             services.AddLogging(b => b.AddSerilog(logger));
         }
