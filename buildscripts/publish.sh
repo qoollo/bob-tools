@@ -7,3 +7,4 @@ dotnet publish -c $CONFIGURATION -r $RUNTIME -p:Version=$VERSION -o publish src/
 dotnet publish -c $CONFIGURATION -r $RUNTIME -p:Version=$VERSION -o publish src/OldPartitionsRemover
 dotnet publish -c $CONFIGURATION -r $RUNTIME -p:Version=$VERSION -o publish src/RecordsCalculator
 dotnet publish -c $CONFIGURATION -r $RUNTIME -p:Version=$VERSION -o publish src/DiskStatusAnalyzer
+dotnet publish -c $CONFIGURATION -r $RUNTIME -p:Version=$VERSION -o publish src/ClusterExpanding

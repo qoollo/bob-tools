@@ -10,6 +10,7 @@ using Serilog.Context;
 using ProgramLogger = Microsoft.Extensions.Logging.ILogger<ClusterExpanding.Program>;
 using CommandLine;
 using BobApi.BobEntities;
+using System.Diagnostics;
 
 namespace ClusterExpanding
 {
@@ -32,10 +33,10 @@ namespace ClusterExpanding
             var newConfig = await ClusterConfiguration.FromYamlFile(options.NewConfigPath);
             foreach (var vdisk in newConfig.VDisks)
             {
-                using var _ = logger.BeginScope("VDisk {vdiskId}", vdisk.Id); 
+                using var _ = logger.BeginScope("VDisk {vdiskId}", vdisk.Id);
                 logger.LogDebug("Analyzing vdisk from new config");
                 var oldVdisk = oldConfig.VDisks.Find(vd => vd.Id == vdisk.Id);
-                if (oldVdisk != null)
+                if (oldVdisk != null && oldVdisk.Replicas.Count > 0)
                 {
                     foreach (var replica in vdisk.Replicas)
                     {
@@ -61,12 +62,32 @@ namespace ClusterExpanding
                         else
                         {
                             logger.LogWarning("Replica not found in old config, restoring data...");
+                            var selectedReplica = oldVdisk.Replicas[0];
+                            var dsaPath = Path.GetFullPath(options.DiskStatusAnalyzer);
+                            CopyReplica(vdisk, replica, selectedReplica, dsaPath);
                         }
                     }
                 }
                 else
-                    logger.LogDebug($"Vdisk not found in old config");
+                    logger.LogDebug($"Vdisk's replicas not found in old config");
             }
+        }
+
+        private static void CopyReplica(ClusterConfiguration.VDisk vdisk, ClusterConfiguration.VDisk.Replica replica, ClusterConfiguration.VDisk.Replica selectedReplica, string dsaPath)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = dsaPath,
+                WorkingDirectory = Path.GetDirectoryName(dsaPath)
+            };
+            startInfo.ArgumentList.Add("copy-vdisk");
+            startInfo.ArgumentList.Add($"--vdisk-id={vdisk.Id}");
+            startInfo.ArgumentList.Add($"-s={selectedReplica.Node}");
+            startInfo.ArgumentList.Add($"-d={replica.Node}");
+            var process = new Process { StartInfo = startInfo };
+            logger.LogInformation($"Starting process (pwd={startInfo.WorkingDirectory}) {startInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
+            process.Start();
+            process.WaitForExit();
         }
 
         private static IServiceProvider CreateServiceProvider()
@@ -83,7 +104,7 @@ namespace ClusterExpanding
             var template = "[{Timestamp:HH:mm:ss} {Level:u3}] {Scope}{NewLine}\t{Message:lj}{NewLine}{Exception}";
             var logger = new LoggerConfiguration()
                 .Enrich.FromLogContext()
-                .MinimumLevel.Debug()
+                .MinimumLevel.Information()
                 .WriteTo.Console(outputTemplate: template)
                 .CreateLogger();
             services.AddLogging(b => b.AddSerilog(logger));
@@ -100,6 +121,9 @@ namespace ClusterExpanding
 
             [Option("dry-run", Required = false, HelpText = "Do not copy anything")]
             public bool DryRun { get; set; } = false;
+
+            [Option("dsa", Required = true, HelpText = "Path to disk status analyzer")]
+            public string DiskStatusAnalyzer { get; set; }
         }
     }
 }
