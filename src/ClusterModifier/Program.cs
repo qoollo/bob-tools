@@ -7,12 +7,12 @@ using Microsoft.Extensions.Configuration;
 using System.IO;
 using Serilog;
 using Serilog.Context;
-using ProgramLogger = Microsoft.Extensions.Logging.ILogger<ClusterExpanding.Program>;
+using ProgramLogger = Microsoft.Extensions.Logging.ILogger<ClusterModifier.Program>;
 using CommandLine;
 using BobApi.BobEntities;
 using System.Diagnostics;
 
-namespace ClusterExpanding
+namespace ClusterModifier
 {
     public class Program
     {
