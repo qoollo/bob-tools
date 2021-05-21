@@ -59,40 +59,53 @@ namespace DiskStatusAnalyzer
             services.AddLogging(b => b.AddSerilog(logger));
         }
 
-        static async Task Main(string[] args)
+        static async Task<int> Main(string[] args)
         {
-            var parsed = Parser.Default.ParseArguments<CopyAliensOptions, CopyDiskOptions>(args);
-            var copyAliens = parsed.WithParsedAsync<CopyAliensOptions>(CopyAliens);
-            var copyDisk = parsed.WithParsedAsync<CopyDiskOptions>(CopyDisk);
-            await Task.WhenAll(copyAliens, copyDisk);
+            return await Parser.Default.ParseArguments<CopyAliensOptions, CopyDiskOptions>(args)
+                .MapResult<CopyAliensOptions, CopyDiskOptions, Task<int>>(CopyAliens, CopyDisk, errs => Task.FromResult(1));
         }
 
-        private static async Task CopyAliens(CopyAliensOptions options)
+        private static async Task<int> CopyAliens(CopyAliensOptions options)
         {
             var config = await FindConfig(options);
             if (config == null)
-                return;
+                return 1;
 
             var nodes = await FindNodes(config);
             if (nodes == null)
-                return;
+                return 1;
 
             var alienCopier = serviceProvider.GetRequiredService<AlienCopier>();
             await alienCopier.CopyAlienInformation(nodes, config);
+
+            return 0;
         }
 
-        private static async Task CopyDisk(CopyDiskOptions options)
+        private static async Task<int> CopyDisk(CopyDiskOptions options)
         {
-            var nodes = await FindNodes(options);
-            if (nodes == null)
-                return;
+            try
+            {
+                var nodes = await FindNodes(options);
+                if (nodes == null)
+                    return 1;
 
-            var srcNode = FindSingleNode(nodes, options.SourceNodeName);
-            var destNode = FindSingleNode(nodes, options.DestNodeName);
+                var srcNode = FindSingleNode(nodes, options.SourceNodeName);
+                var destNode = FindSingleNode(nodes, options.DestNodeName);
 
-            var replicaCopier = serviceProvider.GetRequiredService<ReplicaCopier>();
-            if (srcNode == null || destNode == null || !await replicaCopier.Copy(srcNode, destNode, options.VDiskId))
-                logger.LogError("Copy failed");
+                var replicaCopier = serviceProvider.GetRequiredService<ReplicaCopier>();
+                if (srcNode == null || destNode == null || !await replicaCopier.Copy(srcNode, destNode, options.VDiskId))
+                {
+                    logger.LogError("Copy failed");
+                    return 1;
+                }
+
+                return 0;
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"Exception during copy: {e.Message}");
+                return 1;
+            }
         }
 
         private static async Task<List<NodeWithDirs>> FindNodes(CommonOptions options)

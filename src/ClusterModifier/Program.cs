@@ -62,9 +62,14 @@ namespace ClusterModifier
                         else
                         {
                             logger.LogWarning("Replica not found in old config, restoring data...");
-                            var selectedReplica = oldVdisk.Replicas[0];
-                            var dsaPath = Path.GetFullPath(options.DiskStatusAnalyzer);
-                            CopyReplica(vdisk, replica, selectedReplica, dsaPath);
+                            foreach (var selectedReplica in oldVdisk.Replicas)
+                            {
+                                var dsaPath = Path.GetFullPath(options.DiskStatusAnalyzer);
+                                if (CopyReplica(vdisk, replica, selectedReplica, dsaPath))
+                                    break;
+                                else
+                                    logger.LogWarning($"Failed to copy from replica on node {selectedReplica.Node}");
+                            }
                         }
                     }
                 }
@@ -73,12 +78,12 @@ namespace ClusterModifier
             }
         }
 
-        private static void CopyReplica(ClusterConfiguration.VDisk vdisk, ClusterConfiguration.VDisk.Replica replica, ClusterConfiguration.VDisk.Replica selectedReplica, string dsaPath)
+        private static bool CopyReplica(ClusterConfiguration.VDisk vdisk, ClusterConfiguration.VDisk.Replica replica, ClusterConfiguration.VDisk.Replica selectedReplica, string dsaPath)
         {
             var startInfo = new ProcessStartInfo
             {
                 FileName = dsaPath,
-                WorkingDirectory = Path.GetDirectoryName(dsaPath)
+                WorkingDirectory = Path.GetDirectoryName(dsaPath),
             };
             startInfo.ArgumentList.Add("copy-vdisk");
             startInfo.ArgumentList.Add($"--vdisk-id={vdisk.Id}");
@@ -88,6 +93,8 @@ namespace ClusterModifier
             logger.LogInformation($"Starting process (pwd={startInfo.WorkingDirectory}) {startInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
             process.Start();
             process.WaitForExit();
+            logger.LogInformation($"Process returned code {process.ExitCode}");
+            return process.ExitCode == 0;
         }
 
         private static IServiceProvider CreateServiceProvider()

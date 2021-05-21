@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.31105.61
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClusterExpanding", "ClusterExpanding\ClusterExpanding.csproj", "{88DCFA79-FC1E-437D-9CA6-CA88E1B03FC0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClusterModifier", "ClusterModifier\ClusterModifier.csproj", "{88DCFA79-FC1E-437D-9CA6-CA88E1B03FC0}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BobApi", "BobApi\BobApi.csproj", "{809A4CA8-78A3-4183-9388-FA334EF6078E}"
 EndProject
