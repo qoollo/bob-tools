@@ -17,7 +17,7 @@ namespace BobApi
             client = new HttpClient
             {
                 BaseAddress = address,
-                Timeout = TimeSpan.FromSeconds(5),
+                Timeout = TimeSpan.FromSeconds(30),
             };
         }
 
