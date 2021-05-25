@@ -18,6 +18,7 @@ using Microsoft.Extensions.Configuration;
 using DiskStatusAnalyzer.ReplicaRestoring;
 using CommandLine;
 using Logger = Microsoft.Extensions.Logging.ILogger<DiskStatusAnalyzer.ProgramStub>;
+using Microsoft.Extensions.FileProviders;
 
 namespace DiskStatusAnalyzer
 {
@@ -45,7 +46,11 @@ namespace DiskStatusAnalyzer
 
         static void AddConfiguration(IServiceCollection services)
         {
-            configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
+            var curDirProv = new PhysicalFileProvider(Directory.GetCurrentDirectory());
+            var exeDirProv = new PhysicalFileProvider(Path.GetDirectoryName(System.AppContext.BaseDirectory));
+            var prov = new CompositeFileProvider(curDirProv, exeDirProv);
+            configuration = new ConfigurationBuilder()
+                .SetFileProvider(prov)
                 .AddJsonFile("appsettings.json", false)
                 .Build();
             services.AddSingleton<IConfigurationRoot>(configuration);
