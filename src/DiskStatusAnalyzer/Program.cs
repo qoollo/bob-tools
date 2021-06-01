@@ -67,7 +67,7 @@ namespace DiskStatusAnalyzer
         static async Task<int> Main(string[] args)
         {
             return await Parser.Default.ParseArguments<CopyAliensOptions, CopyDiskOptions>(args)
-                .MapResult<CopyAliensOptions, CopyDiskOptions, Task<int>>(CopyAliens, CopyDisk, errs => Task.FromResult(1));
+                .MapResult<CopyAliensOptions, CopyDiskOptions, CopyDirOptions, Task<int>>(CopyAliens, CopyDisk, CopyDir, errs => Task.FromResult(1));
         }
 
         private static async Task<int> CopyAliens(CopyAliensOptions options)
@@ -90,15 +90,34 @@ namespace DiskStatusAnalyzer
         {
             try
             {
-                var nodes = await FindNodes(options);
-                if (nodes == null)
+                var (srcNode, destNode) = await FindSrcDst(options);
+                if (srcNode is null || destNode is null)
                     return 1;
-
-                var srcNode = FindSingleNode(nodes, options.SourceNodeName);
-                var destNode = FindSingleNode(nodes, options.DestNodeName);
-
                 var replicaCopier = serviceProvider.GetRequiredService<ReplicaCopier>();
-                if (srcNode == null || destNode == null || !await replicaCopier.Copy(srcNode, destNode, options.VDiskId))
+                if (!await replicaCopier.Copy(srcNode, destNode, options.VDiskId))
+                {
+                    logger.LogError("Copy failed");
+                    return 1;
+                }
+
+                return 0;
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"Exception during copy: {e.Message}");
+                return 1;
+            }
+        }
+
+        private static async Task<int> CopyDir(CopyDirOptions options)
+        {
+            try
+            {
+                var (srcNode, destNode) = await FindSrcDst(options);
+                if (srcNode is null || destNode is null)
+                    return 1;
+                var replicaCopier = serviceProvider.GetRequiredService<ReplicaCopier>();
+                if (!await replicaCopier.Copy(srcNode, destNode, options.SourceDir, options.DestDir))
                 {
                     logger.LogError("Copy failed");
                     return 1;
@@ -119,6 +138,17 @@ namespace DiskStatusAnalyzer
             if (config == null)
                 return null;
             return await FindNodes(config);
+        }
+
+        private static async Task<(NodeWithDirs src, NodeWithDirs dst)> FindSrcDst(CopyBetweenNodesOptions options)
+        {
+            var nodes = await FindNodes(options);
+            if (nodes == null)
+                return (null, null);
+
+            var srcNode = FindSingleNode(nodes, options.SourceNodeName);
+            var destNode = FindSingleNode(nodes, options.DestNodeName);
+            return (srcNode, destNode);
         }
 
         private static async Task<List<NodeWithDirs>> FindNodes(Configuration config)
@@ -165,17 +195,30 @@ namespace DiskStatusAnalyzer
 
         }
 
-        [Verb("copy-vdisk", HelpText = "Copy vdisk content from one node to another")]
-        public class CopyDiskOptions : CommonOptions
+        public class CopyBetweenNodesOptions : CommonOptions
         {
-            [Option('v', "vdisk-id", Required = true, HelpText = "VDisk id")]
-            public int VDiskId { get; set; }
-
             [Option('s', "src", Required = true, HelpText = "Source node name")]
             public string SourceNodeName { get; set; }
 
             [Option('d', "dst", Required = true, HelpText = "Destination node name")]
             public string DestNodeName { get; set; }
+        }
+
+        [Verb("copy-vdisk", HelpText = "Copy vdisk content from one node to another")]
+        public class CopyDiskOptions : CopyBetweenNodesOptions
+        {
+            [Option('v', "vdisk-id", Required = true, HelpText = "VDisk id")]
+            public int VDiskId { get; set; }
+        }
+
+        [Verb("copy-dir", HelpText = "Copy directory from one node to another")]
+        public class CopyDirOptions : CopyBetweenNodesOptions
+        {
+            [Option("source-dir", Required = true, HelpText = "Directory to copy from on source node")]
+            public string SourceDir { get; set; }
+
+            [Option("dest-dir", Required = true, HelpText = "Directory to copy to on destionation node")]
+            public string DestDir { get; set; }
         }
     }
 

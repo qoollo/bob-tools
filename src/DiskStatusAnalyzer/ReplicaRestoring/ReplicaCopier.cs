@@ -38,5 +38,10 @@ namespace DiskStatusAnalyzer.ReplicaRestoring
 
             return await rsyncWrapper.Copy(srcDisk.Bob.VDisks.Single(vd => vd.Id == vdiskId), destDisk.Bob.VDisks.Single(vd => vd.Id == vdiskId));
         }
+
+        public async Task<bool> Copy(NodeWithDirs src, NodeWithDirs dest, string srcPath, string destPath)
+        {
+            return await rsyncWrapper.Copy(src.ConnectionInfo, dest.ConnectionInfo, srcPath, destPath);
+        }
     }
 }

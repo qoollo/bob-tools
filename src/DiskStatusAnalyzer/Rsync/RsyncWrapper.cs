@@ -27,13 +27,20 @@ namespace DiskStatusAnalyzer.Rsync
 
         public async Task<bool> Copy(RsyncEntry frm, RsyncEntry to)
         {
+            if (await Copy(frm.ConInfo, to.ConInfo, frm.Path, to.Path))
+                return await SaveSyncedFiles(frm, to);
+            return false;
+        }
+
+        public async Task<bool> Copy(ConnectionInfo fromInfo, ConnectionInfo toInfo, string fromPath, string toPath)
+        {
             var excludedFilesString = string.Join(' ', ExcludedFiles.Select(f => $"--exclude {f}"));
             var copyCommand = $"rsync -e 'ssh -o \"StrictHostKeyChecking=no\"' {excludedFilesString} " +
-                              $"-av {frm.Path}/ {to.ConInfo.SshUsername}@{to.ConInfo.InnerUri.Host}:{to.Path}";
-            var copyResult = await InvokeSshCommand(frm.ConInfo, copyCommand);
+                              $"-av {fromPath}/ {toInfo.SshUsername}@{toInfo.InnerUri.Host}:{toPath}";
+            var copyResult = await InvokeSshCommand(fromInfo, copyCommand);
             if (!copyResult)
                 return false;
-            return await SaveSyncedFiles(frm, to);
+            return true;
         }
 
         private async Task<bool> SaveSyncedFiles(RsyncEntry frm, RsyncEntry to)

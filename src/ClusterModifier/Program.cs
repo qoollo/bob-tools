@@ -47,25 +47,15 @@ namespace ClusterModifier
                         using var ___ = logger.BeginScope("Path = {replicaPath}", disk.Path);
                         var oldReplica = oldVdisk.Replicas.Find(r => r.Node == replica.Node && r.Disk == replica.Disk);
                         if (oldReplica != null)
-                        {
                             logger.LogDebug("Found replica in old config");
-                            var oldNode = oldConfig.Nodes.Find(n => n.Name == oldReplica.Node);
-                            var oldDisk = oldNode.Disks.Find(d => d.Name == oldReplica.Disk);
-                            using var ____ = logger.BeginScope("OldPath = {oldReplicaPath}", oldDisk.Path);
-                            if (disk.Path != oldDisk.Path)
-                            {
-                                logger.LogWarning("Replica's directory has changed");
-                            }
-                            else
-                                logger.LogDebug("Replica is in the same directory");
-                        }
                         else
                         {
                             logger.LogWarning("Replica not found in old config, restoring data...");
                             foreach (var selectedReplica in oldVdisk.Replicas)
                             {
-                                var dsaPath = Path.GetFullPath(options.DiskStatusAnalyzer);
-                                if (CopyReplica(vdisk, replica, selectedReplica, dsaPath))
+                                var oldNode = oldConfig.Nodes.Find(n => n.Name == selectedReplica.Node);
+                                var oldDisk = oldNode.Disks.Find(d => d.Name == selectedReplica.Disk);
+                                if (CopyReplica(vdisk, replica, selectedReplica, oldDisk.Path, disk.Path, options))
                                     break;
                                 else
                                     logger.LogWarning($"Failed to copy from replica on node {selectedReplica.Node}");
@@ -78,17 +68,25 @@ namespace ClusterModifier
             }
         }
 
-        private static bool CopyReplica(ClusterConfiguration.VDisk vdisk, ClusterConfiguration.VDisk.Replica replica, ClusterConfiguration.VDisk.Replica selectedReplica, string dsaPath)
+        private static bool CopyReplica(
+            ClusterConfiguration.VDisk vdisk,
+            ClusterConfiguration.VDisk.Replica replica,
+            ClusterConfiguration.VDisk.Replica oldReplica,
+            string oldPath,
+            string newPath,
+            ExpandClusterOptions options)
         {
+            var dsaPath = Path.GetFullPath(options.DiskStatusAnalyzer);
             var startInfo = new ProcessStartInfo
             {
                 FileName = dsaPath,
                 WorkingDirectory = Path.GetDirectoryName(dsaPath),
             };
-            startInfo.ArgumentList.Add("copy-vdisk");
-            startInfo.ArgumentList.Add($"--vdisk-id={vdisk.Id}");
-            startInfo.ArgumentList.Add($"-s={selectedReplica.Node}");
+            startInfo.ArgumentList.Add("copy-dir");
+            startInfo.ArgumentList.Add($"-s={oldReplica.Node}");
             startInfo.ArgumentList.Add($"-d={replica.Node}");
+            startInfo.ArgumentList.Add($"--source-dir=\"{oldPath}{Path.PathSeparator}{vdisk.Id}\"");
+            startInfo.ArgumentList.Add($"--dest-dir=\"{newPath}{Path.PathSeparator}{vdisk.Id}\"");
             var process = new Process { StartInfo = startInfo };
             logger.LogInformation($"Starting process (pwd={startInfo.WorkingDirectory}) {startInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
             process.Start();

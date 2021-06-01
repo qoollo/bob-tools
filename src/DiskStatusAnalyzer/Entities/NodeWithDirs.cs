@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using DiskStatusAnalyzer.NodeStructureCreation;
 using DiskStatusAnalyzer.Rsync;
+using DiskStatusAnalyzer.Rsync.Entities;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 
@@ -12,19 +13,20 @@ namespace DiskStatusAnalyzer.Entities
 {
     public class NodeWithDirs
     {
-
-        public NodeWithDirs(Uri uri,
+        public NodeWithDirs(ConnectionInfo connectionInfo,
                     string name,
                     List<DiskDir> diskDirs,
                     AlienDir alienDir)
         {
-            Uri = uri;
+            Uri = connectionInfo.Uri;
+            ConnectionInfo = connectionInfo;
             Name = name;
             DiskDirs = diskDirs;
             AlienDir = alienDir;
         }
 
         public Uri Uri { get; }
+        public ConnectionInfo ConnectionInfo { get; }
         public string Name { get; }
         public List<DiskDir> DiskDirs { get; }
         public AlienDir AlienDir { get; }

@@ -92,7 +92,7 @@ namespace DiskStatusAnalyzer
             }
             var alienDir = await api.GetAlienDirectory();
             var alien = nodeStructureCreator.ParseAlien(alienDir, info);
-            return new NodeWithDirs(info.Uri, status?.Name, diskDirs, alien);
+            return new NodeWithDirs(info, status?.Name, diskDirs, alien);
         }
     }
 }
