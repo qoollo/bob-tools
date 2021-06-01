@@ -43,6 +43,7 @@ namespace DiskStatusAnalyzer.Rsync.Entities
                         $"-p {SshPort}",
                         $"{SshUsername}@{Uri.Host}",
                         $"-i {PathToSshKey}",
+                        $"-o \"StrictHostKeyChecking=no\"",
                         command
                     },
                     UseShellExecute = false,
