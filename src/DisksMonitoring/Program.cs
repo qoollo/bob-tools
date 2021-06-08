@@ -45,6 +45,7 @@ namespace DisksMonitoring
             services.AddSingleton<Configuration>();
             services.AddTransient<DisksStarter>();
             services.AddTransient<DisksCopier>();
+            services.AddTransient<ExternalScriptsRunner>();
 
             serviceProvider = services.BuildServiceProvider();
             logger = serviceProvider.GetRequiredService<ILogger<Program>>();
@@ -62,6 +63,7 @@ namespace DisksMonitoring
         {
             var configuration = await GenerateConfiguration(options);
             var monitor = serviceProvider.GetRequiredService<DisksMonitor>();
+            var externalScriptsRunner = serviceProvider.GetRequiredService<ExternalScriptsRunner>();
             var disksStarter = serviceProvider.GetRequiredService<DisksStarter>();
             var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
             var client = GetBobApiClient(options.Port);
@@ -71,9 +73,11 @@ namespace DisksMonitoring
                 var sw = Stopwatch.StartNew();
                 try
                 {
+                    await externalScriptsRunner.RunPreCycleScripts();
                     await monitor.CheckAndUpdate(client);
                     await configuration.SaveToFile(configFile);
                     await disksStarter.StartDisks(client);
+                    await externalScriptsRunner.RunPostCycleScripts();
                 }
                 catch (Exception e)
                 {

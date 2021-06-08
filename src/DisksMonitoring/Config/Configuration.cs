@@ -47,6 +47,8 @@ namespace DisksMonitoring.Config
         public string Filesystem { get; set; } = "ext4";
         public string PathToDiskStatusAnalyzer { get; set; } = null;
         public int MaxUmountRetries { get; set; } = 3;
+        public List<string> PreCycleScripts { get; set; } = new List<string>();
+        public List<string> PostCycleScripts { get; set; } = new List<string>();
 
         public async Task ReadFromFile(string filename)
         {
