@@ -54,7 +54,7 @@ namespace BobApi.BobEntities
 
         public static async Task<ClusterConfiguration> FromYamlFile(string filename)
         {
-            var deserializer = new Deserializer();
+            var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().Build();
             var content = await File.ReadAllTextAsync(filename);
             return deserializer.Deserialize<ClusterConfiguration>(content);
         }
