@@ -66,7 +66,7 @@ namespace DiskStatusAnalyzer
 
         static async Task<int> Main(string[] args)
         {
-            return await Parser.Default.ParseArguments<CopyAliensOptions, CopyDiskOptions>(args)
+            return await Parser.Default.ParseArguments<CopyAliensOptions, CopyDiskOptions, CopyDirOptions>(args)
                 .MapResult<CopyAliensOptions, CopyDiskOptions, CopyDirOptions, Task<int>>(CopyAliens, CopyDisk, CopyDir, errs => Task.FromResult(1));
         }
 
