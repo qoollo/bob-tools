@@ -83,10 +83,10 @@ namespace ClusterModifier
                 WorkingDirectory = Path.GetDirectoryName(dsaPath),
             };
             startInfo.ArgumentList.Add("copy-dir");
-            startInfo.ArgumentList.Add($"-s={oldReplica.Node}");
-            startInfo.ArgumentList.Add($"-d={replica.Node}");
-            startInfo.ArgumentList.Add($"--source-dir=\"{oldPath}{Path.PathSeparator}{vdisk.Id}\"");
-            startInfo.ArgumentList.Add($"--dest-dir=\"{newPath}{Path.PathSeparator}{vdisk.Id}\"");
+            startInfo.ArgumentList.Add($"-s {oldReplica.Node}");
+            startInfo.ArgumentList.Add($"-d {replica.Node}");
+            startInfo.ArgumentList.Add($"--source-dir \"{oldPath}{Path.PathSeparator}{vdisk.Id}\"");
+            startInfo.ArgumentList.Add($"--dest-dir \"{newPath}{Path.PathSeparator}{vdisk.Id}\"");
             var process = new Process { StartInfo = startInfo };
             logger.LogInformation($"Starting process (pwd={startInfo.WorkingDirectory}) {startInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
             process.Start();
