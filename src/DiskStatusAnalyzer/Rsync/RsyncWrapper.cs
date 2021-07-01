@@ -37,10 +37,13 @@ namespace DiskStatusAnalyzer.Rsync
             var excludedFilesString = string.Join(' ', ExcludedFiles.Select(f => $"--exclude {f}"));
             var copyCommand = $"rsync -e 'ssh -o \"StrictHostKeyChecking=no\"' {excludedFilesString} " +
                               $"-av {fromPath}/ {toInfo.SshUsername}@{toInfo.InnerUri.Host}:{toPath}";
-            var copyResult = await InvokeSshCommand(fromInfo, copyCommand);
-            if (!copyResult)
-                return false;
-            return true;
+            return await InvokeSshCommand(fromInfo, copyCommand);
+        }
+
+        public async Task<bool> RemoveDir(ConnectionInfo info, string path)
+        {
+            var rmCommand = $"rm -rf {path}";
+            return await InvokeSshCommand(info, rmCommand);
         }
 
         private async Task<bool> SaveSyncedFiles(RsyncEntry frm, RsyncEntry to)

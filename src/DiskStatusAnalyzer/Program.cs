@@ -66,8 +66,8 @@ namespace DiskStatusAnalyzer
 
         static async Task<int> Main(string[] args)
         {
-            return await Parser.Default.ParseArguments<CopyAliensOptions, CopyDiskOptions, CopyDirOptions>(args)
-                .MapResult<CopyAliensOptions, CopyDiskOptions, CopyDirOptions, Task<int>>(CopyAliens, CopyDisk, CopyDir, errs => Task.FromResult(1));
+            return await Parser.Default.ParseArguments<CopyAliensOptions, CopyDiskOptions, CopyDirOptions, RemoveDirOptions>(args)
+                .MapResult<CopyAliensOptions, CopyDiskOptions, CopyDirOptions, RemoveDirOptions, Task<int>>(CopyAliens, CopyDisk, CopyDir, RemoveDir, errs => Task.FromResult(1));
         }
 
         private static async Task<int> CopyAliens(CopyAliensOptions options)
@@ -132,6 +132,33 @@ namespace DiskStatusAnalyzer
             }
         }
 
+        private static async Task<int> RemoveDir(RemoveDirOptions options)
+        {
+            try
+            {
+                var nodes = await FindNodes(options);
+                if (nodes == null)
+                {
+                    logger.LogError("Nodes not found");
+                    return 1;
+                }
+                var node = FindSingleNode(nodes, options.Node);
+
+                var wrapper = serviceProvider.GetRequiredService<RsyncWrapper>();
+                if (!await wrapper.RemoveDir(node.ConnectionInfo, options.Dir))
+                {
+                    logger.LogError("Remove failed");
+                    return 1;
+                }
+                return 0;
+            }
+            catch (Exception e)
+            {
+                logger.LogError($"Exception during dir remove: {e.Message}");
+                return 1;
+            }
+        }
+
         private static async Task<List<NodeWithDirs>> FindNodes(CommonOptions options)
         {
             var config = await FindConfig(options);
@@ -180,7 +207,7 @@ namespace DiskStatusAnalyzer
 
         private static bool NamesEqual(string x, string y)
         {
-            return x?.Equals(y, StringComparison.Ordinal) == true;
+            return x?.Equals(y, StringComparison.OrdinalIgnoreCase) == true;
         }
 
         public class CommonOptions
@@ -219,6 +246,16 @@ namespace DiskStatusAnalyzer
 
             [Option("dest-dir", Required = true, HelpText = "Directory to copy to on destionation node")]
             public string DestDir { get; set; }
+        }
+
+        [Verb("remove-dir", HelpText = "Remove directory from node")]
+        public class RemoveDirOptions : CommonOptions
+        {
+            [Option("node", Required = true, HelpText = "Node name")]
+            public string Node { get; set; }
+
+            [Option("dir", Required = true, HelpText = "Directory to remove")]
+            public string Dir { get; set; }
         }
     }
 

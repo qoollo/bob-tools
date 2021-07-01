@@ -37,6 +37,8 @@ namespace DiskStatusAnalyzer
                     logger.LogInformation($"Successfully created node {inputNode}");
                     nodes.Add(node);
                 }
+                else
+                    logger.LogWarning($"Failed to create node {inputNode}");
             }
             return nodes;
         }
@@ -56,7 +58,10 @@ namespace DiskStatusAnalyzer
             var api = new BobApiClient(info.Uri);
             var status = await api.GetStatus();
             if (status == null)
+            {
+                logger.LogWarning($"Failed to get status from {info.Uri}");
                 return null;
+            }
             var diskDirs = new List<DiskDir>();
             foreach (var vDisk in status?.VDisks)
             {

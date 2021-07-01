@@ -11,6 +11,7 @@ using ProgramLogger = Microsoft.Extensions.Logging.ILogger<ClusterModifier.Progr
 using CommandLine;
 using BobApi.BobEntities;
 using System.Diagnostics;
+using System.Linq;
 
 namespace ClusterModifier
 {
@@ -66,6 +67,43 @@ namespace ClusterModifier
                 else
                     logger.LogDebug($"Vdisk's replicas not found in old config");
             }
+
+            if (options.RemoveSourceFiles)
+                foreach (var vDisk in oldConfig.VDisks)
+                {
+                    using var _ = logger.BeginScope("VDisk {vdiskId}", vDisk.Id);
+                    foreach (var replica in vDisk.Replicas.Where(r => !newConfig.VDisks.Any(vd => vd.Replicas.Any(r1 => r.Disk == r1.Disk && r.Node == r1.Node))))
+                    {
+                        using var __ = logger.BeginScope("Replica = {replicaNode}-{replicaDisk}", replica.Node, replica.Disk);
+                        var node = oldConfig.Nodes.Find(n => n.Name == replica.Node);
+                        var disk = node.Disks.Find(d => d.Name == replica.Disk);
+                        RemoveReplica(replica, vDisk, disk.Path, options);
+                    }
+                }
+        }
+
+        private static bool RemoveReplica(ClusterConfiguration.VDisk.Replica replica,
+            ClusterConfiguration.VDisk vDisk,
+            string path,
+            ExpandClusterOptions options)
+        {
+            var dsaPath = Path.GetFullPath(options.DiskStatusAnalyzer);
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = dsaPath,
+                WorkingDirectory = Path.GetDirectoryName(dsaPath),
+            };
+            startInfo.ArgumentList.Add("remove-dir");
+            startInfo.ArgumentList.Add($"--node");
+            startInfo.ArgumentList.Add($"{replica.Node}");
+            startInfo.ArgumentList.Add($"--dir");
+            startInfo.ArgumentList.Add($"{path}{Path.DirectorySeparatorChar}bob{Path.DirectorySeparatorChar}{vDisk.Id}");
+            var process = new Process { StartInfo = startInfo };
+            logger.LogInformation($"Starting process (pwd={startInfo.WorkingDirectory}) {startInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
+            process.Start();
+            process.WaitForExit();
+            logger.LogInformation($"Process returned code {process.ExitCode}");
+            return process.ExitCode == 0;
         }
 
         private static bool CopyReplica(
@@ -130,6 +168,9 @@ namespace ClusterModifier
 
             [Option("dry-run", Required = false, HelpText = "Do not copy anything")]
             public bool DryRun { get; set; } = false;
+
+            [Option("remove-source", Required = false, HelpText = "Remove source files after copy")]
+            public bool RemoveSourceFiles { get; set; } = false;
 
             [Option("dsa", Required = true, HelpText = "Path to disk status analyzer")]
             public string DiskStatusAnalyzer { get; set; }
