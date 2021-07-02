@@ -1,17 +1,8 @@
 Nodes:
-- Host: 192.168.17.10:8000
+- Host: 172.17.0.2:8000
   SshPort: 22
-  InnerNetworkHost: 192.168.17.10:8000
-- Host: 192.168.17.11:8000
-  SshPort: 22
-  InnerNetworkHost: 192.168.17.11:8000
-- Host: 192.168.17.12:8000
-  SshPort: 22
-  InnerNetworkHost: 192.168.17.12:8000
-- Host: 192.168.17.13:8000
-  SshPort: 22
-  InnerNetworkHost: 192.168.17.13:8000
-PathToSshKey: /home/ivan/.ssh/id_rsa
+  InnerNetworkHost: 172.17.0.2:8000
+PathToSshKey: /root/.ssh/id_rsa
 SshUsername: root
 CopyAliens: true
 RestartAfterCopy: true

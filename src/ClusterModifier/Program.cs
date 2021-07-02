@@ -100,6 +100,8 @@ namespace ClusterModifier
             startInfo.ArgumentList.Add($"{path}{Path.DirectorySeparatorChar}bob{Path.DirectorySeparatorChar}{vDisk.Id}");
             var process = new Process { StartInfo = startInfo };
             logger.LogInformation($"Starting process (pwd={startInfo.WorkingDirectory}) {startInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
+            if (options.DryRun)
+                return true;
             process.Start();
             process.WaitForExit();
             logger.LogInformation($"Process returned code {process.ExitCode}");
@@ -131,6 +133,8 @@ namespace ClusterModifier
             startInfo.ArgumentList.Add($"{newPath}{Path.DirectorySeparatorChar}bob{Path.DirectorySeparatorChar}{vdisk.Id}");
             var process = new Process { StartInfo = startInfo };
             logger.LogInformation($"Starting process (pwd={startInfo.WorkingDirectory}) {startInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
+            if (options.DryRun)
+                return true;
             process.Start();
             process.WaitForExit();
             logger.LogInformation($"Process returned code {process.ExitCode}");

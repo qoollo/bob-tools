@@ -18,7 +18,6 @@ namespace DisksMonitoring.OS
     {
         private readonly IList<string> preCycleScripts;
         private readonly IList<string> postCycleScripts;
-        private readonly Configuration configuration;
         private readonly ProcessInvoker processInvoker;
         private readonly ILogger<ExternalScriptsRunner> logger;
 
