@@ -1,0 +1,22 @@
+name: build-packages
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+.[0-9]+'
+    branches: 3-configure-build-with-github-actions
+
+jobs:
+
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build release
+        run: buildscripts/publish.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: bob_tools-binaries
+          path: publish
