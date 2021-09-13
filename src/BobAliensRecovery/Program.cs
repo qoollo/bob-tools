@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using CommandLine;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace BobAliensRecovery
 {
@@ -14,7 +16,20 @@ namespace BobAliensRecovery
 
         private static async Task RecoverAliens(ProgramArguments arguments)
         {
-            Console.WriteLine($"Received cluster config path: {arguments.ClusterConfigPath}");
+            var provider = CreateServiceProvider(arguments.LoggerOptions);
+            var logger = provider.GetRequiredService<ILogger<Program>>();
+
+            logger.LogDebug($"Received cluster config path: {arguments.ClusterConfigPath}");
+            await Task.Delay(1);
+        }
+
+        private static IServiceProvider CreateServiceProvider(LoggerOptions loggerOptions)
+        {
+            var services = new ServiceCollection();
+
+            services.AddLogging(b => b.AddConsole().SetMinimumLevel(loggerOptions.MinLevel));
+
+            return services.BuildServiceProvider();
         }
     }
 }

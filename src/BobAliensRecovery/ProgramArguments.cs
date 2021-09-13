@@ -25,5 +25,10 @@ namespace BobAliensRecovery
 
         [Option("cluster-config", HelpText = "Cluster config of bob instance")]
         public string ClusterConfigPath { get; set; } = s_defaultClusterConfigPath;
+
+        [Option('v', HelpText = "Verbosity level, 0 to 3", Default = 0)]
+        public int VerbosityLevel { get; set; }
+
+        public LoggerOptions LoggerOptions => new(VerbosityLevel);
     }
 }
