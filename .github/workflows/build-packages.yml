@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Build release
         run: |
+          ls -l
           git describe --tags
           ./buildscripts/publish.sh
       - name: Upload artifact
