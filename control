@@ -1,0 +1,8 @@
+Package: bob_tools
+Version: current_version
+Section: unknown
+Priority: optional
+Architecture: amd64
+Maintainer: Qoollo <info@qoollo.com>
+Homepage: https://github.com/qoollo/bob_tools
+Description: Various tools for interacting with bob
