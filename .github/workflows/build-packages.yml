@@ -10,6 +10,7 @@ jobs:
 
   build-release:
     runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:5.0
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
