@@ -14,11 +14,13 @@ jobs:
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - name: Build release
         run: |
           ls -l
           git status
-          git tags
+          git tag
           git describe --tags
           ./buildscripts/publish.sh
       - name: Upload artifact
