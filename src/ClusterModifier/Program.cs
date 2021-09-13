@@ -1,17 +1,17 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using BobApi.BobEntities;
+using CommandLine;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Context;
 using ProgramLogger = Microsoft.Extensions.Logging.ILogger<ClusterModifier.Program>;
-using CommandLine;
-using BobApi.BobEntities;
-using System.Diagnostics;
-using System.Linq;
 
 namespace ClusterModifier
 {
