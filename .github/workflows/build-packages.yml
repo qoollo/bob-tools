@@ -17,6 +17,8 @@ jobs:
       - name: Build release
         run: |
           ls -l
+          git status
+          git tags
           git describe --tags
           ./buildscripts/publish.sh
       - name: Upload artifact
