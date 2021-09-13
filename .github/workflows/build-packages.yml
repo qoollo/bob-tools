@@ -150,7 +150,7 @@ jobs:
           chmod +x bob_tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator}
           cp DisksMonitoring.service bob_tools_${{ env.VERSION }}/etc/systemd/system/
           cp DisksMonitoring.service bob_tools_${{ env.VERSION }}/lib/systemd/system/
-          zip -r bob_tools_${{ env.VERSION }}.zip bob_${{ env.VERSION }}
+          zip -r bob_tools_${{ env.VERSION }}.zip bob_tools_${{ env.VERSION }}
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
