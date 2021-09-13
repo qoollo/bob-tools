@@ -39,11 +39,11 @@ jobs:
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: build rpm
         run: |
-          sed -i "s/current_version/$VERSION/" bob_tools.spec
+          sed -i "s/current_version/${{ env.VERSION }}/" bob_tools.spec
           sed -i "s/release_number/${{ github.run_id }}/" bob_tools.spec
           mkdir -p ./rpmbuild/{SOURCES,BUILD,RPMS,SPECS,SRPMS}
           cur_dir_name=${PWD##*/}
-          tar czf ./rpmbuild/SOURCES/bob_tools-${VERSION}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob_tools-${VERSION}/
+          tar czf ./rpmbuild/SOURCES/bob_tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob_tools-${{ env.VERSION }}/
           rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob_tools.spec
       - name: Upload artifact
         uses: actions/upload-artifact@v2
