@@ -14,7 +14,7 @@ jobs:
       - name: Checks-out repository 
         uses: actions/checkout@v2
       - name: Build release
-        run: buildscripts/publish.sh
+        run: ./buildscripts/publish.sh
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
