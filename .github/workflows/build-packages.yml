@@ -119,7 +119,9 @@ jobs:
         with:
           name: bob_tools-deb
       - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: |
+          echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+          echo ${{ env.VERSION }}
       - name: Upload deb to release
         uses: svenstaro/upload-release-action@v2
         with:

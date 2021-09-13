@@ -2,8 +2,8 @@ Name: bob_tools
 Summary: Various tools for interacting with bob
 License: MIT
 URL: https://github.com/qoollo/bob_tools
-Version: 1.0.1.0
-Release: qwerty123
+Version: current_version
+Release: release_number
 Source0: %{name}-%{version}.tar.gz
 Group: Development/Tools
 BuildArch: x86_64
