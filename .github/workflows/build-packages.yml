@@ -72,7 +72,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob_tools-${{ env.VERSION }}-${{ github.run_id }}.x86_64.rpm
           asset_name: bob_tools-${{ env.VERSION }}.x86_64.rpm
-          tag: ${{ github.ref }}
+          tag: ${{ env.VERSION }}
           overwrite: true
 
   build-deb:
@@ -119,16 +119,14 @@ jobs:
         with:
           name: bob_tools-deb
       - name: Set env
-        run: |
-          echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-          echo ${{ env.VERSION }}
+        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Upload deb to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob_tools_${{ env.VERSION }}_amd64.deb
           asset_name: bob_tools_${{ env.VERSION }}_amd64.deb
-          tag: ${{ github.ref }}
+          tag: ${{ env.VERSION }}
           overwrite: true
 
   zip-file:
@@ -180,5 +178,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob_tools_${{ env.VERSION }}.zip
           asset_name: bob_tools_${{ env.VERSION }}.zip
-          tag: ${{ github.ref }}
+          tag: ${{ env.VERSION }}
           overwrite: true
