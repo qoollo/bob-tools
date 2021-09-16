@@ -7,22 +7,22 @@ using BobApi.Entities;
 
 namespace BobAliensRecovery.AliensRecovery.Entities
 {
-    class NodeDiskDir : IEquatable<NodeDiskDir>
+    class AlienDir : IEquatable<AlienDir>
     {
-        public NodeDiskDir(ClusterConfiguration.Node node, string diskName, Directory directory)
+        public AlienDir(ClusterConfiguration.Node node, Directory directory)
         {
             Node = node;
-            DiskName = diskName;
             Directory = directory;
-            Children = Directory.Children.Select(c => new NodeDiskDir(node, diskName, c)).ToArray();
+            Children = Directory.Children.Select(c => new AlienDir(node, c)).ToArray();
         }
 
         public ClusterConfiguration.Node Node { get; }
-        public string DiskName { get; }
         public Directory Directory { get; }
-        public IEnumerable<NodeDiskDir> Children { get; }
+        public IEnumerable<AlienDir> Children { get; }
 
-        public IEnumerable<NodeDiskDir> GetMatchedDirs(Func<NodeDiskDir, bool> predicate)
+        public string DirName => Directory.Name;
+
+        public IEnumerable<AlienDir> GetMatchedDirs(Func<AlienDir, bool> predicate)
         {
             if (predicate(this))
                 yield return this;
@@ -31,7 +31,7 @@ namespace BobAliensRecovery.AliensRecovery.Entities
                     yield return match;
         }
 
-        public bool Equals(NodeDiskDir? other)
+        public bool Equals(AlienDir? other)
         {
             if (other is null)
                 return false;
@@ -42,7 +42,7 @@ namespace BobAliensRecovery.AliensRecovery.Entities
 
         public override int GetHashCode() => HashCode.Combine(Node.Name, Directory.Path);
 
-        public override bool Equals(object? obj) => obj is NodeDiskDir d && Equals(d);
+        public override bool Equals(object? obj) => obj is AlienDir d && Equals(d);
 
         public override string ToString()
         {

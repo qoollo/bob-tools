@@ -26,104 +26,107 @@ namespace BobAliensRecovery.AliensRecovery
             ClusterOptions clusterOptions,
             CancellationToken cancellationToken = default)
         {
-            var recoveryGroups = GetRecoveryGroups(clusterConfiguration);
-            var dirs = await GetNodeDiskDirs(clusterConfiguration, clusterOptions, cancellationToken);
-            var recoveryTransactions = GetRecoveryTransactions(recoveryGroups, dirs, clusterConfiguration);
+            var recoveryGroups = GetReplicas(clusterConfiguration);
+            var dirs = await GetAlienDirs(clusterConfiguration, clusterOptions, cancellationToken);
+            var recoveryTransactions = GetRecoveryTransactions(recoveryGroups, dirs);
 
             _logger.LogInformation($"Found {recoveryTransactions.Count()} recovery transactions");
         }
 
-        private IEnumerable<RecoveryTransaction> GetRecoveryTransactions(IEnumerable<RecoveryGroup> recoveryGroups,
-            IEnumerable<NodeDiskDir> dirs, ClusterConfiguration clusterConfiguration)
+        private IEnumerable<RecoveryTransaction> GetRecoveryTransactions(IEnumerable<Replicas> recoveryGroups,
+            IEnumerable<AlienDir> alienDirs)
         {
             var recoveryGroupByVdiskId = recoveryGroups.ToDictionary(rg => rg.VDiskId.ToString());
             // We check all disks as aliens are saved on any of them
-            foreach (var nd in dirs)
-            {
-                var alienDir = nd.GetMatchedDirs(d => d.Directory.Name == "alien").SingleOrDefault();
-                if (alienDir != null)
-                    foreach (var alienSourceNode in alienDir.Children)
+            foreach (var alienSourceNode in alienDirs.SelectMany(_ => _.Children))
+                foreach (var sourceVdiskDir in alienSourceNode.Children)
+                {
+                    var sourceRemote = new RemoteDirectory(sourceVdiskDir.Node.GetIPAddress(), sourceVdiskDir.Directory.Path);
+                    if (recoveryGroupByVdiskId.TryGetValue(sourceVdiskDir.DirName, out var rg))
                     {
-                        foreach (var sourceVdiskDir in alienSourceNode.Children)
+                        var targetRemote = rg.FindRemoteDirectory(alienSourceNode.DirName);
+                        if (targetRemote != null)
                         {
-                            if (recoveryGroupByVdiskId.TryGetValue(sourceVdiskDir.Directory.Name, out var rg))
-                            {
-                                if (rg.DiskByNodeName.TryGetValue(alienSourceNode.Directory.Name, out var diskName))
-                                {
-                                    var targetNd = dirs.SingleOrDefault(_ => _.Node.Name == alienSourceNode.Directory.Name
-                                        && rg.DiskByNodeName.TryGetValue(_.Node.Name, out var dn)
-                                        && dn == _.DiskName);
-
-                                    var targetNode = clusterConfiguration.Nodes.Single(n => n.Name == alienSourceNode.Directory.Name);
-                                    var targetDisk = targetNode.Disks.Single(d => d.Name == diskName);
-                                    var targetEP = IPEndPoint.Parse(targetNode.Address);
-                                    var targetPath = System.IO.Path.Combine(targetDisk.Path, "bob", sourceVdiskDir.Directory.Name);
-                                    var targetRemote = new RemoteDirectory(targetEP.Address, targetPath);
-                                    var sourceEP = IPEndPoint.Parse(sourceVdiskDir.Node.Address);
-                                    var sourceRemote = new RemoteDirectory(sourceEP.Address, sourceVdiskDir.Directory.Path);
-                                    var t = new RecoveryTransaction(sourceRemote, targetRemote);
-                                    _logger.LogInformation("Created {transaction}", t);
-                                    yield return t;
-                                }
-                                else
-                                    _logger.LogError($"Cannot find node in replicas for {sourceVdiskDir}");
-                            }
-                            else
-                                _logger.LogError($"Cannot find recovery instructions for {sourceVdiskDir}");
+                            var transaction = new RecoveryTransaction(sourceRemote, targetRemote);
+                            _logger.LogDebug("Created {transaction}", transaction);
+                            yield return transaction;
                         }
+                        else
+                            _logger.LogError($"Cannot find node in replicas for {sourceVdiskDir}");
                     }
-            }
+                    else
+                        _logger.LogError($"Cannot find recovery instructions for {sourceVdiskDir}");
+                }
         }
 
-        private IEnumerable<RecoveryGroup> GetRecoveryGroups(ClusterConfiguration clusterConfiguration)
+        private IEnumerable<Replicas> GetReplicas(ClusterConfiguration clusterConfiguration)
         {
             foreach (var vdisk in clusterConfiguration.VDisks)
             {
-                var rg = new RecoveryGroup(vdisk.Id, vdisk.Replicas.ToDictionary(r => r.Node, r => r.Disk));
-                _logger.LogDebug($"Recovery group for vdisk {rg.VDiskId}");
-                _logger.LogDebug($"Involved nodes: {string.Join(", ", rg.DiskByNodeName.Select(kv => $"{kv.Key}={kv.Value}"))}");
+                var remoteDirByNodeName = new Dictionary<string, RemoteDirectory>();
+                var diskByName = vdisk.Replicas.ToDictionary(r => r.Node, r => r.Disk);
+                foreach (var node in clusterConfiguration.Nodes)
+                {
+                    if (diskByName.TryGetValue(node.Name, out var diskName))
+                    {
+                        var disk = node.Disks.SingleOrDefault(d => d.Name == diskName);
+                        if (disk != null)
+                        {
+                            var targetPath = System.IO.Path.Combine(disk.Path, "bob", vdisk.Id.ToString());
+                            remoteDirByNodeName.Add(node.Name, new RemoteDirectory(node.GetIPAddress(), targetPath));
+                        }
+                        else
+                            _logger.LogError($"Disk {diskName} not found on node {node.Name}");
+                    }
+                }
+                var rg = new Replicas(vdisk.Id, remoteDirByNodeName);
+
+                if (_logger.IsEnabled(LogLevel.Debug))
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Recovery group for vdisk {vdisk.Id}");
+                    foreach (var node in clusterConfiguration.Nodes)
+                    {
+                        var targetRemote = rg.FindRemoteDirectory(node.Name);
+                        if (targetRemote != null)
+                            sb.AppendLine($"\tNode {node.Name} has replica {targetRemote}");
+                    }
+                    _logger.LogDebug(sb.ToString());
+                }
 
                 yield return rg;
             }
         }
 
-        private async Task<IEnumerable<NodeDiskDir>> GetNodeDiskDirs(ClusterConfiguration clusterConfiguration, ClusterOptions clusterOptions, CancellationToken cancellationToken)
+        private async Task<IEnumerable<AlienDir>> GetAlienDirs(ClusterConfiguration clusterConfiguration, ClusterOptions clusterOptions, CancellationToken cancellationToken)
         {
-            var nodeDirectories = new HashSet<NodeDiskDir>();
+            var nodeDirectories = new HashSet<AlienDir>();
             foreach (var node in clusterConfiguration.Nodes)
             {
-                var ep = IPEndPoint.Parse(node.Address);
-                ep.Port = clusterOptions.GetApiPort(node);
-
                 try
                 {
-                    var bobApi = new BobApi.BobApiClient(new System.Uri("http://" + ep));
+                    var bobApi = new BobApi.BobApiClient(new Uri("http://" +
+                        node.GetIPAddress() + ':' + clusterOptions.GetApiPort(node)));
                     var vdisks = await bobApi.GetVDisks(cancellationToken);
                     foreach (var vdisk in vdisks)
                     {
-                        var directories = await bobApi.GetDirectories(vdisk, cancellationToken);
-                        foreach (var dir in directories)
-                        {
-                            var disk = node.Disks.SingleOrDefault(d => d.Path == dir.Path);
-                            if (disk != null)
-                                nodeDirectories.Add(new NodeDiskDir(node, disk.Name, dir));
-                            else
-                                _logger.LogError($"Disk {dir.Path} not found in {node.Name} config");
-                        }
+                        var dir = await bobApi.GetAlienDirectory();
+                        nodeDirectories.Add(new AlienDir(node, dir));
                     }
                 }
                 catch (Exception e)
                 {
-                    _logger.LogError($"Failed to get directory info from node {ep}: {e.Message}");
+                    _logger.LogError($"Failed to get aliens info from node {node.Name} ({node.Address}): {e.Message}");
                 }
             }
 
-            foreach (var nd in nodeDirectories)
-            {
-                var sb = new StringBuilder();
-                DebugPrintDirectory(nd.Directory, 0, sb);
-                _logger.LogDebug($"Node: {nd.Node.Address}, disk: {nd.DiskName}{Environment.NewLine}{sb}");
-            }
+            if (_logger.IsEnabled(LogLevel.Debug))
+                foreach (var nd in nodeDirectories)
+                {
+                    var sb = new StringBuilder();
+                    DebugPrintDirectory(nd.Directory, 0, sb);
+                    _logger.LogDebug($"Alien on node: {nd.Node.Address}, {Environment.NewLine}{sb}");
+                }
 
             return nodeDirectories;
         }

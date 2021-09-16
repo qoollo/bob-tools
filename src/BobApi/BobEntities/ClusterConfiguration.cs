@@ -25,6 +25,8 @@ namespace BobApi.BobEntities
             [YamlMember(Alias = "disks")]
             public List<Disk> Disks { get; set; }
 
+            public IPAddress GetIPAddress() => IPAddress.Parse(Address.Split(':')[0]);
+
             public class Disk
             {
                 [YamlMember(Alias = "name")]
