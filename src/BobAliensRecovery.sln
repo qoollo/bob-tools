@@ -5,8 +5,6 @@ VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BobAliensRecovery", "BobAliensRecovery\BobAliensRecovery.csproj", "{4E84D496-B8BE-4624-9CB5-E9FB0729DE39}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteFileCopy", "RemoteFileCopy\RemoteFileCopy.csproj", "{3720AD05-1990-4691-AA52-EFAEE5210E1B}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

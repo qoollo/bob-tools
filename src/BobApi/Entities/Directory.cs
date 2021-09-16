@@ -6,6 +6,6 @@ namespace BobApi.Entities
     {
         public string Name { get; set; }
         public string Path { get; set; }
-        public List<Directory> Children{ get; set; }
+        public List<Directory> Children { get; set; }
     }
 }

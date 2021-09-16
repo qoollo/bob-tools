@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using BobApi.Entities;
 using Newtonsoft.Json;
@@ -81,9 +82,9 @@ namespace BobApi
                 return response.IsSuccessStatusCode;
         }
 
-        public async Task<List<Directory>> GetDirectories(VDisk vdisk)
+        public async Task<List<Directory>> GetDirectories(VDisk vdisk, CancellationToken cancellationToken = default)
         {
-            var response = await client.GetAsync($"vdisks/{vdisk.Id}/replicas/local/dirs");
+            var response = await client.GetAsync($"vdisks/{vdisk.Id}/replicas/local/dirs", cancellationToken: cancellationToken);
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadAsStringAsync()
                     .ContinueWith(t => JsonConvert.DeserializeObject<List<Directory>>(t.Result));
@@ -97,9 +98,9 @@ namespace BobApi
             return JsonConvert.DeserializeObject<Directory>(content);
         }
 
-        public async Task<List<VDisk>> GetVDisks()
+        public async Task<List<VDisk>> GetVDisks(CancellationToken cancellationToken = default)
         {
-            var response = await client.GetAsync("vdisks");
+            var response = await client.GetAsync("vdisks", cancellationToken: cancellationToken);
             if (response.IsSuccessStatusCode)
                 return await response.Content.ReadAsStringAsync()
                     .ContinueWith(t => JsonConvert.DeserializeObject<List<VDisk>>(t.Result));

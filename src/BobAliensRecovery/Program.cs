@@ -8,9 +8,6 @@ using BobApi.BobEntities;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using RemoteFileCopy;
-using RemoteFileCopy.Entites;
-using RemoteFileCopy.Extensions;
 using YamlDotNet.Serialization;
 
 namespace BobAliensRecovery
@@ -33,7 +30,8 @@ namespace BobAliensRecovery
             {
                 var cluster = await GetClusterConfiguration(logger, arguments.ClusterConfigPath, cancellationToken);
 
-                await provider.GetRequiredService<AliensRecoverer>().RecoverAliens(cluster, cancellationToken);
+                await provider.GetRequiredService<AliensRecoverer>().RecoverAliens(cluster, arguments.ClusterOptions,
+                    cancellationToken);
             }
             catch (ArgumentException e)
             {
@@ -58,8 +56,6 @@ namespace BobAliensRecovery
             var services = new ServiceCollection();
 
             services.AddLogging(b => b.AddConsole().SetMinimumLevel(loggerOptions.MinLevel));
-
-            services.AddRemoteFileCopy();
 
             services.AddScoped<AliensRecoverer>();
 
