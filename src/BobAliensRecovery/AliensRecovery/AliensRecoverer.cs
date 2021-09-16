@@ -84,12 +84,12 @@ namespace BobAliensRecovery.AliensRecovery
                 if (_logger.IsEnabled(LogLevel.Debug))
                 {
                     var sb = new StringBuilder();
-                    sb.AppendLine($"Recovery group for vdisk {vdisk.Id}");
+                    sb.AppendLine($"Replicas for vdisk {vdisk.Id}");
                     foreach (var node in clusterConfiguration.Nodes)
                     {
                         var targetRemote = rg.FindRemoteDirectory(node.Name);
                         if (targetRemote != null)
-                            sb.AppendLine($"\tNode {node.Name} has replica {targetRemote}");
+                            sb.AppendLine($"\tNode {node.Name}: {targetRemote}");
                     }
                     _logger.LogDebug(sb.ToString());
                 }
