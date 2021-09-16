@@ -10,7 +10,7 @@ Tool for counting all unique records and replicas in bob.
 
 Tool for removing all partitions in cluster older than provided date.
 
-## Disk status analyzzer
+## Disk status analyzer
 
 Tool for copying aliens.
 
