@@ -8,6 +8,7 @@ using BobApi.BobEntities;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.Extensions;
 using YamlDotNet.Serialization;
 
 namespace BobAliensRecovery
@@ -23,7 +24,7 @@ namespace BobAliensRecovery
         private static async Task RecoverAliens(ProgramArguments arguments)
         {
             var cancellationToken = new CancellationTokenSource().Token;
-            var provider = CreateServiceProvider(arguments.LoggerOptions);
+            var provider = CreateServiceProvider(arguments);
             var logger = provider.GetRequiredService<ILogger<Program>>();
 
             try
@@ -51,13 +52,15 @@ namespace BobAliensRecovery
             return cluster;
         }
 
-        private static IServiceProvider CreateServiceProvider(LoggerOptions loggerOptions)
+        private static IServiceProvider CreateServiceProvider(ProgramArguments args)
         {
             var services = new ServiceCollection();
 
-            services.AddLogging(b => b.AddConsole().SetMinimumLevel(loggerOptions.MinLevel));
+            services.AddLogging(b => b.AddConsole().SetMinimumLevel(args.LoggerOptions.MinLevel));
 
             services.AddScoped<AliensRecoverer>();
+
+            services.AddRemoteFileCopy(args.SshConfiguration);
 
             return services.BuildServiceProvider();
         }

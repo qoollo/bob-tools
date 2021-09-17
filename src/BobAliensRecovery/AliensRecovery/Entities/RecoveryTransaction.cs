@@ -1,15 +1,17 @@
+using RemoteFileCopy.Entities;
+
 namespace BobAliensRecovery.AliensRecovery.Entities
 {
     class RecoveryTransaction
     {
-        public RecoveryTransaction(RemoteDirectory from, RemoteDirectory to)
+        public RecoveryTransaction(RemoteDir from, RemoteDir to)
         {
             From = from;
             To = to;
         }
 
-        public RemoteDirectory From { get; }
-        public RemoteDirectory To { get; }
+        public RemoteDir From { get; }
+        public RemoteDir To { get; }
 
         public override string ToString()
         {

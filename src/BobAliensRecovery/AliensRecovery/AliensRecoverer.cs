@@ -9,16 +9,21 @@ using BobAliensRecovery.AliensRecovery.Entities;
 using BobApi.BobEntities;
 using BobApi.Entities;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy;
+using RemoteFileCopy.Entities;
 
 namespace BobAliensRecovery.AliensRecovery
 {
     public class AliensRecoverer
     {
         private readonly ILogger<AliensRecoverer> _logger;
+        private readonly RemoteFileCopier _remoteFileCopier;
 
-        public AliensRecoverer(ILogger<AliensRecoverer> logger)
+        public AliensRecoverer(ILogger<AliensRecoverer> logger,
+            RemoteFileCopier remoteFileCopier)
         {
             _logger = logger;
+            _remoteFileCopier = remoteFileCopier;
         }
 
         internal async Task RecoverAliens(
@@ -29,8 +34,8 @@ namespace BobAliensRecovery.AliensRecovery
             var recoveryGroups = GetReplicas(clusterConfiguration);
             var dirs = await GetAlienDirs(clusterConfiguration, clusterOptions, cancellationToken);
             var recoveryTransactions = GetRecoveryTransactions(recoveryGroups, dirs);
-
-            _logger.LogInformation($"Found {recoveryTransactions.Count()} recovery transactions");
+            foreach (var transaction in recoveryTransactions)
+                await _remoteFileCopier.Copy(transaction.From, transaction.To, cancellationToken);
         }
 
         private IEnumerable<RecoveryTransaction> GetRecoveryTransactions(IEnumerable<Replicas> recoveryGroups,
@@ -41,7 +46,7 @@ namespace BobAliensRecovery.AliensRecovery
             foreach (var alienSourceNode in alienDirs.SelectMany(_ => _.Children))
                 foreach (var sourceVdiskDir in alienSourceNode.Children)
                 {
-                    var sourceRemote = new RemoteDirectory(sourceVdiskDir.Node.GetIPAddress(), sourceVdiskDir.Directory.Path);
+                    var sourceRemote = new RemoteDir(sourceVdiskDir.Node.GetIPAddress(), sourceVdiskDir.Directory.Path);
                     if (recoveryGroupByVdiskId.TryGetValue(sourceVdiskDir.DirName, out var rg))
                     {
                         var targetRemote = rg.FindRemoteDirectory(alienSourceNode.DirName);
@@ -63,7 +68,7 @@ namespace BobAliensRecovery.AliensRecovery
         {
             foreach (var vdisk in clusterConfiguration.VDisks)
             {
-                var remoteDirByNodeName = new Dictionary<string, RemoteDirectory>();
+                var remoteDirByNodeName = new Dictionary<string, RemoteDir>();
                 var diskByName = vdisk.Replicas.ToDictionary(r => r.Node, r => r.Disk);
                 foreach (var node in clusterConfiguration.Nodes)
                 {
@@ -73,7 +78,7 @@ namespace BobAliensRecovery.AliensRecovery
                         if (disk != null)
                         {
                             var targetPath = System.IO.Path.Combine(disk.Path, "bob", vdisk.Id.ToString());
-                            remoteDirByNodeName.Add(node.Name, new RemoteDirectory(node.GetIPAddress(), targetPath));
+                            remoteDirByNodeName.Add(node.Name, new RemoteDir(node.GetIPAddress(), targetPath));
                         }
                         else
                             _logger.LogError($"Disk {diskName} not found on node {node.Name}");
