@@ -17,22 +17,29 @@ namespace BobAliensRecovery
     {
         static async Task Main(string[] args)
         {
+            var cancellationTokenSource = new CancellationTokenSource();
+            Console.CancelKeyPress += (s, e) =>
+            {
+                cancellationTokenSource.Cancel();
+            };
+
             var parsed = Parser.Default.ParseArguments<ProgramArguments>(args);
-            _ = await parsed.WithParsedAsync(RecoverAliens);
+            _ = await parsed.WithParsedAsync(a => RecoverAliens(a, cancellationTokenSource.Token));
         }
 
-        private static async Task RecoverAliens(ProgramArguments arguments)
+        private static async Task RecoverAliens(ProgramArguments arguments, CancellationToken cancellationToken)
         {
-            var cancellationToken = new CancellationTokenSource().Token;
             var provider = CreateServiceProvider(arguments);
             var logger = provider.GetRequiredService<ILogger<Program>>();
+            var recoverer = provider.GetRequiredService<AliensRecoverer>();
 
             try
             {
                 var cluster = await GetClusterConfiguration(logger, arguments.ClusterConfigPath, cancellationToken);
 
-                await provider.GetRequiredService<AliensRecoverer>().RecoverAliens(cluster, arguments.ClusterOptions,
-                    cancellationToken);
+                await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, cancellationToken);
+
+                
             }
             catch (ArgumentException e)
             {
