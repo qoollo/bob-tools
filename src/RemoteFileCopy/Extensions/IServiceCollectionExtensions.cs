@@ -9,7 +9,7 @@ namespace RemoteFileCopy.Extensions
         private static readonly SshConfiguration s_defaultSshConfiguration = new("ssh", 22, "bobd", "~/.ssh/id_rsa");
 
         public static IServiceCollection AddRemoteFileCopy(this IServiceCollection services,
-            SshConfiguration sshConfiguration = null)
+            SshConfiguration? sshConfiguration = null)
         {
             sshConfiguration ??= s_defaultSshConfiguration;
             services.AddSingleton(sshConfiguration);

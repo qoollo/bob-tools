@@ -26,8 +26,9 @@ namespace RemoteFileCopy
         {
             _logger.LogDebug($"Copying files from {from} to {to}");
 
-
-            await _rsyncWrapper.InvokeRsync(from, to, cancellationToken);
+            var result = await _rsyncWrapper.InvokeRsync(from, to, cancellationToken);
+            if (result != null && result.SyncedSize > 0)
+                _logger.LogInformation($"Copy from {from} to {to}: transfered {result.SyncedSize} bytes");
         }
     }
 }

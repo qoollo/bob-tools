@@ -35,7 +35,9 @@ namespace BobAliensRecovery.AliensRecovery
             var dirs = await GetAlienDirs(clusterConfiguration, clusterOptions, cancellationToken);
             var recoveryTransactions = GetRecoveryTransactions(recoveryGroups, dirs);
             foreach (var transaction in recoveryTransactions)
+            {
                 await _remoteFileCopier.Copy(transaction.From, transaction.To, cancellationToken);
+            }
         }
 
         private IEnumerable<RecoveryTransaction> GetRecoveryTransactions(IEnumerable<Replicas> recoveryGroups,

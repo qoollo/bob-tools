@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.Ssh.Entities;
 
 namespace RemoteFileCopy.Ssh
 {
@@ -34,7 +36,7 @@ namespace RemoteFileCopy.Ssh
         public string SshCommand => _configuration.Cmd;
         public string SshUsername => _configuration.Username;
 
-        public async Task InvokeSshProcess(IPAddress address,
+        public async Task<SshResult> InvokeSshProcess(IPAddress address,
             string command,
             CancellationToken cancellationToken = default)
         {
@@ -66,8 +68,10 @@ namespace RemoteFileCopy.Ssh
 
             await process.WaitForExitAsync(cancellationToken);
 
-            _logger.LogDebug("{stdout}", await process.StandardOutput.ReadToEndAsync());
-            _logger.LogDebug("{stderr}", await process.StandardError.ReadToEndAsync());
+            var stdOut = (await process.StandardOutput.ReadToEndAsync()).Split(Environment.NewLine);
+            var stdErr = (await process.StandardError.ReadToEndAsync()).Split(Environment.NewLine);
+
+            return new SshResult(stdOut, stdErr);
         }
     }
 }
