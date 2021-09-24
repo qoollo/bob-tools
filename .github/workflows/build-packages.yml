@@ -20,7 +20,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: bob_tools-binaries
+          name: bob-tools-binaries
           path: publish
 
   build-rpm:
@@ -34,22 +34,22 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: bob_tools-binaries
+          name: bob-tools-binaries
       - name: Set env
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: build rpm
         run: |
-          sed -i "s/current_version/${{ env.VERSION }}/" bob_tools.spec
-          sed -i "s/release_number/${{ github.run_id }}/" bob_tools.spec
+          sed -i "s/current_version/${{ env.VERSION }}/" bob-tools.spec
+          sed -i "s/release_number/${{ github.run_id }}/" bob-tools.spec
           mkdir -p ./rpmbuild/{SOURCES,BUILD,RPMS,SPECS,SRPMS}
           cur_dir_name=${PWD##*/}
-          tar czf ./rpmbuild/SOURCES/bob_tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob_tools-${{ env.VERSION }}/
-          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob_tools.spec
+          tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
+          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob-tools.spec
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: bob_tools-rpm
-          path: rpmbuild/RPMS/x86_64/bob_tools-${{ env.VERSION }}-${{ github.run_id }}.x86_64.rpm
+          name: bob-tools-rpm
+          path: rpmbuild/RPMS/x86_64/bob-tools-${{ env.VERSION }}-${{ github.run_id }}.x86_64.rpm
 
   upload-rpm:
     runs-on: ubuntu-latest
@@ -63,15 +63,15 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: bob_tools-rpm
+          name: bob-tools-rpm
       - name: Set env
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Upload rpm to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: bob_tools-${{ env.VERSION }}-${{ github.run_id }}.x86_64.rpm
-          asset_name: bob_tools-${{ env.VERSION }}.x86_64.rpm
+          file: bob-tools-${{ env.VERSION }}-${{ github.run_id }}.x86_64.rpm
+          asset_name: bob-tools-${{ env.VERSION }}.x86_64.rpm
           tag: ${{ env.VERSION }}
           overwrite: true
 
@@ -86,24 +86,24 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: bob_tools-binaries
+          name: bob-tools-binaries
       - name: Set env
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: build deb
         run: |
-          mkdir -p bob_tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
-          cp control bob_tools_${{ env.VERSION }}_amd64/DEBIAN/
-          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator} bob_tools_${{ env.VERSION }}_amd64/usr/bin/
-          chmod +x bob_tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator}
-          cp DisksMonitoring.service bob_tools_${{ env.VERSION }}_amd64/etc/systemd/system/
-          cp DisksMonitoring.service bob_tools_${{ env.VERSION }}_amd64/lib/systemd/system/
-          sed -i "s/current_version/${{ env.VERSION }}/" bob_tools_${{ env.VERSION }}_amd64/DEBIAN/control
-          dpkg-deb --build ./bob_tools_${{ env.VERSION }}_amd64
+          mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
+          cp control bob-tools_${{ env.VERSION }}_amd64/DEBIAN/
+          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}_amd64/usr/bin/
+          chmod +x bob-tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator}
+          cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/etc/systemd/system/
+          cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
+          sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
+          dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: bob_tools-deb
-          path: bob_tools_${{ env.VERSION }}_amd64.deb
+          name: bob-tools-deb
+          path: bob-tools_${{ env.VERSION }}_amd64.deb
 
   upload-deb:
     runs-on: ubuntu-latest
@@ -117,15 +117,15 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: bob_tools-deb
+          name: bob-tools-deb
       - name: Set env
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Upload deb to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: bob_tools_${{ env.VERSION }}_amd64.deb
-          asset_name: bob_tools_${{ env.VERSION }}_amd64.deb
+          file: bob-tools_${{ env.VERSION }}_amd64.deb
+          asset_name: bob-tools_${{ env.VERSION }}_amd64.deb
           tag: ${{ env.VERSION }}
           overwrite: true
 
@@ -140,22 +140,22 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: bob_tools-binaries
+          name: bob-tools-binaries
       - name: Set env
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Add zip file
         run: |
-          mkdir -p bob_tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
-          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator} bob_tools_${{ env.VERSION }}/usr/bin/
-          chmod +x bob_tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator}
-          cp DisksMonitoring.service bob_tools_${{ env.VERSION }}/etc/systemd/system/
-          cp DisksMonitoring.service bob_tools_${{ env.VERSION }}/lib/systemd/system/
-          zip -r bob_tools_${{ env.VERSION }}.zip bob_tools_${{ env.VERSION }}
+          mkdir -p bob-tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
+          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}/usr/bin/
+          chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator}
+          cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/etc/systemd/system/
+          cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/lib/systemd/system/
+          zip -r bob-tools_${{ env.VERSION }}.zip bob-tools_${{ env.VERSION }}
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: bob_tools-zip
-          path: bob_tools_${{ env.VERSION }}.zip
+          name: bob-tools-zip
+          path: bob-tools_${{ env.VERSION }}.zip
 
   upload-zip:
     runs-on: ubuntu-latest
@@ -169,14 +169,14 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v2
         with:
-          name: bob_tools-zip
+          name: bob-tools-zip
       - name: Set env
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Upload zip file to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: bob_tools_${{ env.VERSION }}.zip
-          asset_name: bob_tools_${{ env.VERSION }}.zip
+          file: bob-tools_${{ env.VERSION }}.zip
+          asset_name: bob-tools_${{ env.VERSION }}.zip
           tag: ${{ env.VERSION }}
           overwrite: true

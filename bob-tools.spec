@@ -1,12 +1,13 @@
-Name: bob_tools
+Name: bob-tools
 Summary: Various tools for interacting with bob
 License: MIT
-URL: https://github.com/qoollo/bob_tools
+URL: https://github.com/qoollo/bob-tools
 Version: current_version
 Release: release_number
 Source0: %{name}-%{version}.tar.gz
 Group: Development/Tools
 BuildArch: x86_64
+Requires: rsync
 
 %global debug_package %{nil}
 %global __os_install_post %{nil}
