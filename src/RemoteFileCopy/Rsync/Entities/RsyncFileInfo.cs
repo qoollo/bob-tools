@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.RegularExpressions;
 
 namespace RemoteFileCopy.Rsync.Entities
@@ -7,14 +8,16 @@ namespace RemoteFileCopy.Rsync.Entities
         private static readonly Regex s_rsyncLine = new(@".*f""(?<f>.+)"".*l""(?<l>.+)"".*c""(?<c>.+)""");
         // private static readonly Regex s_rsyncLine = new(".*f\"(?<f>.+)\".*l\"(?<l>.+)\".*c\"(?<c>.+)\"");
 
-        private RsyncFileInfo(string filename, long lengthBytes, string checksum, RsyncFileInfoType type)
+        private RsyncFileInfo(IPAddress address, string filename, long lengthBytes, string checksum, RsyncFileInfoType type)
         {
+            Address = address;
             Filename = filename;
             LengthBytes = lengthBytes;
             Checksum = checksum;
             Type = type;
         }
 
+        public IPAddress Address { get; }
         public string Filename { get; }
         public long LengthBytes { get; }
         public string Checksum { get; }
@@ -26,7 +29,7 @@ namespace RemoteFileCopy.Rsync.Entities
                 + (Type == RsyncFileInfoType.File ? $" ({LengthBytes}), checksum: {Checksum}" : "");
         }
 
-        public static bool TryParseAbsolute(string s, out RsyncFileInfo? fileInfo)
+        public static bool TryParseAbsolute(IPAddress address, string s, out RsyncFileInfo? fileInfo)
         {
             var match = s_rsyncLine.Match(s);
             if (match.Success && long.TryParse(match.Groups["l"].Value, out var length))
@@ -34,9 +37,9 @@ namespace RemoteFileCopy.Rsync.Entities
                 var filename = System.IO.Path.DirectorySeparatorChar + match.Groups["f"].Value;
                 var checksum = match.Groups["c"].Value;
                 if (!string.IsNullOrWhiteSpace(checksum))
-                    fileInfo = new RsyncFileInfo(filename, length, checksum, RsyncFileInfoType.File);
+                    fileInfo = new RsyncFileInfo(address, filename, length, checksum, RsyncFileInfoType.File);
                 else
-                    fileInfo = new RsyncFileInfo(filename, length, checksum, RsyncFileInfoType.Directory);
+                    fileInfo = new RsyncFileInfo(address, filename, length, checksum, RsyncFileInfoType.Directory);
                 return true;
             }
 

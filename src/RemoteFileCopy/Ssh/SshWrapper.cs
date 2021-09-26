@@ -71,7 +71,7 @@ namespace RemoteFileCopy.Ssh
             var stdOut = (await process.StandardOutput.ReadToEndAsync()).Split(Environment.NewLine);
             var stdErr = (await process.StandardError.ReadToEndAsync()).Split(Environment.NewLine);
 
-            return new SshResult(stdOut, stdErr);
+            return new SshResult(address, stdOut, stdErr);
         }
     }
 }

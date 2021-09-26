@@ -66,6 +66,7 @@ namespace BobAliensRecovery
             services.AddLogging(b => b.AddConsole().SetMinimumLevel(args.LoggerOptions.MinLevel));
 
             services.AddScoped<AliensRecoverer>();
+            services.AddScoped<PartitionInfoAggregator>();
 
             services.AddRemoteFileCopy(args.SshConfiguration);
 

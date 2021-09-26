@@ -19,12 +19,15 @@ namespace BobAliensRecovery.AliensRecovery
     {
         private readonly ILogger<AliensRecoverer> _logger;
         private readonly RemoteFileCopier _remoteFileCopier;
+        private readonly PartitionInfoAggregator _partitionInfoAggregator;
 
         public AliensRecoverer(ILogger<AliensRecoverer> logger,
-            RemoteFileCopier remoteFileCopier)
+            RemoteFileCopier remoteFileCopier,
+            PartitionInfoAggregator partitionInfoAggregator)
         {
             _logger = logger;
             _remoteFileCopier = remoteFileCopier;
+            _partitionInfoAggregator = partitionInfoAggregator;
         }
 
         internal async Task RecoverAliens(
@@ -35,10 +38,31 @@ namespace BobAliensRecovery.AliensRecovery
             var recoveryGroups = GetReplicas(clusterConfiguration);
             var dirs = await GetAlienDirs(clusterConfiguration, clusterOptions, cancellationToken);
             var recoveryTransactions = GetRecoveryTransactions(recoveryGroups, dirs);
+            var blobsToRemove = await TransferBlobs(recoveryTransactions, cancellationToken);
+            foreach (var blob in blobsToRemove)
+            {
+                _logger.LogInformation($"Ready to remove blob {blob}");
+                await _remoteFileCopier.DeleteFiles(blob.Files, cancellationToken);
+            }
+        }
+
+        private async Task<List<BlobInfo>> TransferBlobs(IEnumerable<RecoveryTransaction> recoveryTransactions, CancellationToken cancellationToken)
+        {
+            var blobsToRemove = new List<BlobInfo>();
             foreach (var transaction in recoveryTransactions)
             {
-                await _remoteFileCopier.Copy(transaction.From, transaction.To, cancellationToken);
+                var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
+                if (rsyncResult.SyncedSize > 0)
+                {
+                    var partitions = _partitionInfoAggregator.GetPartitionInfos(rsyncResult.SyncedFiles);
+                    foreach (var partition in partitions)
+                    {
+                        blobsToRemove.AddRange(partition.Blobs.Where(b => b.IsClosed));
+                    }
+                }
             }
+
+            return blobsToRemove;
         }
 
         private IEnumerable<RecoveryTransaction> GetRecoveryTransactions(IEnumerable<Replicas> recoveryGroups,
