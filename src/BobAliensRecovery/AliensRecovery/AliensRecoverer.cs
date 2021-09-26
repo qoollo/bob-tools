@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
+using BobApi;
 using BobApi.BobEntities;
 using BobApi.Entities;
 using Microsoft.Extensions.Logging;
@@ -112,8 +113,14 @@ namespace BobAliensRecovery.AliensRecovery
             {
                 try
                 {
-                    var bobApi = new BobApi.BobApiClient(new Uri("http://" +
+                    var bobApi = new BobApiClient(new Uri("http://" +
                         node.GetIPAddress() + ':' + clusterOptions.GetApiPort(node)));
+
+                    var alienDiskName = await GetAlienDiskName(bobApi);
+                    _logger.LogDebug($"Restarting alien disk: {alienDiskName} on {node.Name}");
+                    await bobApi.StopDisk(alienDiskName);
+                    await bobApi.StartDisk(alienDiskName);
+
                     var vdisks = await bobApi.GetVDisks(cancellationToken);
                     foreach (var vdisk in vdisks)
                     {
@@ -144,6 +151,23 @@ namespace BobAliensRecovery.AliensRecovery
             sink.AppendLine($"{indentLine}{directory.Name} at {directory.Path}");
             foreach (var c in directory.Children)
                 DebugPrintDirectory(c, indent + 1, sink);
+        }
+
+        private async Task<string> GetAlienDiskName(BobApiClient bobApiClient)
+        {
+            const string SpecialDiskName = "alien_disk";
+            var disks = await bobApiClient.GetDisks();
+            if (disks is null)
+                throw new Exception("Failed to get disks from node");
+            if (disks.Any(d => d.Name == SpecialDiskName))
+                return SpecialDiskName;
+
+            var byName = disks.GroupBy(d => d.Name);
+            var multinameGroup = byName.FirstOrDefault(g => g.Count() > 1);
+            if (multinameGroup != null)
+                return multinameGroup.Key;
+
+            return disks.OrderBy(d => d.Name).FirstOrDefault().Name;
         }
     }
 }

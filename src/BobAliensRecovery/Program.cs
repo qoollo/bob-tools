@@ -39,7 +39,7 @@ namespace BobAliensRecovery
 
                 await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, cancellationToken);
 
-                
+
             }
             catch (ArgumentException e)
             {

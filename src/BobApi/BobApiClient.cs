@@ -48,7 +48,7 @@ namespace BobApi
             return null;
         }
 
-        public async Task<List<Disk>> GetDisksToMonitor()
+        public async Task<List<Disk>> GetDisks()
         {
             try
             {
@@ -64,7 +64,7 @@ namespace BobApi
 
         public async Task<List<Disk>> GetInactiveDisks()
         {
-            var disks = await GetDisksToMonitor();
+            var disks = await GetDisks();
             if (disks != null)
                 disks.RemoveAll(d => d.IsActive);
             return disks;

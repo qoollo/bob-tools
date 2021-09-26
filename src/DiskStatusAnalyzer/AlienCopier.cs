@@ -3,10 +3,10 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using BobApi;
 using DiskStatusAnalyzer.Entities;
 using DiskStatusAnalyzer.Rsync;
 using Microsoft.Extensions.Logging;
-using BobApi;
 
 namespace DiskStatusAnalyzer
 {
@@ -46,7 +46,7 @@ namespace DiskStatusAnalyzer
             var result = new List<RestartInfo?>();
 
             var client = new BobApiClient(node.Uri);
-            var disks = await client.GetDisksToMonitor();
+            var disks = await client.GetDisks();
             var alienDisk = disks.FirstOrDefault(d => d.Path == node.AlienDir.Path).Name;
             if (alienDisk == null) return result;
 
