@@ -55,6 +55,11 @@ namespace BobApi.BobEntities
             }
         }
 
+        public string FindDiskName(string nodeName, long vdiskId)
+        {
+            return VDisks.Find(vd => vd.Id == vdiskId)?.Replicas.Find(r => r.Node == nodeName)?.Disk;
+        }
+
         public static async Task<ClusterConfiguration> FromYamlFile(string filename)
         {
             var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().Build();

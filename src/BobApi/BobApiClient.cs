@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -70,16 +71,35 @@ namespace BobApi
             return disks;
         }
 
-        public async Task<bool> StartDisk(string name)
+        public async Task<bool> StartDisk(string name, CancellationToken cancellationToken = default)
         {
-            using (var response = await client.PostAsync($"disks/{name}/start", new StringContent("")))
-                return response.IsSuccessStatusCode;
+            try
+            {
+                using (var response = await client.PostAsync($"disks/{name}/start", new StringContent(""), cancellationToken))
+                    return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        public async Task<bool> StopDisk(string name)
+        public async Task<bool> StopDisk(string name, CancellationToken cancellationToken = default)
         {
-            using (var response = await client.PostAsync($"disks/{name}/stop", new StringContent("")))
-                return response.IsSuccessStatusCode;
+            try
+            {
+                using (var response = await client.PostAsync($"disks/{name}/stop", new StringContent(""), cancellationToken))
+                    return response.IsSuccessStatusCode;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<bool> RestartDisk(string diskName, CancellationToken cancellationToken = default)
+        {
+            return await StopDisk(diskName, cancellationToken) && await StartDisk(diskName, cancellationToken);
         }
 
         public async Task<List<Directory>> GetDirectories(VDisk vdisk, CancellationToken cancellationToken = default)
@@ -115,12 +135,28 @@ namespace BobApi
                 return await response.Content.ReadAsStringAsync()
                     .ContinueWith(t => JsonConvert.DeserializeAnonymousType(t.Result, new
                     {
-                        Partitions = new
-                            List<string>()
+                        Partitions = new List<string>()
                     }).Partitions);
             }
 
             return null;
+        }
+
+        public async Task<string> GetAlienDiskName()
+        {
+            const string SpecialDiskName = "alien_disk";
+            var disks = await GetDisks();
+            if (disks is null)
+                return null;
+            if (disks.Any(d => d.Name == SpecialDiskName))
+                return SpecialDiskName;
+
+            var byName = disks.GroupBy(d => d.Name);
+            var multinameGroup = byName.FirstOrDefault(g => g.Count() > 1);
+            if (multinameGroup != null)
+                return multinameGroup.Key;
+
+            return disks.OrderBy(d => d.Name).FirstOrDefault().Name;
         }
 
         public async Task DeletePartition(VDisk vDisk, long? partition)

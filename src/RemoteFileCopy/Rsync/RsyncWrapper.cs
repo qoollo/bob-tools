@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -32,22 +33,29 @@ namespace RemoteFileCopy.Rsync
                     sshCommandForRsyncSb.Append($"{value}");
             }
 
+            var _ = await _sshWrapper.InvokeSshProcess(to.Address,
+                $"mkdir -p '{to.Path.TrimEnd(Path.DirectorySeparatorChar)}'", cancellationToken);
+
             var rsyncCommand = new StringBuilder("rsync");
             rsyncCommand.Append($" -e'{sshCommandForRsyncSb}'");
             rsyncCommand.Append(" -av");
-            // rsyncCommand.Append(" --remove-source-files");
             rsyncCommand.Append(" --exclude='*.lock'");
-            rsyncCommand.Append(" --dry-run"); // TODO remove
+            // rsyncCommand.Append(" --dry-run");
             rsyncCommand.Append(" --whole-file"); // Copy whole files, without incremental updates
             rsyncCommand.Append(" --compress"); // Compress during transfer
             rsyncCommand.Append(" --out-format='f\"%f\" l\"%l\" c\"%C\"'"); // %f - filename, %l - length of the file, %C - checksum
             rsyncCommand.Append(" --checksum"); // calculate checksum before sending
             rsyncCommand.Append(" --checksum-choice=xxh128"); // checksum algorithm
-            rsyncCommand.Append($" '{from.Path}'");
-            rsyncCommand.Append($" '{_sshWrapper.SshUsername}@{to.Address}:{to.Path}'");
+
+            rsyncCommand.Append(" --min-size=100b"); // Larger than 100b
+
+            rsyncCommand.Append($" '{from.Path.TrimEnd(Path.DirectorySeparatorChar)}{Path.DirectorySeparatorChar}'");
+            rsyncCommand.Append($" '{_sshWrapper.SshUsername}@{to.Address}:" +
+                $"{to.Path.TrimEnd(Path.DirectorySeparatorChar)}{Path.DirectorySeparatorChar}'");
 
             var sshResult = await _sshWrapper.InvokeSshProcess(from.Address, rsyncCommand.ToString(), cancellationToken);
 
+            _logger.LogDebug("Rsync output: {rsync}", string.Join(Environment.NewLine, sshResult.StdOut));
             return new RsyncResult(sshResult);
         }
     }
