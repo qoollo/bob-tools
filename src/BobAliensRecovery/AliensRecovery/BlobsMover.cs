@@ -25,12 +25,21 @@ namespace BobAliensRecovery.AliensRecovery
         }
 
 
-        internal async Task CopyBlobsAndDeleteClosed(IEnumerable<RecoveryTransaction> recoveryTransactions,
+        internal async Task CopyBlobsAndDeleteClosed(
+            IEnumerable<RecoveryTransaction> recoveryTransactions,
             CancellationToken cancellationToken)
         {
             var blobsToRemove = await CopyBlobs(recoveryTransactions, cancellationToken);
 
             await RemoveBlobs(blobsToRemove, cancellationToken);
+
+            foreach (var recoveryTransaction in recoveryTransactions)
+            {
+                if (await _remoteFileCopier.RemoveEmptySubdirs(recoveryTransaction.From, cancellationToken))
+                    _logger.LogDebug("Successfully removed empty directories at {target}", recoveryTransaction.From.ToString());
+                else
+                    _logger.LogWarning("Failed to clean up empty directories at {target}", recoveryTransaction.From.ToString());
+            }
         }
 
         private async Task<List<BlobInfo>> CopyBlobs(IEnumerable<RecoveryTransaction> recoveryTransactions, CancellationToken cancellationToken)
@@ -70,8 +79,10 @@ namespace BobAliensRecovery.AliensRecovery
         {
             foreach (var blob in blobsToRemove)
             {
-                await _remoteFileCopier.DeleteFiles(blob.Files, cancellationToken);
-                _logger.LogDebug("Removed {blob}", blob.ToString());
+                if (await _remoteFileCopier.RemoveFiles(blob.Files, cancellationToken))
+                    _logger.LogDebug("Removed {blob}", blob.ToString());
+                else
+                    _logger.LogWarning("Error while removing blob {blob}", blob.ToString());
             }
         }
     }

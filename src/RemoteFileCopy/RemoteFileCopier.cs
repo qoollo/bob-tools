@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -36,12 +37,21 @@ namespace RemoteFileCopy
             return result;
         }
 
-        public async Task DeleteFiles(IEnumerable<RsyncFileInfo> fileInfos, CancellationToken cancellationToken = default)
+        public async Task<bool> RemoveFiles(IEnumerable<RsyncFileInfo> fileInfos, CancellationToken cancellationToken = default)
         {
+            var error = false;
             foreach (var file in fileInfos)
             {
-                await _sshWrapper.InvokeSshProcess(file.Address, $"rm -f '{file.Filename}'", cancellationToken);
+                var sshResults = await _sshWrapper.InvokeSshProcess(file.Address, $"rm -f '{file.Filename}'", cancellationToken);
+                error |= sshResults.StdErr.Any();
             }
+            return !error;
+        }
+
+        public async Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default)
+        {
+            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"find {dir.Path} -type d -empty -delete", cancellationToken);
+            return !sshResult.StdErr.Any();
         }
     }
 }
