@@ -37,9 +37,8 @@ namespace BobAliensRecovery
             {
                 var cluster = await GetClusterConfiguration(logger, arguments.ClusterConfigPath, cancellationToken);
 
-                await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, cancellationToken);
-
-
+                await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, arguments.AliensRecoveryOptions,
+                    cancellationToken);
             }
             catch (ArgumentException e)
             {

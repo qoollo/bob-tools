@@ -27,18 +27,15 @@ namespace BobAliensRecovery.AliensRecovery
 
         internal async Task CopyBlobsAndDeleteClosed(
             IEnumerable<RecoveryTransaction> recoveryTransactions,
+            AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken)
         {
             var blobsToRemove = await CopyBlobs(recoveryTransactions, cancellationToken);
 
-            await RemoveBlobs(blobsToRemove, cancellationToken);
-
-            foreach (var recoveryTransaction in recoveryTransactions)
+            if (aliensRecoveryOptions.RemoveSource)
             {
-                if (await _remoteFileCopier.RemoveEmptySubdirs(recoveryTransaction.From, cancellationToken))
-                    _logger.LogDebug("Successfully removed empty directories at {target}", recoveryTransaction.From.ToString());
-                else
-                    _logger.LogWarning("Failed to clean up empty directories at {target}", recoveryTransaction.From.ToString());
+                await RemoveBlobs(blobsToRemove, cancellationToken);
+                await RemoveEmptyDirectories(recoveryTransactions, cancellationToken);
             }
         }
 
@@ -83,6 +80,17 @@ namespace BobAliensRecovery.AliensRecovery
                     _logger.LogDebug("Removed {blob}", blob.ToString());
                 else
                     _logger.LogWarning("Error while removing blob {blob}", blob.ToString());
+            }
+        }
+
+        private async Task RemoveEmptyDirectories(IEnumerable<RecoveryTransaction> recoveryTransactions, CancellationToken cancellationToken)
+        {
+            foreach (var recoveryTransaction in recoveryTransactions)
+            {
+                if (await _remoteFileCopier.RemoveEmptySubdirs(recoveryTransaction.From, cancellationToken))
+                    _logger.LogDebug("Successfully removed empty directories at {target}", recoveryTransaction.From.ToString());
+                else
+                    _logger.LogWarning("Failed to clean up empty directories at {target}", recoveryTransaction.From.ToString());
             }
         }
     }

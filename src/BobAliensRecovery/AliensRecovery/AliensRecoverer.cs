@@ -42,6 +42,7 @@ namespace BobAliensRecovery.AliensRecovery
         internal async Task RecoverAliens(
             ClusterConfiguration clusterConfiguration,
             ClusterOptions clusterOptions,
+            AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken = default)
         {
             var replicas = _replicasFinder.FindReplicas(clusterConfiguration);
@@ -53,7 +54,8 @@ namespace BobAliensRecovery.AliensRecovery
             var recoveryTransactions = _recoveryTransactionsFinder.FindRecoveryTransactions(replicas, dirs);
             _logger.LogInformation("Recovery transactions found");
 
-            await _blobsMover.CopyBlobsAndDeleteClosed(recoveryTransactions, cancellationToken);
+            await _blobsMover.CopyBlobsAndDeleteClosed(recoveryTransactions, aliensRecoveryOptions,
+                 cancellationToken);
             _logger.LogInformation("Blobs transfer finished");
 
             await _nodesRestarter.RestartTargetNodes(recoveryTransactions, clusterConfiguration,
