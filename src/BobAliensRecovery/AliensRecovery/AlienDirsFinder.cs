@@ -28,16 +28,19 @@ namespace BobAliensRecovery.AliensRecovery
                 {
                     using var bobApi = new BobApiClient(clusterOptions.GetNodeApiUri(node));
 
-                    var alienDiskName = await bobApi.GetAlienDiskName();
-                    if (alienDiskName != null)
                     {
-                        if (await bobApi.RestartDisk(alienDiskName, cancellationToken))
-                            _logger.LogDebug("Restarted alien disk {disk} on {node}", alienDiskName, node.Name);
+                        if (!await bobApi.SyncAlienData(cancellationToken))
+                            _logger.LogDebug("Failed to sync alien data on node {node}", node.Name);
 
                         var dir = await bobApi.GetAlienDirectory();
-                        _logger.LogDebug("Found alien directory {dir} on {node}", dir.Path, node.Name);
+                        if (dir.Path is null)
+                            _logger.LogWarning("Failed to get alien directory from node {node}", node.Name);
+                        else
+                        {
+                            _logger.LogDebug("Found alien directory {dir} on {node}", dir.Path, node.Name);
 
-                        result.Add(new AlienDir(node, dir));
+                            result.Add(new AlienDir(node, dir));
+                        }
                     }
                 }
                 catch (Exception e)

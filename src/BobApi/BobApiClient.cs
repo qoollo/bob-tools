@@ -113,9 +113,29 @@ namespace BobApi
 
         public async Task<Directory> GetAlienDirectory()
         {
-            var response = await client.GetAsync("alien/dir");
-            var content = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<Directory>(content);
+            try
+            {
+                var response = await client.GetAsync("alien/dir");
+                var content = await response.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<Directory>(content);
+            }
+            catch (HttpRequestException)
+            {
+                return default;
+            }
+        }
+
+        public async Task<bool> SyncAlienData(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var response = await client.PostAsync("alien/sync", new StringContent(""), cancellationToken);
+                return response.IsSuccessStatusCode;
+            }
+            catch (HttpRequestException)
+            {
+                return false;
+            }
         }
 
         public async Task<List<VDisk>> GetVDisks(CancellationToken cancellationToken = default)
