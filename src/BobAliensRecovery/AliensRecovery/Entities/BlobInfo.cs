@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using RemoteFileCopy.Rsync.Entities;
 
 namespace BobAliensRecovery.AliensRecovery.Entities
@@ -9,7 +10,7 @@ namespace BobAliensRecovery.AliensRecovery.Entities
         {
             Blob = blob;
             Index = index;
-            Files = files;
+            Files = files.ToArray();
         }
 
         public RsyncFileInfo Blob { get; }

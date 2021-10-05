@@ -15,15 +15,14 @@ namespace BobAliensRecovery.AliensRecovery
             _logger = logger;
         }
 
-        internal IEnumerable<RecoveryTransaction> FindRecoveryTransactions(IEnumerable<Replicas> replicas,
+        internal IEnumerable<RecoveryTransaction> FindRecoveryTransactions(IDictionary<long, Replicas> replicasByVdiskId,
             IEnumerable<AlienDir> alienDirs)
         {
-            var replicasByVdiskId = replicas.ToDictionary(r => r.VDiskId.ToString());
-
             // We check all disks as aliens are saved on any of them
             foreach (var alienSourceNode in alienDirs.SelectMany(_ => _.Children))
                 foreach (var sourceVdiskDir in alienSourceNode.Children)
-                    if (replicasByVdiskId.TryGetValue(sourceVdiskDir.DirName, out var rs))
+                    if (long.TryParse(sourceVdiskDir.DirName, out var id)
+                        && replicasByVdiskId.TryGetValue(id, out var rs))
                     {
                         var sourceRemote = new RemoteDir(sourceVdiskDir.Node.GetIPAddress(), sourceVdiskDir.Directory.Path);
                         var targetNodeName = alienSourceNode.DirName;

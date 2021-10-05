@@ -10,7 +10,7 @@ namespace BobAliensRecovery.AliensRecovery.Entities
         {
             VDiskId = vDiskId;
             Name = name;
-            Blobs = blobs;
+            Blobs = blobs.ToArray();
         }
 
         public int VDiskId { get; }

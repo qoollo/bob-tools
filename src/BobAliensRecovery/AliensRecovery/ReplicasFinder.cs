@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using BobAliensRecovery.AliensRecovery.Entities;
+using BobAliensRecovery.Exceptions;
 using BobApi.BobEntities;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Entities;
@@ -17,13 +19,15 @@ namespace BobAliensRecovery.AliensRecovery
             _logger = logger;
         }
 
-        internal IEnumerable<Replicas> FindReplicas(ClusterConfiguration clusterConfiguration)
+        internal IDictionary<long, Replicas> FindReplicasByVdiskId(ClusterConfiguration clusterConfiguration)
         {
+            var result = new Dictionary<long, Replicas>();
             foreach (var vdisk in clusterConfiguration.VDisks)
             {
                 var remoteDirByNodeName = GetRemoteDirByNodeName(clusterConfiguration, vdisk);
-                yield return new Replicas(vdisk.Id, remoteDirByNodeName);
+                result.Add(vdisk.Id, new Replicas(vdisk.Id, remoteDirByNodeName));
             }
+            return result;
         }
 
         private Dictionary<string, RemoteDir> GetRemoteDirByNodeName(ClusterConfiguration clusterConfiguration,
@@ -42,7 +46,9 @@ namespace BobAliensRecovery.AliensRecovery
                         result.Add(node.Name, new RemoteDir(node.GetIPAddress(), targetPath));
                     }
                     else
-                        _logger.LogError($"Disk {diskName} not found on node {node.Name}");
+                    {
+                        throw new ConfigurationException("Configuration does not match running cluster");
+                    }
                 }
             }
 

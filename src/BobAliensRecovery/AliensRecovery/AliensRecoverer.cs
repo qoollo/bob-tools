@@ -45,7 +45,7 @@ namespace BobAliensRecovery.AliensRecovery
             AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken = default)
         {
-            var replicas = _replicasFinder.FindReplicas(clusterConfiguration);
+            var replicas = _replicasFinder.FindReplicasByVdiskId(clusterConfiguration);
             _logger.LogInformation("Replicas found");
 
             var dirs = await _alienDirsFinder.FindAlienDirs(clusterConfiguration, clusterOptions, cancellationToken);
