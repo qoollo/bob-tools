@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using RemoteFileCopy.FilesFinding;
 using RemoteFileCopy.Rsync;
 using RemoteFileCopy.Ssh;
 
@@ -16,7 +17,8 @@ namespace RemoteFileCopy.Extensions
             return services
                 .AddScoped<RemoteFileCopier>()
                 .AddScoped<SshWrapper>()
-                .AddScoped<RsyncWrapper>();
+                .AddScoped<RsyncWrapper>()
+                .AddScoped<FilesFinder>();
         }
     }
 }

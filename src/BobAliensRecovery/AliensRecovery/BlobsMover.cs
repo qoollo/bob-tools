@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy;
+using RemoteFileCopy.Entities;
+using RemoteFileCopy.FilesFinding;
 
 namespace BobAliensRecovery.AliensRecovery
 {
@@ -13,14 +15,17 @@ namespace BobAliensRecovery.AliensRecovery
     {
         private readonly RemoteFileCopier _remoteFileCopier;
         private readonly PartitionInfoAggregator _partitionInfoAggregator;
+        private readonly FilesFinder _filesFinder;
         private readonly ILogger<BlobsMover> _logger;
 
         public BlobsMover(RemoteFileCopier remoteFileCopier,
             PartitionInfoAggregator partitionInfoAggregator,
+            FilesFinder filesFinder,
             ILogger<BlobsMover> logger)
         {
             _remoteFileCopier = remoteFileCopier;
             _partitionInfoAggregator = partitionInfoAggregator;
+            _filesFinder = filesFinder;
             _logger = logger;
         }
 
@@ -31,11 +36,11 @@ namespace BobAliensRecovery.AliensRecovery
             CancellationToken cancellationToken)
         {
             var blobsToRemove = await CopyBlobs(recoveryTransactions, cancellationToken);
+            _logger.LogInformation("Copied {blobsCount} blobs", blobsToRemove.Count);
 
             if (aliensRecoveryOptions.RemoveSource)
             {
-                await RemoveBlobs(blobsToRemove, cancellationToken);
-                await RemoveEmptyDirectories(recoveryTransactions, cancellationToken);
+                await RemoveAlreadyMovedFiles(recoveryTransactions, cancellationToken);
             }
         }
 
@@ -72,26 +77,36 @@ namespace BobAliensRecovery.AliensRecovery
             return blobsToRemove;
         }
 
-        private async Task RemoveBlobs(List<BlobInfo> blobsToRemove, CancellationToken cancellationToken)
+        private async Task RemoveAlreadyMovedFiles(IEnumerable<RecoveryTransaction> transactions,
+            CancellationToken cancellationToken = default)
         {
-            foreach (var blob in blobsToRemove)
+            foreach (var transaction in transactions)
             {
-                if (await _remoteFileCopier.RemoveFiles(blob.Files, cancellationToken))
-                    _logger.LogDebug("Removed {blob}", blob.ToString());
+                var srcFiles = await _filesFinder.FindFiles(transaction.From, cancellationToken);
+                var dstFiles = await _filesFinder.FindFiles(transaction.To, cancellationToken);
+
+                var equal = srcFiles.SelectMany(s => dstFiles.Select(d => (s, d)))
+                    .Where(t => AreEqual(transaction!.From, transaction!.To, t.s, t.d));
+
+                var filesToRemove = equal.Select(t => t.s);
+
+                if (await _remoteFileCopier.RemoveFiles(filesToRemove, cancellationToken))
+                    _logger.LogDebug("Successfully removed source files from {dir}", transaction.From);
                 else
-                    _logger.LogWarning("Error while removing blob {blob}", blob.ToString());
+                    _logger.LogWarning("Failed to remove source files from {dir}", transaction.From);
+
+                if (await _remoteFileCopier.RemoveEmptySubdirs(transaction.From, cancellationToken))
+                    _logger.LogDebug("Successfully removed empty directories at {dir}", transaction.From);
+                else
+                    _logger.LogWarning("Failed to clean up empty directories at {dir}", transaction.From);
             }
         }
 
-        private async Task RemoveEmptyDirectories(IEnumerable<RecoveryTransaction> recoveryTransactions, CancellationToken cancellationToken)
+        private static bool AreEqual(RemoteDir from, RemoteDir to, RemoteFileInfo fromFile, RemoteFileInfo toFile)
         {
-            foreach (var recoveryTransaction in recoveryTransactions)
-            {
-                if (await _remoteFileCopier.RemoveEmptySubdirs(recoveryTransaction.From, cancellationToken))
-                    _logger.LogDebug("Successfully removed empty directories at {target}", recoveryTransaction.From.ToString());
-                else
-                    _logger.LogWarning("Failed to clean up empty directories at {target}", recoveryTransaction.From.ToString());
-            }
+            return fromFile.Checksum == toFile.Checksum
+                && fromFile.LengthBytes == toFile.LengthBytes
+                && fromFile.Filename.Replace(from.Path, "") == toFile.Filename.Replace(to.Path, "");
         }
     }
 }

@@ -37,7 +37,7 @@ namespace RemoteFileCopy
             return result;
         }
 
-        public async Task<bool> RemoveFiles(IEnumerable<RsyncFileInfo> fileInfos, CancellationToken cancellationToken = default)
+        public async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
         {
             var error = false;
             foreach (var file in fileInfos)
