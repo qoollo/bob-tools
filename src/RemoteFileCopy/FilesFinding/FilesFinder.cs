@@ -8,7 +8,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.DependenciesChecking;
 using RemoteFileCopy.Entities;
+using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Ssh;
 
 namespace RemoteFileCopy.FilesFinding
@@ -19,12 +21,16 @@ namespace RemoteFileCopy.FilesFinding
 
         private readonly SshWrapper _sshWrapper;
         private readonly ILogger<FilesFinder> _logger;
+        private readonly RemoteDependenciesChecker _remoteDependenciesChecker;
         private readonly string _scriptContent;
 
-        public FilesFinder(SshWrapper sshWrapper, ILogger<FilesFinder> logger)
+        public FilesFinder(SshWrapper sshWrapper, ILogger<FilesFinder> logger,
+            RemoteDependenciesChecker remoteDependenciesChecker)
         {
             _sshWrapper = sshWrapper;
             _logger = logger;
+            _remoteDependenciesChecker = remoteDependenciesChecker;
+
             var scriptName = Assembly.GetExecutingAssembly().GetManifestResourceNames()
                 .Single(s => s.EndsWith("Scripts.list_files.sh"));
             using var scriptStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(scriptName);
@@ -38,6 +44,9 @@ namespace RemoteFileCopy.FilesFinding
         public async Task<IEnumerable<RemoteFileInfo>> FindFiles(RemoteDir dir,
             CancellationToken cancellationToken = default)
         {
+            if (!await _remoteDependenciesChecker.RemoteProgramExists(dir.Address, "xxhsum", cancellationToken))
+                throw new MissingDependencyException("xxhsum");
+
             var scriptFile = Path.GetTempFileName();
             await File.WriteAllTextAsync(scriptFile, _scriptContent, cancellationToken: cancellationToken);
             try

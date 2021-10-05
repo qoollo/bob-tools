@@ -7,6 +7,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.DependenciesChecking;
+using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Ssh.Entities;
 
 namespace RemoteFileCopy.Ssh
@@ -14,11 +16,14 @@ namespace RemoteFileCopy.Ssh
     public class SshWrapper
     {
         private readonly SshConfiguration _configuration;
+        private readonly LocalDependenciesChecker _localDependenciesChecker;
         private readonly ILogger<SshWrapper> _logger;
 
-        public SshWrapper(ILogger<SshWrapper> logger, SshConfiguration configuration)
+        public SshWrapper(ILogger<SshWrapper> logger, SshConfiguration configuration,
+            LocalDependenciesChecker localDependenciesChecker)
         {
             _configuration = configuration;
+            _localDependenciesChecker = localDependenciesChecker;
             _logger = logger;
         }
 
@@ -40,6 +45,9 @@ namespace RemoteFileCopy.Ssh
             string command,
             CancellationToken cancellationToken = default)
         {
+            if (!await _localDependenciesChecker.ProgramExists(SshCommand, cancellationToken))
+                throw new MissingDependencyException(SshCommand);
+
             using var process = new Process
             {
                 StartInfo = new ProcessStartInfo

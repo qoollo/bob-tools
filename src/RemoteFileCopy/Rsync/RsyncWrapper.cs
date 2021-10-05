@@ -6,7 +6,9 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.DependenciesChecking;
 using RemoteFileCopy.Entities;
+using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Rsync.Entities;
 using RemoteFileCopy.Ssh;
 
@@ -14,17 +16,36 @@ namespace RemoteFileCopy.Rsync
 {
     public class RsyncWrapper
     {
+        private const string RsyncExecutable = "rsync";
+
         private readonly ILogger<RsyncWrapper> _logger;
         private readonly SshWrapper _sshWrapper;
+        private readonly RemoteDependenciesChecker _remoteDependenciesChecker;
 
-        public RsyncWrapper(ILogger<RsyncWrapper> logger, SshWrapper sshWrapper)
+        public RsyncWrapper(ILogger<RsyncWrapper> logger, SshWrapper sshWrapper,
+            RemoteDependenciesChecker remoteDependenciesChecker)
         {
             _logger = logger;
             _sshWrapper = sshWrapper;
+            _remoteDependenciesChecker = remoteDependenciesChecker;
         }
 
         public async Task<RsyncResult> InvokeRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
+            await CreateDir(to, cancellationToken);
+
+            return await CopyFiles(from, to, cancellationToken);
+        }
+
+        private async Task<RsyncResult> CopyFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
+        {
+            if (!await _remoteDependenciesChecker.SshConnectionExists(from.Address, cancellationToken))
+                throw new MissingDependencyException($"Sshd on {from.Address}");
+
+            if (!await _remoteDependenciesChecker.RemoteProgramExists(from.Address, RsyncExecutable, cancellationToken))
+                throw new MissingDependencyException($"Rsync on {from.Address}");
+
+            var rsyncCommand = new StringBuilder(RsyncExecutable);
             var sshCommandForRsyncSb = new StringBuilder(_sshWrapper.SshCommand);
             foreach (var arg in _sshWrapper.GetSshCommandAndArguments())
             {
@@ -33,10 +54,6 @@ namespace RemoteFileCopy.Rsync
                     sshCommandForRsyncSb.Append($"{value}");
             }
 
-            var _ = await _sshWrapper.InvokeSshProcess(to.Address,
-                $"mkdir -p '{to.Path.TrimEnd(Path.DirectorySeparatorChar)}'", cancellationToken);
-
-            var rsyncCommand = new StringBuilder("rsync");
             rsyncCommand.Append($" -e'{sshCommandForRsyncSb}'");
             rsyncCommand.Append(" -av");
             rsyncCommand.Append(" --exclude='*.lock'");
@@ -57,6 +74,12 @@ namespace RemoteFileCopy.Rsync
 
             _logger.LogDebug("Rsync output: {rsync}", string.Join(Environment.NewLine, sshResult.StdOut));
             return new RsyncResult(sshResult);
+        }
+
+        private async Task CreateDir(RemoteDir to, CancellationToken cancellationToken)
+        {
+            var _ = await _sshWrapper.InvokeSshProcess(to.Address,
+                $"mkdir -p '{to.Path.TrimEnd(Path.DirectorySeparatorChar)}'", cancellationToken);
         }
     }
 }
