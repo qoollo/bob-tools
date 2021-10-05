@@ -78,7 +78,7 @@ namespace BobAliensRecovery
                 .AddScoped<BlobsMover>()
                 .AddScoped<NodesRestarter>()
                 .AddScoped<PartitionInfoAggregator>()
-                .AddScoped<RecoveryTransactionsFinder>()
+                .AddScoped<RecoveryTransactionsProducer>()
                 .AddScoped<ReplicasFinder>();
 
             services.AddRemoteFileCopy(args.SshConfiguration);

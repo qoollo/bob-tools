@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
+using BobAliensRecovery.Exceptions;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy;
 using RemoteFileCopy.Entities;
@@ -35,7 +36,7 @@ namespace BobAliensRecovery.AliensRecovery
             AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken)
         {
-            var blobsToRemove = await CopyBlobs(recoveryTransactions, cancellationToken);
+            var blobsToRemove = await CopyBlobs(recoveryTransactions, aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Copied {blobsCount} blobs", blobsToRemove.Count);
 
             if (aliensRecoveryOptions.RemoveCopied)
@@ -44,33 +45,29 @@ namespace BobAliensRecovery.AliensRecovery
             }
         }
 
-        private async Task<List<BlobInfo>> CopyBlobs(IEnumerable<RecoveryTransaction> recoveryTransactions, CancellationToken cancellationToken)
+        private async Task<List<BlobInfo>> CopyBlobs(IEnumerable<RecoveryTransaction> recoveryTransactions,
+            AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
             var blobsToRemove = new List<BlobInfo>();
             foreach (var transaction in recoveryTransactions)
             {
-                try
+                var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
+                if (!rsyncResult.StdErr.Any())
                 {
-                    var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
-                    if (!rsyncResult.StdErr.Any())
-                    {
-                        _logger.LogDebug("Synced {transaction}", transaction.ToString());
-                        var partitions = _partitionInfoAggregator.GetPartitionInfos(rsyncResult.SyncedFiles);
+                    _logger.LogDebug("Synced {transaction}", transaction.ToString());
+                    var partitions = _partitionInfoAggregator.GetPartitionInfos(rsyncResult.SyncedFiles);
 
-                        foreach (var partition in partitions)
-                        {
-                            blobsToRemove.AddRange(partition.Blobs.Where(b => b.IsClosed));
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Sync {transaction} failed: {stderr}", transaction.ToString(),
-                            string.Join(Environment.NewLine, rsyncResult.StdErr));
-                    }
+                    foreach (var partition in partitions)
+                        blobsToRemove.AddRange(partition.Blobs.Where(b => b.IsClosed));
                 }
-                catch (Exception e)
+                else
                 {
-                    _logger.LogError(e, "Failed to perform recovery {transaction}", transaction.ToString());
+                    _logger.LogError("Sync {transaction} failed: {stderr}", transaction);
+                    _logger.LogDebug("Sync {transaction} err: {stderr}", transaction,
+                        string.Join(Environment.NewLine, rsyncResult.StdErr));
+
+                    if (!aliensRecoveryOptions.ContinueOnError)
+                        throw new OperationException($"Recovery transaction {transaction} failed");
                 }
             }
 

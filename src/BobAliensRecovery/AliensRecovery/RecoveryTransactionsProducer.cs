@@ -1,22 +1,23 @@
 using System.Collections.Generic;
 using System.Linq;
 using BobAliensRecovery.AliensRecovery.Entities;
+using BobAliensRecovery.Exceptions;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Entities;
 
 namespace BobAliensRecovery.AliensRecovery
 {
-    public class RecoveryTransactionsFinder
+    public class RecoveryTransactionsProducer
     {
-        private readonly ILogger<RecoveryTransactionsFinder> _logger;
+        private readonly ILogger<RecoveryTransactionsProducer> _logger;
 
-        public RecoveryTransactionsFinder(ILogger<RecoveryTransactionsFinder> logger)
+        public RecoveryTransactionsProducer(ILogger<RecoveryTransactionsProducer> logger)
         {
             _logger = logger;
         }
 
         internal IEnumerable<RecoveryTransaction> FindRecoveryTransactions(IDictionary<long, Replicas> replicasByVdiskId,
-            IEnumerable<AlienDir> alienDirs)
+            AliensRecoveryOptions aliensRecoveryOptions, IEnumerable<AlienDir> alienDirs)
         {
             // We check all disks as aliens are saved on any of them
             foreach (var alienSourceNode in alienDirs.SelectMany(_ => _.Children))
@@ -31,10 +32,10 @@ namespace BobAliensRecovery.AliensRecovery
                         if (targetRemote != null)
                             yield return new RecoveryTransaction(sourceRemote, targetRemote, targetNodeName, rs);
                         else
-                            _logger.LogError("Cannot find node in replicas for {dir}", sourceVdiskDir);
+                            throw new ConfigurationException($"Cannot find node in replicas for {sourceVdiskDir}");
                     }
                     else
-                        _logger.LogError("Cannot find recovery instructions for {dir}", sourceVdiskDir);
+                        throw new ConfigurationException($"Cannot find recovery instructions for {sourceVdiskDir}");
         }
     }
 }

@@ -20,14 +20,14 @@ namespace BobAliensRecovery.AliensRecovery
         private readonly ILogger<AliensRecoverer> _logger;
         private readonly ReplicasFinder _replicasFinder;
         private readonly AlienDirsFinder _alienDirsFinder;
-        private readonly RecoveryTransactionsFinder _recoveryTransactionsFinder;
+        private readonly RecoveryTransactionsProducer _recoveryTransactionsFinder;
         private readonly BlobsMover _blobsMover;
         private readonly NodesRestarter _nodesRestarter;
 
         public AliensRecoverer(ILogger<AliensRecoverer> logger,
             ReplicasFinder replicasFinder,
             AlienDirsFinder alienDirsFinder,
-            RecoveryTransactionsFinder recoveryTransactionsFinder,
+            RecoveryTransactionsProducer recoveryTransactionsFinder,
             BlobsMover blobsMover,
             NodesRestarter nodesRestarter)
         {
