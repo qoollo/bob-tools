@@ -24,7 +24,15 @@ namespace BobAliensRecovery
             };
 
             var parsed = Parser.Default.ParseArguments<ProgramArguments>(args);
-            _ = await parsed.WithParsedAsync(a => RecoverAliens(a, cancellationTokenSource.Token));
+
+            try
+            {
+                _ = await parsed.WithParsedAsync(a => RecoverAliens(a, cancellationTokenSource.Token));
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("Cancelled");
+            }
         }
 
         private static async Task RecoverAliens(ProgramArguments arguments, CancellationToken cancellationToken)
@@ -51,7 +59,7 @@ namespace BobAliensRecovery
         {
             logger.LogDebug("Received cluster config path: {path}", path);
             if (!File.Exists(path))
-                throw new ArgumentException($"Cluster configuration file not found in {path}");
+                throw new FileNotFoundException($"Cluster configuration file not found in {path}");
 
             var configContent = await File.ReadAllTextAsync(path, cancellationToken: cancellationToken);
             var cluster = new Deserializer().Deserialize<ClusterConfiguration>(configContent);

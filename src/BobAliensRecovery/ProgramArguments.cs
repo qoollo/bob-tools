@@ -19,7 +19,7 @@ namespace BobAliensRecovery
         [Option('v', HelpText = "Verbosity level, 0 to 3.", Default = 3)]
         public int VerbosityLevel { get; set; }
 
-        [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000.", Separator = ',')]
+        [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000. Wildcard char (*) can be used in to set port for all nodes.", Separator = ',')]
         public IEnumerable<string> ApiPortOverrides { get; set; } = Enumerable.Empty<string>();
 
         [Option("ssh-cmd", HelpText = "Ssh cmd.", Default = "ssh")]
