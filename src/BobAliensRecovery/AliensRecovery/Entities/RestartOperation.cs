@@ -19,7 +19,7 @@ namespace BobAliensRecovery.AliensRecovery.Entities
             if (other is null)
                 return false;
 
-            return Node?.Name == other.Node.Name && DiskName == other.DiskName;
+            return Node.Name == other.Node.Name && DiskName == other.DiskName;
         }
 
         public override bool Equals(object? obj)
