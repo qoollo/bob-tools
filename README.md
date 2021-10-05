@@ -17,3 +17,14 @@ Tool for copying aliens.
 ## Disks monitoring
 
 Tool for discovery, formatting and mounting of new disks
+
+## BobAliensRecovery
+
+Tool for recovering aliens from nodes.
+
+### Requirements
+
++ rsync (with xxh128 support)
++ sshd
++ find
++ xxhash
