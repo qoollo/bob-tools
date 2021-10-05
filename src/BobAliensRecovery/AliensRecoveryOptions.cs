@@ -2,11 +2,11 @@ namespace BobAliensRecovery
 {
     class AliensRecoveryOptions
     {
-        public AliensRecoveryOptions(bool removeSource)
+        public AliensRecoveryOptions(bool removeCopied)
         {
-            RemoveSource = removeSource;
+            RemoveCopied = removeCopied;
         }
 
-        public bool RemoveSource { get; }
+        public bool RemoveCopied { get; }
     }
 }

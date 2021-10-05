@@ -38,7 +38,7 @@ namespace BobAliensRecovery.AliensRecovery
             var blobsToRemove = await CopyBlobs(recoveryTransactions, cancellationToken);
             _logger.LogInformation("Copied {blobsCount} blobs", blobsToRemove.Count);
 
-            if (aliensRecoveryOptions.RemoveSource)
+            if (aliensRecoveryOptions.RemoveCopied)
             {
                 await RemoveAlreadyMovedFiles(recoveryTransactions, cancellationToken);
             }

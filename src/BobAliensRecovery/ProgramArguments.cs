@@ -37,8 +37,8 @@ namespace BobAliensRecovery
         [Option("ssh-key-path", HelpText = "Path to ssh key.", Default = "~/.ssh/id_rsa")]
         public string? SshKeyPath { get; set; }
 
-        [Option("remove-source", HelpText = "Remove source blobs after transfer", Default = false)]
-        public bool RemoveSource { get; set; }
+        [Option("remove-copied", HelpText = "Remove copied blobs", Default = false)]
+        public bool RemoveCopied { get; set; }
 
         public LoggerOptions LoggerOptions => new(VerbosityLevel);
 
@@ -47,6 +47,6 @@ namespace BobAliensRecovery
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 
-        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveSource);
+        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveCopied);
     }
 }
