@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using BobApi.BobEntities;
 using BobApi.Entities;
 using Newtonsoft.Json;
 using Path = System.IO.Path;
@@ -86,6 +87,9 @@ namespace BobApi
 
         public async Task<long?> CountRecordsOnVDisk(VDisk vDisk, CancellationToken cancellationToken = default)
             => await GetJson<long?>($"vdisks/{vDisk.Id}/records/count", cancellationToken);
+
+        public async Task<NodeConfiguration> GetNodeConfiguration(CancellationToken cancellationToken = default)
+            => await GetJson<NodeConfiguration>("configuration", cancellationToken);
 
         public void Dispose()
         {

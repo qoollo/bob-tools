@@ -32,10 +32,13 @@ namespace BobAliensRecovery.AliensRecovery
                         if (targetRemote != null)
                             yield return new RecoveryTransaction(sourceRemote, targetRemote, targetNodeName, rs);
                         else
-                            throw new ConfigurationException($"Cannot find node in replicas for {sourceVdiskDir}");
+                            aliensRecoveryOptions.LogError<ConfigurationException>(_logger,
+                                "Cannot find node in replicas for {sourceVdiskDir}", sourceVdiskDir);
                     }
                     else
+                    {
                         throw new ConfigurationException($"Cannot find recovery instructions for {sourceVdiskDir}");
+                    }
         }
     }
 }

@@ -40,6 +40,9 @@ namespace BobAliensRecovery
         [Option("remove-copied", HelpText = "Remove copied blobs", Default = false)]
         public bool RemoveCopied { get; set; }
 
+        [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
+        public bool ContinueOnError { get; set; }
+
         public LoggerOptions LoggerOptions => new(VerbosityLevel);
 
         public ClusterOptions ClusterOptions
@@ -47,6 +50,6 @@ namespace BobAliensRecovery
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 
-        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveCopied);
+        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveCopied, ContinueOnError);
     }
 }

@@ -45,13 +45,16 @@ namespace BobAliensRecovery.AliensRecovery
             AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken = default)
         {
-            var replicas = _replicasFinder.FindReplicasByVdiskId(clusterConfiguration);
+            var replicas = await _replicasFinder.FindReplicasByVdiskId(clusterConfiguration,
+                clusterOptions, aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Replicas found");
 
-            var dirs = await _alienDirsFinder.FindAlienDirs(clusterConfiguration, clusterOptions, cancellationToken);
+            var dirs = await _alienDirsFinder.FindAlienDirs(clusterConfiguration, clusterOptions,
+                aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Alien dirs found");
 
-            var recoveryTransactions = _recoveryTransactionsFinder.FindRecoveryTransactions(replicas, dirs);
+            var recoveryTransactions = _recoveryTransactionsFinder.FindRecoveryTransactions(replicas,
+                aliensRecoveryOptions, dirs);
             _logger.LogInformation("Recovery transactions found");
 
             await _blobsMover.CopyBlobsAndDeleteClosed(recoveryTransactions, aliensRecoveryOptions,

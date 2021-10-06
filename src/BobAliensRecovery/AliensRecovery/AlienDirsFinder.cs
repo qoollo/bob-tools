@@ -20,7 +20,8 @@ namespace BobAliensRecovery.AliensRecovery
         }
 
         internal async Task<IEnumerable<AlienDir>> FindAlienDirs(ClusterConfiguration clusterConfiguration,
-            ClusterOptions clusterOptions, CancellationToken cancellationToken)
+            ClusterOptions clusterOptions, AliensRecoveryOptions aliensRecoveryOptions,
+            CancellationToken cancellationToken)
         {
             var result = new HashSet<AlienDir>();
             foreach (var node in clusterConfiguration.Nodes)
@@ -31,12 +32,15 @@ namespace BobAliensRecovery.AliensRecovery
                     _logger.LogDebug("Failed to sync alien data on node {node}", node.Name);
 
                 var dir = await bobApi.GetAlienDirectory(cancellationToken);
-                if (dir.Path is null)
-                    throw new ClusterStateException($"Failed to get alien dir from {node}");
+                if (dir?.Path != null)
+                {
+                    _logger.LogDebug("Found alien directory {dir} on {node}", dir.Path, node.Name);
 
-                _logger.LogDebug("Found alien directory {dir} on {node}", dir.Path, node.Name);
-
-                result.Add(new AlienDir(node, dir));
+                    result.Add(new AlienDir(node, dir));
+                }
+                else
+                    aliensRecoveryOptions.LogError<ClusterStateException>(
+                        _logger, "Failed to get alien dir from {node}", node);
             }
 
             return result;

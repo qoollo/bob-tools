@@ -35,6 +35,11 @@ namespace BobApi.BobEntities
                 [YamlMember(Alias = "path")]
                 public string Path { get; set; }
             }
+
+            public override string ToString()
+            {
+                return Name;
+            }
         }
 
         public class VDisk

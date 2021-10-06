@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
 using BobAliensRecovery.Exceptions;
+using BobApi;
 using BobApi.BobEntities;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Entities;
@@ -19,19 +23,26 @@ namespace BobAliensRecovery.AliensRecovery
             _logger = logger;
         }
 
-        internal IDictionary<long, Replicas> FindReplicasByVdiskId(ClusterConfiguration clusterConfiguration)
+        internal async Task<IDictionary<long, Replicas>> FindReplicasByVdiskId(ClusterConfiguration clusterConfiguration,
+            ClusterOptions clusterOptions, AliensRecoveryOptions aliensRecoveryOptions,
+            CancellationToken cancellationToken = default)
         {
             var result = new Dictionary<long, Replicas>();
             foreach (var vdisk in clusterConfiguration.VDisks)
             {
-                var remoteDirByNodeName = GetRemoteDirByNodeName(clusterConfiguration, vdisk);
+                var remoteDirByNodeName = await GetRemoteDirByNodeName(clusterConfiguration, clusterOptions,
+                    aliensRecoveryOptions, vdisk, cancellationToken);
                 result.Add(vdisk.Id, new Replicas(vdisk.Id, remoteDirByNodeName));
             }
             return result;
         }
 
-        private Dictionary<string, RemoteDir> GetRemoteDirByNodeName(ClusterConfiguration clusterConfiguration,
-            ClusterConfiguration.VDisk vdisk)
+        private async Task<Dictionary<string, RemoteDir>> GetRemoteDirByNodeName(
+            ClusterConfiguration clusterConfiguration,
+            ClusterOptions clusterOptions,
+            AliensRecoveryOptions aliensRecoveryOptions,
+            ClusterConfiguration.VDisk vdisk,
+            CancellationToken cancellationToken = default)
         {
             var result = new Dictionary<string, RemoteDir>();
             var diskByName = vdisk.Replicas.ToDictionary(r => r.Node, r => r.Disk);
@@ -42,13 +53,19 @@ namespace BobAliensRecovery.AliensRecovery
                     var disk = node.Disks.SingleOrDefault(d => d.Name == diskName);
                     if (disk != null)
                     {
-                        var targetPath = System.IO.Path.Combine(disk.Path, "bob", vdisk.Id.ToString());
-                        result.Add(node.Name, new RemoteDir(node.GetIPAddress(), targetPath));
+                        using var bobApi = new BobApiClient(clusterOptions.GetNodeApiUri(node));
+                        var nodeConfiguration = await bobApi.GetNodeConfiguration(cancellationToken);
+                        if (nodeConfiguration?.RootDir != null)
+                        {
+                            var targetPath = Path.Combine(disk.Path, nodeConfiguration.RootDir, vdisk.Id.ToString());
+                            result.Add(node.Name, new RemoteDir(node.GetIPAddress(), targetPath));
+                        }
+                        else
+                            aliensRecoveryOptions.LogError<ClusterStateException>(_logger,
+                                "Failed to get node configuration from {node}", node);
                     }
                     else
-                    {
                         throw new ConfigurationException("Configuration does not match running cluster");
-                    }
                 }
             }
 
