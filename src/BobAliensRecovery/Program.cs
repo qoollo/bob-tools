@@ -51,6 +51,10 @@ namespace BobAliensRecovery
             {
                 Console.WriteLine($"Execution failed: {e.Message}");
             }
+            catch (CommandLineFailureException e)
+            {
+                Console.WriteLine($"Command line failure: {e.Message}");
+            }
         }
 
         private static async Task RecoverAliens(ProgramArguments arguments, CancellationToken cancellationToken)
