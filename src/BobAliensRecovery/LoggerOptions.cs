@@ -11,9 +11,9 @@ namespace BobAliensRecovery
             MinLevel = verbosityLevel switch
             {
                 3 => LogLevel.Trace,
-                2 => LogLevel.Debug,
-                1 => LogLevel.Information,
-                0 => LogLevel.Error,
+                2 => LogLevel.Information,
+                1 => LogLevel.Error,
+                0 => LogLevel.None,
                 _ => throw new ArgumentException("Verbosity must be in range [0; 3]")
             };
         }
