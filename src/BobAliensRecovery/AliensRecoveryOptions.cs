@@ -1,11 +1,14 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
 namespace BobAliensRecovery
 {
     class AliensRecoveryOptions
     {
+        private static readonly Regex s_curlyRegex = new(@"\{.*?\D.*?\}");
+
         public AliensRecoveryOptions(bool removeCopied,
             bool continueOnError)
         {
@@ -29,6 +32,8 @@ namespace BobAliensRecovery
                     && c.IsPublic);
                 if (cons != null)
                 {
+                    format = ChangeNamesToPos(format);
+
                     if (cons.Invoke(new[] { string.Format(format, args) }) is E e)
                         throw e;
 
@@ -36,6 +41,14 @@ namespace BobAliensRecovery
                 }
                 throw new ArgumentException($"Failed to construct type {typeof(E).Name}");
             }
+        }
+
+        private static string ChangeNamesToPos(string format)
+        {
+            var pos = 0;
+            while (s_curlyRegex.IsMatch(format))
+                format = s_curlyRegex.Replace(format, $"{{{pos++}}}", 1);
+            return format;
         }
     }
 }
