@@ -18,13 +18,13 @@ namespace RemoteFileCopy.DependenciesChecking
         public async Task<bool> SshConnectionExists(IPAddress address, CancellationToken cancellationToken = default)
         {
             var result = await _sshWrapper.InvokeSshProcess(address, "echo \'\'", cancellationToken);
-            return !result.StdErr.Any();
+            return !result.IsError;
         }
 
         public async Task<bool> RemoteProgramExists(IPAddress address, string name, CancellationToken cancellationToken = default)
         {
             var result = await _sshWrapper.InvokeSshProcess(address, "which " + name, cancellationToken);
-            return !result.StdErr.Any();
+            return !result.IsError;
         }
     }
 }

@@ -53,7 +53,7 @@ namespace BobAliensRecovery.AliensRecovery
                 aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Alien dirs found");
 
-            var recoveryTransactions = _recoveryTransactionsFinder.FindRecoveryTransactions(replicas,
+            var recoveryTransactions = _recoveryTransactionsFinder.ProduceRecoveryTransactions(replicas,
                 aliensRecoveryOptions, dirs);
             _logger.LogInformation("Recovery transactions found");
 

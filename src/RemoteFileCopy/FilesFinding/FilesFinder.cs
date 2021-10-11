@@ -53,11 +53,12 @@ namespace RemoteFileCopy.FilesFinding
             {
                 var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"sh -s < {scriptFile} {dir.Path}", cancellationToken);
 
-                if (sshResult.StdErr.Any(s => !string.IsNullOrWhiteSpace(s)))
+                if (sshResult.IsError)
                 {
                     _logger.LogWarning("Failed to get files from {dir}", dir);
                     _logger.LogDebug("Finder stderr: {output}", string.Join(Environment.NewLine, sshResult.StdErr));
                     _logger.LogDebug("Finder stdout: {output}", string.Join(Environment.NewLine, sshResult.StdOut));
+                    throw new CommandLineFailureException("find");
                 }
 
                 var result = new List<RemoteFileInfo>();
@@ -66,6 +67,8 @@ namespace RemoteFileCopy.FilesFinding
                     var match = s_fileInfo.Match(line);
                     if (match.Success && long.TryParse(match.Groups[2].Value, out var size))
                         result.Add(new RemoteFileInfo(dir.Address, match.Groups[1].Value, size, match.Groups[3].Value));
+                    else
+                        _logger.LogDebug("Failed to parse {line} into file info", line);
                 }
                 return result;
             }

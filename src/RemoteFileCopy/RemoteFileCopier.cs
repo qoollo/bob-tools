@@ -54,7 +54,7 @@ namespace RemoteFileCopy
                 try
                 {
                     var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"sh -s < {scriptFilename}", cancellationToken);
-                    error |= sshResults.StdErr.Any();
+                    error |= sshResults.IsError;
                 }
                 finally
                 {
@@ -66,8 +66,11 @@ namespace RemoteFileCopy
 
         public async Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default)
         {
-            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"find {dir.Path} -type d -empty -delete", cancellationToken);
-            return !sshResult.StdErr.Any();
+            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address,
+                $"[ -d {dir.Path} ] && find {dir.Path} -type d -empty -delete", cancellationToken);
+            foreach (var line in sshResult.StdErr)
+                _logger.LogInformation(line);
+            return !sshResult.IsError;
         }
     }
 }

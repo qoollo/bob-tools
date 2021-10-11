@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -29,7 +30,7 @@ namespace RemoteFileCopy.Rsync.Entities
                 + (Type == RsyncFileInfoType.File ? $" ({LengthBytes}), checksum: {Checksum}" : "");
         }
 
-        public static bool TryParseAbsolute(IPAddress address, string s, out RsyncFileInfo? fileInfo)
+        public static bool TryParseAbsolute(IPAddress address, string s, [NotNullWhen(true)] out RsyncFileInfo? fileInfo)
         {
             var match = s_rsyncLine.Match(s);
             if (match.Success && long.TryParse(match.Groups["l"].Value, out var length))

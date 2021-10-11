@@ -16,7 +16,7 @@ namespace BobAliensRecovery.AliensRecovery
             _logger = logger;
         }
 
-        internal IEnumerable<RecoveryTransaction> FindRecoveryTransactions(IDictionary<long, Replicas> replicasByVdiskId,
+        internal IEnumerable<RecoveryTransaction> ProduceRecoveryTransactions(IDictionary<long, Replicas> replicasByVdiskId,
             AliensRecoveryOptions aliensRecoveryOptions, IEnumerable<AlienDir> alienDirs)
         {
             // We check all disks as aliens are saved on any of them

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Ssh.Entities;
 
 namespace RemoteFileCopy.Rsync.Entities
@@ -18,17 +19,18 @@ namespace RemoteFileCopy.Rsync.Entities
                 SyncedSize = long.Parse(s_totalSizeRegex.Match(totalSizeLine).Groups[1].Value);
             }
             else
-                SyncedSize = 0;
+                throw new CommandLineFailureException("rsync");
 
             var syncedFiles = new List<RsyncFileInfo>();
             foreach (var line in sshResult.StdOut)
-                if (RsyncFileInfo.TryParseAbsolute(sshResult.Address, line, out var fileInfo) && fileInfo!.Type == RsyncFileInfoType.File)
+                if (RsyncFileInfo.TryParseAbsolute(sshResult.Address, line, out var fileInfo) && fileInfo.Type == RsyncFileInfoType.File)
                     syncedFiles.Add(fileInfo);
             SyncedFiles = syncedFiles;
         }
 
         public long SyncedSize { get; }
-        public IEnumerable<string> StdErr { get; } = Enumerable.Empty<string>();
+        public bool IsError { get; }
+        public IEnumerable<string> ErrorLines { get; } = Enumerable.Empty<string>();
         public IEnumerable<RsyncFileInfo> SyncedFiles { get; }
     }
 }

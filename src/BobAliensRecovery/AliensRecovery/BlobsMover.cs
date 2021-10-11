@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -52,9 +53,9 @@ namespace BobAliensRecovery.AliensRecovery
             foreach (var transaction in recoveryTransactions)
             {
                 var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
-                if (!rsyncResult.StdErr.Any())
+                if (!rsyncResult.IsError)
                 {
-                    _logger.LogDebug("Synced {transaction}", transaction.ToString());
+                    _logger.LogDebug("Synced {transaction}", transaction);
                     var partitions = _partitionInfoAggregator.GetPartitionInfos(rsyncResult.SyncedFiles);
 
                     foreach (var partition in partitions)
@@ -62,12 +63,7 @@ namespace BobAliensRecovery.AliensRecovery
                 }
                 else
                 {
-                    _logger.LogError("Sync {transaction} failed: {stderr}", transaction);
-                    _logger.LogDebug("Sync {transaction} err: {stderr}", transaction,
-                        string.Join(Environment.NewLine, rsyncResult.StdErr));
-
-                    if (!aliensRecoveryOptions.ContinueOnError)
-                        throw new OperationException($"Recovery transaction {transaction} failed");
+                    aliensRecoveryOptions.LogError<OperationException>(_logger, "Recovery transaction {transaction} failed", transaction);
                 }
             }
 
@@ -82,10 +78,12 @@ namespace BobAliensRecovery.AliensRecovery
                 var srcFiles = await _filesFinder.FindFiles(transaction.From, cancellationToken);
                 var dstFiles = await _filesFinder.FindFiles(transaction.To, cancellationToken);
 
-                var equal = srcFiles.SelectMany(s => dstFiles.Select(d => (s, d)))
-                    .Where(t => AreEqual(transaction!.From, transaction!.To, t.s, t.d));
+                var equal = srcFiles
+                    .Select(f => (transaction.From, file: f))
+                    .ToHashSet(FileInfoComparer.Instance);
+                equal.IntersectWith(dstFiles.Select(f => (transaction.To, f)));
 
-                var filesToRemove = equal.Select(t => t.s);
+                var filesToRemove = equal.Select(t => t.file);
 
                 if (await _remoteFileCopier.RemoveFiles(filesToRemove, cancellationToken))
                     _logger.LogDebug("Successfully removed source files from {dir}", transaction.From);
@@ -99,11 +97,21 @@ namespace BobAliensRecovery.AliensRecovery
             }
         }
 
-        private static bool AreEqual(RemoteDir from, RemoteDir to, RemoteFileInfo fromFile, RemoteFileInfo toFile)
+        private class FileInfoComparer : IEqualityComparer<(RemoteDir dir, RemoteFileInfo file)>
         {
-            return fromFile.Checksum == toFile.Checksum
-                && fromFile.LengthBytes == toFile.LengthBytes
-                && fromFile.Filename.Replace(from.Path, "") == toFile.Filename.Replace(to.Path, "");
+            public bool Equals((RemoteDir dir, RemoteFileInfo file) x, (RemoteDir dir, RemoteFileInfo file) y)
+            {
+                return x.file.Checksum == y.file.Checksum
+                    && x.file.LengthBytes == y.file.LengthBytes
+                    && x.file.Filename.AsSpan(x.dir.Path.Length).SequenceEqual(y.file.Filename.AsSpan(y.dir.Path.Length));
+            }
+
+            public int GetHashCode([DisallowNull] (RemoteDir dir, RemoteFileInfo file) obj)
+            {
+                return HashCode.Combine(obj.file.Checksum);
+            }
+
+            public static FileInfoComparer Instance { get; } = new();
         }
     }
 }

@@ -21,7 +21,7 @@ namespace BobAliensRecovery.AliensRecovery
             var filesByPartitionAndVdiskid = new Dictionary<(int, string), List<RsyncFileInfo>>();
             foreach (var file in syncedFiles)
             {
-                var components = file.Filename.Split(Path.DirectorySeparatorChar);
+                var components = file.Filename.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
                 if (components.Length >= 3 && int.TryParse(components[^3], out var vdiskId))
                 {
                     var partition = components[^2];
@@ -57,8 +57,8 @@ namespace BobAliensRecovery.AliensRecovery
             var blobs = new List<BlobInfo>();
             foreach (var (blobName, blobFiles) in filesByBlob)
             {
-                var blobFile = blobFiles.FirstOrDefault(f => f.Filename.EndsWith("blob"));
-                var indexFile = blobFiles.FirstOrDefault(f => f.Filename.EndsWith("index"));
+                var blobFile = blobFiles.FirstOrDefault(f => f.Filename.EndsWith(".blob"));
+                var indexFile = blobFiles.FirstOrDefault(f => f.Filename.EndsWith(".index"));
                 if (blobFile != null)
                     blobs.Add(new BlobInfo(blobFile, indexFile, blobFiles));
                 else
