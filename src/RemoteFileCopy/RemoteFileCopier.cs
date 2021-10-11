@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -40,10 +42,24 @@ namespace RemoteFileCopy
         public async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
         {
             var error = false;
-            foreach (var file in fileInfos)
+            var filesByAddress = fileInfos.GroupBy(f => f.Address);
+            foreach (var group in filesByAddress)
             {
-                var sshResults = await _sshWrapper.InvokeSshProcess(file.Address, $"rm -f '{file.Filename}'", cancellationToken);
-                error |= sshResults.StdErr.Any();
+                var scriptFilename = Path.GetTempFileName();
+                var content = new StringBuilder();
+                content.AppendLine("#!/bin/sh");
+                foreach (var file in group)
+                    content.AppendLine($"rm -f '{file.Filename}'");
+                await File.WriteAllTextAsync(scriptFilename, content.ToString(), cancellationToken: cancellationToken);
+                try
+                {
+                    var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"sh -s < {scriptFilename}", cancellationToken);
+                    error |= sshResults.StdErr.Any();
+                }
+                finally
+                {
+                    File.Delete(scriptFilename);
+                }
             }
             return !error;
         }
