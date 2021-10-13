@@ -16,7 +16,7 @@ namespace BobAliensRecovery
         [Option("cluster-config", HelpText = "Cluster config of bob instance.", Default = DefaultClusterConfigPath)]
         public string? ClusterConfigPath { get; set; }
 
-        [Option('v', HelpText = "Verbosity level, 0 to 3.", Default = 3)]
+        [Option('v', HelpText = "Verbosity level, 0 to 3.", Default = 0)]
         public int VerbosityLevel { get; set; }
 
         [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000. Wildcard char (*) can be used to set port for all nodes.", Separator = ',')]
