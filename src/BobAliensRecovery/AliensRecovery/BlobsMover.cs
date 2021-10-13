@@ -73,6 +73,8 @@ namespace BobAliensRecovery.AliensRecovery
         private async Task RemoveAlreadyMovedFiles(IEnumerable<RecoveryTransaction> transactions,
             CancellationToken cancellationToken = default)
         {
+            var cleanedUpDirectories = new HashSet<RemoteDir>();
+
             foreach (var transaction in transactions)
             {
                 var srcFiles = await _filesFinder.FindFiles(transaction.From, cancellationToken);
@@ -93,10 +95,16 @@ namespace BobAliensRecovery.AliensRecovery
                         _logger.LogWarning("Failed to remove source files from {dir}", transaction.From);
                 }
 
-                if (await _remoteFileCopier.RemoveEmptySubdirs(transaction.From, cancellationToken))
-                    _logger.LogInformation("Successfully removed empty directories at {dir}", transaction.From);
-                else
-                    _logger.LogWarning("Failed to clean up empty directories at {dir}", transaction.From);
+                if (!cleanedUpDirectories.Contains(transaction.From))
+                {
+                    if (await _remoteFileCopier.RemoveEmptySubdirs(transaction.From, cancellationToken))
+                    {
+                        cleanedUpDirectories.Add(transaction.From);
+                        _logger.LogInformation("Successfully removed empty directories at {dir}", transaction.From);
+                    }
+                    else
+                        _logger.LogWarning("Failed to clean up empty directories at {dir}", transaction.From);
+                }
             }
         }
 
