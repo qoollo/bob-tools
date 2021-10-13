@@ -8,18 +8,18 @@ namespace RemoteFileCopy.Rsync.Entities
 {
     public class RsyncResult
     {
-        private static readonly Regex s_totalSizeRegex = new(@"total size is (\d+)",
+        private static readonly Regex s_totalSizeRegex = new(@"total size is ([\d,]+)",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex s_sentRegex = new(@"sent ([\d,]+) bytes",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex s_receivedRegex = new(@"received ([\d,]+) bytes",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public RsyncResult(SshResult sshResult)
         {
-            var totalSizeLine = sshResult.StdOut.FirstOrDefault(s_totalSizeRegex.IsMatch);
-            if (totalSizeLine != null)
-            {
-                SyncedSize = long.Parse(s_totalSizeRegex.Match(totalSizeLine).Groups[1].Value);
-            }
-            else
-                throw new CommandLineFailureException("rsync");
+            SyncedSize = GetSize(sshResult.StdOut, s_totalSizeRegex);
+            SentSize = GetSize(sshResult.StdOut, s_sentRegex);
+            ReceivedSize = GetSize(sshResult.StdOut, s_receivedRegex);
 
             var syncedFiles = new List<RsyncFileInfo>();
             foreach (var line in sshResult.StdOut)
@@ -29,8 +29,27 @@ namespace RemoteFileCopy.Rsync.Entities
         }
 
         public long SyncedSize { get; }
+        public long SentSize { get; }
+        public long ReceivedSize { get; }
         public bool IsError { get; }
         public IEnumerable<string> ErrorLines { get; } = Enumerable.Empty<string>();
         public IEnumerable<RsyncFileInfo> SyncedFiles { get; }
+
+        public override string ToString()
+        {
+            return $"Sent {SentSize} bytes, received {ReceivedSize}, synced {SyncedSize}";
+        }
+
+        private static long GetSize(IEnumerable<string> lines, Regex sizeRegex)
+        {
+            var sizeLine = lines.FirstOrDefault(sizeRegex.IsMatch);
+            if (sizeLine != null)
+            {
+                return long.Parse(sizeRegex.Match(sizeLine).Groups[1].Value,
+                    System.Globalization.NumberStyles.Any);
+            }
+            else
+                throw new CommandLineFailureException("rsync");
+        }
     }
 }

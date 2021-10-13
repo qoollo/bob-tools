@@ -64,7 +64,7 @@ namespace RemoteFileCopy.Rsync
             rsyncCommand.Append(" --checksum"); // calculate checksum before sending
             rsyncCommand.Append(" --checksum-choice=xxh128"); // checksum algorithm
 
-            rsyncCommand.Append(" --min-size=100b"); // Larger than 100b
+            // rsyncCommand.Append(" --min-size=20"); // Larger than 100b
 
             rsyncCommand.Append($" '{from.Path.TrimEnd(Path.DirectorySeparatorChar)}{Path.DirectorySeparatorChar}'");
             rsyncCommand.Append($" '{_sshWrapper.SshUsername}@{to.Address}:" +

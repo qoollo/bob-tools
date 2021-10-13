@@ -85,13 +85,16 @@ namespace BobAliensRecovery.AliensRecovery
 
                 var filesToRemove = equal.Select(t => t.file);
 
-                if (await _remoteFileCopier.RemoveFiles(filesToRemove, cancellationToken))
-                    _logger.LogDebug("Successfully removed source files from {dir}", transaction.From);
-                else
-                    _logger.LogWarning("Failed to remove source files from {dir}", transaction.From);
+                if (filesToRemove.Any())
+                {
+                    if (await _remoteFileCopier.RemoveFiles(filesToRemove, cancellationToken))
+                        _logger.LogInformation("Successfully removed source files from {dir}", transaction.From);
+                    else
+                        _logger.LogWarning("Failed to remove source files from {dir}", transaction.From);
+                }
 
                 if (await _remoteFileCopier.RemoveEmptySubdirs(transaction.From, cancellationToken))
-                    _logger.LogDebug("Successfully removed empty directories at {dir}", transaction.From);
+                    _logger.LogInformation("Successfully removed empty directories at {dir}", transaction.From);
                 else
                     _logger.LogWarning("Failed to clean up empty directories at {dir}", transaction.From);
             }

@@ -31,11 +31,11 @@ namespace RemoteFileCopy
 
         public async Task<RsyncResult> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
-            _logger.LogDebug($"Copying files from {from} to {to}");
-
             var result = await _rsyncWrapper.InvokeRsync(from, to, cancellationToken);
+            Action<string, object[]> log = _logger.LogDebug;
             if (result.SyncedSize > 0)
-                _logger.LogInformation($"Copy from {from} to {to}: transfered {result.SyncedSize} bytes");
+                log = _logger.LogInformation;
+            log("Copy from {from} to {to}: {result}", new object[] { from, to, result });
             return result;
         }
 
