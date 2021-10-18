@@ -25,13 +25,13 @@ namespace BobApi
         }
 
         public async Task<Node?> GetStatus(CancellationToken cancellationToken = default)
-            => await GetJson<Node?>("status", cancellationToken);
+            => await GetJson<Node?>("status", cancellationToken: cancellationToken);
 
         public async Task<List<Node>> GetNodes(CancellationToken cancellationToken = default)
-            => await GetJson<List<Node>>("nodes", cancellationToken);
+            => await GetJson("nodes", () => new List<Node>(), cancellationToken);
 
         public async Task<List<Disk>> GetDisks(CancellationToken cancellationToken = default)
-            => await GetJson<List<Disk>>("disks/list", cancellationToken);
+            => await GetJson("disks/list", () => new List<Disk>(), cancellationToken);
 
         public async Task<List<Disk>> GetInactiveDisks(CancellationToken cancellationToken = default)
         {
@@ -51,16 +51,17 @@ namespace BobApi
             => await StopDisk(diskName, cancellationToken) && await StartDisk(diskName, cancellationToken);
 
         public async Task<List<Directory>> GetDirectories(VDisk vdisk, CancellationToken cancellationToken = default)
-            => await GetJson<List<Directory>>($"vdisks/{vdisk.Id}/replicas/local/dirs", cancellationToken: cancellationToken);
+            => await GetJson($"vdisks/{vdisk.Id}/replicas/local/dirs", () => new List<Directory>(),
+                cancellationToken: cancellationToken);
 
         public async Task<Directory> GetAlienDirectory(CancellationToken cancellationToken = default)
-            => await GetJson<Directory>("alien/dir", cancellationToken);
+            => await GetJson<Directory>("alien/dir", cancellationToken: cancellationToken);
 
         public async Task<bool> SyncAlienData(CancellationToken cancellationToken = default)
             => await PostIsOk("alien/sync", cancellationToken);
 
         public async Task<List<VDisk>> GetVDisks(CancellationToken cancellationToken = default)
-            => await GetJson<List<VDisk>>("vdisks", cancellationToken);
+            => await GetJson("vdisks", () => new List<VDisk>(), cancellationToken);
 
         public async Task<List<string>> GetPartitions(VDisk vDisk)
         {
@@ -82,14 +83,14 @@ namespace BobApi
 
         public async Task<Partition?> GetPartition(VDisk vDisk, string partition,
             CancellationToken cancellationToken = default)
-            => await GetJson<Partition>($"vdisks/{vDisk.Id}/partitions/{partition}", cancellationToken);
+            => await GetJson<Partition>($"vdisks/{vDisk.Id}/partitions/{partition}", cancellationToken: cancellationToken);
 
 
         public async Task<long?> CountRecordsOnVDisk(VDisk vDisk, CancellationToken cancellationToken = default)
-            => await GetJson<long?>($"vdisks/{vDisk.Id}/records/count", cancellationToken);
+            => await GetJson<long?>($"vdisks/{vDisk.Id}/records/count", cancellationToken: cancellationToken);
 
         public async Task<NodeConfiguration> GetNodeConfiguration(CancellationToken cancellationToken = default)
-            => await GetJson<NodeConfiguration>("configuration", cancellationToken);
+            => await GetJson<NodeConfiguration>("configuration", cancellationToken: cancellationToken);
 
         public void Dispose()
         {
@@ -101,8 +102,9 @@ namespace BobApi
             return _client.BaseAddress.ToString();
         }
 
-        private async Task<T> GetJson<T>(string addr, CancellationToken cancellationToken = default)
-            => await Get(addr, JsonConvert.DeserializeObject<T>, cancellationToken);
+        private async Task<T> GetJson<T>(string addr,
+            Func<T> defValueCreator = null, CancellationToken cancellationToken = default)
+            => await Get(addr, JsonConvert.DeserializeObject<T>, defValueCreator, cancellationToken);
 
 
         private async Task<bool> PostIsOk(string addr, CancellationToken cancellationToken = default)
@@ -114,7 +116,9 @@ namespace BobApi
             });
         }
 
-        private async Task<T> Get<T>(string addr, Func<string, T> parse, CancellationToken cancellationToken = default)
+        private async Task<T> Get<T>(string addr, Func<string, T> parse,
+            Func<T> defValueCreator = null,
+            CancellationToken cancellationToken = default)
         {
             return await InvokeRequest(async client =>
             {
@@ -125,7 +129,7 @@ namespace BobApi
                         var content = await response.Content.ReadAsStringAsync();
                         return parse(content);
                     }
-                    return default;
+                    return defValueCreator is null ? default : defValueCreator();
                 }
             });
         }
