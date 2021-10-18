@@ -63,17 +63,10 @@ namespace BobAliensRecovery
             var logger = provider.GetRequiredService<ILogger<Program>>();
             var recoverer = provider.GetRequiredService<AliensRecoverer>();
 
-            try
-            {
-                var cluster = await GetClusterConfiguration(logger, arguments.ClusterConfigPath!, cancellationToken);
+            var cluster = await GetClusterConfiguration(logger, arguments.ClusterConfigPath!, cancellationToken);
 
-                await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, arguments.AliensRecoveryOptions,
-                    cancellationToken);
-            }
-            catch (ArgumentException e)
-            {
-                logger.LogError(e.Message);
-            }
+            await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, arguments.AliensRecoveryOptions,
+                cancellationToken);
         }
 
         private static async Task<ClusterConfiguration> GetClusterConfiguration(
@@ -81,7 +74,7 @@ namespace BobAliensRecovery
         {
             logger.LogDebug("Received cluster config path: {path}", path);
             if (!File.Exists(path))
-                throw new FileNotFoundException($"Cluster configuration file not found in {path}");
+                throw new ConfigurationException($"Cluster configuration file not found in {path}");
 
             var configContent = await File.ReadAllTextAsync(path, cancellationToken: cancellationToken);
             var cluster = new Deserializer().Deserialize<ClusterConfiguration>(configContent);
