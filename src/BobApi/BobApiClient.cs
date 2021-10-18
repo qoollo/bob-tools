@@ -28,10 +28,10 @@ namespace BobApi
             => await GetJson<Node?>("status", cancellationToken: cancellationToken);
 
         public async Task<List<Node>> GetNodes(CancellationToken cancellationToken = default)
-            => await GetJson("nodes", () => new List<Node>(), cancellationToken);
+            => await GetJson<List<Node>>("nodes", () => throw new HttpRequestException(), cancellationToken);
 
         public async Task<List<Disk>> GetDisks(CancellationToken cancellationToken = default)
-            => await GetJson("disks/list", () => new List<Disk>(), cancellationToken);
+            => await GetJson<List<Disk>>("disks/list", () => throw new HttpRequestException(), cancellationToken);
 
         public async Task<List<Disk>> GetInactiveDisks(CancellationToken cancellationToken = default)
         {
@@ -51,7 +51,7 @@ namespace BobApi
             => await StopDisk(diskName, cancellationToken) && await StartDisk(diskName, cancellationToken);
 
         public async Task<List<Directory>> GetDirectories(VDisk vdisk, CancellationToken cancellationToken = default)
-            => await GetJson($"vdisks/{vdisk.Id}/replicas/local/dirs", () => new List<Directory>(),
+            => await GetJson<List<Directory>>($"vdisks/{vdisk.Id}/replicas/local/dirs", () => throw new HttpRequestException(),
                 cancellationToken: cancellationToken);
 
         public async Task<Directory> GetAlienDirectory(CancellationToken cancellationToken = default)
