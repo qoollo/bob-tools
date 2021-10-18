@@ -16,8 +16,9 @@ namespace BobAliensRecovery.AliensRecovery
             _logger = logger;
         }
 
-        internal IEnumerable<RecoveryTransaction> ProduceRecoveryTransactions(IDictionary<long, Replicas> replicasByVdiskId,
-            AliensRecoveryOptions aliensRecoveryOptions, IEnumerable<AlienDir> alienDirs)
+        internal IEnumerable<RecoveryTransaction> ProduceRecoveryTransactions(
+            IReadOnlyDictionary<long, Replicas> replicasByVdiskId, AliensRecoveryOptions aliensRecoveryOptions,
+            IEnumerable<AlienDir> alienDirs)
         {
             // We check all disks as aliens are saved on any of them
             foreach (var alienSourceNode in alienDirs.SelectMany(_ => _.Children))
