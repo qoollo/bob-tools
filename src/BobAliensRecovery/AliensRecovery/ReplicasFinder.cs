@@ -23,7 +23,7 @@ namespace BobAliensRecovery.AliensRecovery
             _logger = logger;
         }
 
-        internal async Task<IDictionary<long, Replicas>> FindReplicasByVdiskId(ClusterConfiguration clusterConfiguration,
+        internal async Task<IReadOnlyDictionary<long, Replicas>> FindReplicasByVdiskId(ClusterConfiguration clusterConfiguration,
             ClusterOptions clusterOptions, AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken = default)
         {
