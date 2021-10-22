@@ -28,13 +28,13 @@ namespace RemoteFileCopy.Ssh
         }
 
 
-        public IEnumerable<IEnumerable<string>> GetSshCommandAndArguments()
+        public IEnumerable<string> GetSshCommandAndArguments()
         {
             return new[]
             {
-                new[] { "-p", _configuration.Port.ToString() },
-                new[] { "-i", _configuration.PathToKey },
-                new[] { "-o", "StrictHostKeyChecking=no" },
+                "-p" + _configuration.Port.ToString(),
+                "-i" + _configuration.PathToKey,
+                "-oStrictHostKeyChecking=no",
             };
         }
 
@@ -61,12 +61,8 @@ namespace RemoteFileCopy.Ssh
                 }
             };
             foreach (var arg in GetSshCommandAndArguments())
-            {
-                var argument = new StringBuilder(arg.First());
-                foreach (var value in arg.Skip(1))
-                    argument.Append($"{value}");
-                process.StartInfo.ArgumentList.Add(argument.ToString());
-            }
+                process.StartInfo.ArgumentList.Add(arg);
+
             process.StartInfo.ArgumentList.Add($"{_configuration.Username}@{address}");
             process.StartInfo.ArgumentList.Add(command);
 

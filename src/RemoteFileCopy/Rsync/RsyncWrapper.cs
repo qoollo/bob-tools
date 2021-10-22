@@ -46,13 +46,8 @@ namespace RemoteFileCopy.Rsync
                 throw new MissingDependencyException($"Rsync on {from.Address}");
 
             var rsyncCommand = new StringBuilder(RsyncExecutable);
-            var sshCommandForRsyncSb = new StringBuilder(_sshWrapper.SshCommand);
-            foreach (var arg in _sshWrapper.GetSshCommandAndArguments())
-            {
-                sshCommandForRsyncSb.Append($" {arg.First()}");
-                foreach (var value in arg.Skip(1))
-                    sshCommandForRsyncSb.Append($"{value}");
-            }
+            var sshCommandForRsyncSb = new StringBuilder(_sshWrapper.SshCommand + " ");
+            sshCommandForRsyncSb.Append(string.Join(" ", _sshWrapper.GetSshCommandAndArguments()));
 
             rsyncCommand.Append($" -e'{sshCommandForRsyncSb}'");
             rsyncCommand.Append(" -av");
