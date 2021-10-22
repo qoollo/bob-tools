@@ -39,7 +39,7 @@ namespace BobAliensRecovery.AliensRecovery
                     result.Add(new AlienDir(node, dir));
                 }
                 else
-                    aliensRecoveryOptions.LogError<ClusterStateException>(
+                    aliensRecoveryOptions.LogErrorWithPossibleException<ClusterStateException>(
                         _logger, "Failed to get alien dir from {node}", node);
             }
 

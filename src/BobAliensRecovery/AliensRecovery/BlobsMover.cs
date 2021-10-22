@@ -63,7 +63,7 @@ namespace BobAliensRecovery.AliensRecovery
                 }
                 else
                 {
-                    aliensRecoveryOptions.LogError<OperationException>(_logger, "Recovery transaction {transaction} failed", transaction);
+                    aliensRecoveryOptions.LogErrorWithPossibleException<OperationException>(_logger, "Recovery transaction {transaction} failed", transaction);
                 }
             }
 

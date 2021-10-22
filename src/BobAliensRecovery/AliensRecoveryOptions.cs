@@ -20,7 +20,7 @@ namespace BobAliensRecovery
 
         public bool ContinueOnError { get; }
 
-        public void LogError<E>(ILogger logger, string format, params object[] args)
+        public void LogErrorWithPossibleException<E>(ILogger logger, string format, params object[] args)
             where E : Exception, new()
         {
             logger.LogError(format, args);

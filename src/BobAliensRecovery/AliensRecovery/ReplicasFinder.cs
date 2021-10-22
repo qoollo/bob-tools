@@ -61,7 +61,7 @@ namespace BobAliensRecovery.AliensRecovery
                             result.Add(node.Name, new RemoteDir(node.GetIPAddress(), targetPath));
                         }
                         else
-                            aliensRecoveryOptions.LogError<ClusterStateException>(_logger,
+                            aliensRecoveryOptions.LogErrorWithPossibleException<ClusterStateException>(_logger,
                                 "Failed to get node configuration from {node}", node);
                     }
                     else

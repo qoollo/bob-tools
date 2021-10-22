@@ -9,6 +9,8 @@ namespace BobAliensRecovery.AliensRecovery
 {
     public class PartitionInfoAggregator
     {
+        private static readonly char[] s_pathSeparators = new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
+
         private readonly ILogger<PartitionInfoAggregator> _logger;
 
         public PartitionInfoAggregator(ILogger<PartitionInfoAggregator> logger)
@@ -21,7 +23,7 @@ namespace BobAliensRecovery.AliensRecovery
             var filesByPartitionAndVdiskid = new Dictionary<(int, string), List<RsyncFileInfo>>();
             foreach (var file in syncedFiles)
             {
-                var components = file.Filename.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+                var components = file.Filename.Split(s_pathSeparators);
                 if (components.Length >= 3 && int.TryParse(components[^3], out var vdiskId))
                 {
                     var partition = components[^2];
