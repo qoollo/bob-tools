@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
 using BobApi.Entities;
+using BobApi.Exceptions;
 using Newtonsoft.Json;
 using Path = System.IO.Path;
 
@@ -14,14 +15,16 @@ namespace BobApi
     public class BobApiClient : IDisposable
     {
         private readonly HttpClient _client;
+        private readonly bool _throwOnNoConnection;
 
-        public BobApiClient(Uri address)
+        public BobApiClient(Uri address, bool throwOnNoConnection = false)
         {
             _client = new HttpClient
             {
                 BaseAddress = address,
                 Timeout = TimeSpan.FromSeconds(30),
             };
+            _throwOnNoConnection = throwOnNoConnection;
         }
 
         public async Task<Node?> GetStatus(CancellationToken cancellationToken = default)
@@ -140,8 +143,12 @@ namespace BobApi
             {
                 return await f(_client);
             }
-            catch (HttpRequestException) { }
-            catch (TaskCanceledException) { } // Since .net 5 it is thrown on timeout
+            // Since .net 5 TaskCanceledException is thrown on timeout
+            catch (Exception e) when (e is HttpRequestException || e is TaskCanceledException)
+            {
+                if (_throwOnNoConnection)
+                    throw new BobConnectionException(_client.BaseAddress, e);
+            }
 
             return default;
         }
