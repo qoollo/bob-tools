@@ -50,8 +50,7 @@ namespace DiskStatusAnalyzer
             var alienDisk = disks.FirstOrDefault(d => d.Path == node.AlienDir.Path).Name;
             if (alienDisk == null) return result;
 
-            await client.StopDisk(alienDisk);
-            await client.StartDisk(alienDisk);
+            await client.RestartDisk(alienDisk);
 
             var tasks = new List<Task<RestartInfo?[]>>();
             foreach (var alienNode in node.AlienDir.Nodes)
