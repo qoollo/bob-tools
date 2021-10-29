@@ -27,44 +27,52 @@ namespace BobApi
             _throwOnNoConnection = throwOnNoConnection;
         }
 
-        public async Task<Node?> GetStatus(CancellationToken cancellationToken = default)
-            => await GetJson<Node?>("status", cancellationToken: cancellationToken);
+        public async Task<BobApiResult<Node>> GetStatus(CancellationToken cancellationToken = default)
+            => await GetJson<Node>("status", cancellationToken: cancellationToken);
 
-        public async Task<List<Node>> GetNodes(CancellationToken cancellationToken = default)
-            => await GetJson<List<Node>>("nodes", () => throw new HttpRequestException(), cancellationToken);
+        public async Task<BobApiResult<List<Node>>> GetNodes(CancellationToken cancellationToken = default)
+            => await GetJson<List<Node>>("nodes", cancellationToken);
 
-        public async Task<List<Disk>> GetDisks(CancellationToken cancellationToken = default)
-            => await GetJson<List<Disk>>("disks/list", () => throw new HttpRequestException(), cancellationToken);
+        public async Task<BobApiResult<List<Disk>>> GetDisks(CancellationToken cancellationToken = default)
+            => await GetJson<List<Disk>>("disks/list", cancellationToken);
 
-        public async Task<List<Disk>> GetInactiveDisks(CancellationToken cancellationToken = default)
+        public async Task<BobApiResult<List<Disk>>> GetInactiveDisks(CancellationToken cancellationToken = default)
         {
-            var disks = await GetDisks(cancellationToken);
-            if (disks != null)
-                disks.RemoveAll(d => d.IsActive);
-            return disks;
+            var disksResult = await GetDisks(cancellationToken);
+            if (disksResult.TryGetData(out var disks))
+            {
+                if (disks != null)
+                    disks.RemoveAll(d => d.IsActive);
+                return BobApiResult<List<Disk>>.Ok(disks);
+            }
+            return disksResult;
         }
 
-        public async Task<bool> StartDisk(string name, CancellationToken cancellationToken = default)
+        public async Task<BobApiResult<bool>> StartDisk(string name, CancellationToken cancellationToken = default)
             => await PostIsOk($"disks/{name}/start", cancellationToken);
 
-        public async Task<bool> StopDisk(string name, CancellationToken cancellationToken = default)
+        public async Task<BobApiResult<bool>> StopDisk(string name, CancellationToken cancellationToken = default)
             => await PostIsOk($"disks/{name}/stop", cancellationToken);
 
-        public async Task<bool> RestartDisk(string diskName, CancellationToken cancellationToken = default)
-            => await StopDisk(diskName, cancellationToken) && await StartDisk(diskName, cancellationToken);
+        public async Task<BobApiResult<bool>> RestartDisk(string diskName, CancellationToken cancellationToken = default)
+        {
+            var stopResult = await StopDisk(diskName, cancellationToken);
+            if (stopResult.TryGetData(out var r) && r)
+                return await StartDisk(diskName, cancellationToken);
+            return stopResult;
+        }
 
-        public async Task<List<Directory>> GetDirectories(VDisk vdisk, CancellationToken cancellationToken = default)
-            => await GetJson<List<Directory>>($"vdisks/{vdisk.Id}/replicas/local/dirs", () => throw new HttpRequestException(),
-                cancellationToken: cancellationToken);
+        public async Task<BobApiResult<List<Directory>>> GetDirectories(VDisk vdisk, CancellationToken cancellationToken = default)
+            => await GetJson<List<Directory>>($"vdisks/{vdisk.Id}/replicas/local/dirs", cancellationToken);
 
-        public async Task<Directory> GetAlienDirectory(CancellationToken cancellationToken = default)
-            => await GetJson<Directory>("alien/dir", cancellationToken: cancellationToken);
+        public async Task<BobApiResult<Directory>> GetAlienDirectory(CancellationToken cancellationToken = default)
+            => await GetJson<Directory>("alien/dir", cancellationToken);
 
-        public async Task<bool> SyncAlienData(CancellationToken cancellationToken = default)
+        public async Task<BobApiResult<bool>> SyncAlienData(CancellationToken cancellationToken = default)
             => await PostIsOk("alien/sync", cancellationToken);
 
-        public async Task<List<VDisk>> GetVDisks(CancellationToken cancellationToken = default)
-            => await GetJson("vdisks", () => new List<VDisk>(), cancellationToken);
+        public async Task<BobApiResult<List<VDisk>>> GetVDisks(CancellationToken cancellationToken = default)
+            => await GetJson<List<VDisk>>("vdisks", cancellationToken);
 
         public async Task<List<string>> GetPartitions(VDisk vDisk)
         {
@@ -84,15 +92,15 @@ namespace BobApi
         public async Task DeletePartition(VDisk vDisk, long? partition)
             => await _client.DeleteAsync($"vdisks/{vDisk.Id}/partitions/{partition}");
 
-        public async Task<Partition?> GetPartition(VDisk vDisk, string partition,
+        public async Task<BobApiResult<Partition>> GetPartition(VDisk vDisk, string partition,
             CancellationToken cancellationToken = default)
             => await GetJson<Partition>($"vdisks/{vDisk.Id}/partitions/{partition}", cancellationToken: cancellationToken);
 
 
-        public async Task<long?> CountRecordsOnVDisk(VDisk vDisk, CancellationToken cancellationToken = default)
-            => await GetJson<long?>($"vdisks/{vDisk.Id}/records/count", cancellationToken: cancellationToken);
+        public async Task<BobApiResult<long>> CountRecordsOnVDisk(VDisk vDisk, CancellationToken cancellationToken = default)
+            => await GetJson<long>($"vdisks/{vDisk.Id}/records/count", cancellationToken: cancellationToken);
 
-        public async Task<NodeConfiguration> GetNodeConfiguration(CancellationToken cancellationToken = default)
+        public async Task<BobApiResult<NodeConfiguration>> GetNodeConfiguration(CancellationToken cancellationToken = default)
             => await GetJson<NodeConfiguration>("configuration", cancellationToken: cancellationToken);
 
         public void Dispose()
@@ -105,22 +113,20 @@ namespace BobApi
             return _client.BaseAddress.ToString();
         }
 
-        private async Task<T> GetJson<T>(string addr,
-            Func<T> defValueCreator = null, CancellationToken cancellationToken = default)
-            => await Get(addr, JsonConvert.DeserializeObject<T>, defValueCreator, cancellationToken);
+        private async Task<BobApiResult<T>> GetJson<T>(string addr, CancellationToken cancellationToken = default)
+            => await Get(addr, JsonConvert.DeserializeObject<T>, cancellationToken);
 
 
-        private async Task<bool> PostIsOk(string addr, CancellationToken cancellationToken = default)
+        private async Task<BobApiResult<bool>> PostIsOk(string addr, CancellationToken cancellationToken = default)
         {
             return await InvokeRequest(async client =>
             {
                 using (var response = await client.PostAsync(addr, new StringContent(""), cancellationToken: cancellationToken))
-                    return response.IsSuccessStatusCode;
+                    return BobApiResult<bool>.Ok(response.IsSuccessStatusCode);
             });
         }
 
-        private async Task<T> Get<T>(string addr, Func<string, T> parse,
-            Func<T> defValueCreator = null,
+        private async Task<BobApiResult<T>> Get<T>(string addr, Func<string, T> parse,
             CancellationToken cancellationToken = default)
         {
             return await InvokeRequest(async client =>
@@ -130,14 +136,14 @@ namespace BobApi
                     if (response.IsSuccessStatusCode)
                     {
                         var content = await response.Content.ReadAsStringAsync();
-                        return parse(content);
+                        return BobApiResult<T>.Ok(parse(content));
                     }
-                    return defValueCreator is null ? default : defValueCreator();
+                    return BobApiResult<T>.Unsuccessful();
                 }
             });
         }
 
-        private async Task<T> InvokeRequest<T>(Func<HttpClient, Task<T>> f)
+        private async Task<BobApiResult<T>> InvokeRequest<T>(Func<HttpClient, Task<BobApiResult<T>>> f)
         {
             try
             {
@@ -148,9 +154,8 @@ namespace BobApi
             {
                 if (_throwOnNoConnection)
                     throw new BobConnectionException(_client.BaseAddress, e);
+                return BobApiResult<T>.Unavailable();
             }
-
-            return default;
         }
     }
 }

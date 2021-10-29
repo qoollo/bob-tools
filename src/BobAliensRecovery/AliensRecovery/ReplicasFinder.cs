@@ -54,8 +54,8 @@ namespace BobAliensRecovery.AliensRecovery
                     if (disk != null)
                     {
                         using var bobApi = new BobApiClient(clusterOptions.GetNodeApiUri(node));
-                        var nodeConfiguration = await bobApi.GetNodeConfiguration(cancellationToken);
-                        if (nodeConfiguration?.RootDir != null)
+                        var nodeConfigurationResult = await bobApi.GetNodeConfiguration(cancellationToken);
+                        if (nodeConfigurationResult.TryGetData(out var nodeConfiguration) && nodeConfiguration?.RootDir != null)
                         {
                             var targetPath = Path.Combine(disk.Path, nodeConfiguration.RootDir, vdisk.Id.ToString());
                             result.Add(node.Name, new RemoteDir(node.GetIPAddress(), targetPath));

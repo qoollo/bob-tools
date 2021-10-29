@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
+using BobAliensRecovery.Exceptions;
 using BobApi;
 using BobApi.BobEntities;
 using Microsoft.Extensions.Logging;
@@ -20,15 +21,19 @@ namespace BobAliensRecovery.AliensRecovery
 
         internal async Task RestartTargetNodes(IEnumerable<RecoveryTransaction> recoveryTransactions,
             ClusterConfiguration clusterConfiguration, ClusterOptions clusterOptions,
-            CancellationToken cancellationToken)
+            AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
             var restartOperations = GetRestartOperations(recoveryTransactions, clusterConfiguration);
 
             foreach (var ro in restartOperations.Distinct())
             {
-                var api = new BobApiClient(clusterOptions.GetNodeApiUri(ro.Node));
-                if (await api.RestartDisk(ro.DiskName, cancellationToken))
+                using var api = new BobApiClient(clusterOptions.GetNodeApiUri(ro.Node));
+                var restartResult = await api.RestartDisk(ro.DiskName, cancellationToken);
+                if (restartResult.TryGetData(out var isRestarted) && isRestarted)
                     _logger.LogDebug("Reloaded {disk} on {node}", ro.DiskName, ro.Node.Name);
+                else
+                    aliensRecoveryOptions.LogErrorWithPossibleException<ClusterStateException>(
+                        _logger, "Failed to restart disks on node {node}", ro.Node.Name);
             }
         }
 

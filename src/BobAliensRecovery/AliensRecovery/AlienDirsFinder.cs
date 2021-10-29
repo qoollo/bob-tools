@@ -28,11 +28,18 @@ namespace BobAliensRecovery.AliensRecovery
             {
                 using var bobApi = new BobApiClient(clusterOptions.GetNodeApiUri(node));
 
-                if (!await bobApi.SyncAlienData(cancellationToken))
-                    _logger.LogDebug("Failed to sync alien data on node {node}", node.Name);
+                var syncResult = await bobApi.SyncAlienData(cancellationToken);
+                if (syncResult.TryGetData(out var isSynced))
+                {
+                    if (!isSynced)
+                        _logger.LogDebug("Failed to sync alien data on node {node}", node.Name);
+                }
+                else
+                    aliensRecoveryOptions.LogErrorWithPossibleException<ClusterStateException>(
+                        _logger, "Failed to sync alien dir on node {node}", node);
 
-                var dir = await bobApi.GetAlienDirectory(cancellationToken);
-                if (dir?.Path != null)
+                var dirResult = await bobApi.GetAlienDirectory(cancellationToken);
+                if (dirResult.TryGetData(out var dir) && dir?.Path != null)
                 {
                     _logger.LogDebug("Found alien directory {dir} on {node}", dir.Path, node.Name);
 
