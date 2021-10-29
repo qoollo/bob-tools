@@ -74,19 +74,23 @@ namespace BobApi
         public async Task<BobApiResult<List<VDisk>>> GetVDisks(CancellationToken cancellationToken = default)
             => await GetJson<List<VDisk>>("vdisks", cancellationToken);
 
-        public async Task<List<string>> GetPartitions(VDisk vDisk)
+        public async Task<BobApiResult<List<string>>> GetPartitions(VDisk vDisk)
         {
-            var response = await _client.GetAsync($"vdisks/{vDisk.Id}/partitions");
-            if (response.IsSuccessStatusCode)
+            return await InvokeRequest<List<string>>(async client =>
             {
-                return await response.Content.ReadAsStringAsync()
-                    .ContinueWith(t => JsonConvert.DeserializeAnonymousType(t.Result, new
+                using (var response = await client.GetAsync($"vdisks/{vDisk.Id}/partitions"))
+                {
+                    if (response.IsSuccessStatusCode)
                     {
-                        Partitions = new List<string>()
-                    }).Partitions);
-            }
-
-            return null;
+                        return BobApiResult<List<string>>.Ok(await response.Content.ReadAsStringAsync()
+                            .ContinueWith(t => JsonConvert.DeserializeAnonymousType(t.Result, new
+                            {
+                                Partitions = new List<string>()
+                            }).Partitions));
+                    }
+                    return BobApiResult<List<string>>.Unsuccessful();
+                }
+            });
         }
 
         public async Task DeletePartition(VDisk vDisk, long? partition)

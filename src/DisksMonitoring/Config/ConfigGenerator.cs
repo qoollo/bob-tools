@@ -27,8 +27,8 @@ namespace DisksMonitoring.Config
 
         public async Task<IEnumerable<BobDisk>> GenerateConfigFromBob(BobApiClient bobApiClient)
         {
-            var disks = await bobApiClient.GetDisks();
-            if (disks == null)
+            var disksResult = await bobApiClient.GetDisks();
+            if (!disksResult.TryGetData(out var disks))
             {
                 logger.LogError($"Failed to get bob disks from {bobApiClient}");
                 return Enumerable.Empty<BobDisk>();

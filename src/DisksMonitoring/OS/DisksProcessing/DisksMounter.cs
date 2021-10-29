@@ -102,7 +102,8 @@ namespace DisksMonitoring.OS.DisksProcessing
                 try
                 {
                     logger.LogInformation($"Trying to stop bobdisk");
-                    if (!await bobApiClient.StopDisk(bobDisk.DiskNameInBob))
+                    var stopResult = await bobApiClient.StopDisk(bobDisk.DiskNameInBob);
+                    if (!stopResult.TryGetData(out var isStopped) || !isStopped)
                         logger.LogWarning($"Failed to stop bobdisk {bobDisk}");
                     else
                         logger.LogInformation($"Successfully stoped bobdisk {bobDisk}");

@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using BobApi;
 using DiskStatusAnalyzer.Entities;
+using DiskStatusAnalyzer.Exceptions;
 using DiskStatusAnalyzer.Rsync;
 using Microsoft.Extensions.Logging;
 
@@ -46,7 +47,10 @@ namespace DiskStatusAnalyzer
             var result = new List<RestartInfo?>();
 
             var client = new BobApiClient(node.Uri);
-            var disks = await client.GetDisks();
+            var disksResult = await client.GetDisks();
+            if (!disksResult.TryGetData(out var disks))
+                throw new NodeException(node.Uri.ToString());
+
             var alienDisk = disks.FirstOrDefault(d => d.Path == node.AlienDir.Path).Name;
             if (alienDisk == null) return result;
 
