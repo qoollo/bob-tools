@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery;
 using BobAliensRecovery.Exceptions;
 using BobApi.BobEntities;
+using BobApi.Helpers;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Extensions;
-using YamlDotNet.Serialization;
 
 namespace BobAliensRecovery
 {
@@ -73,12 +73,14 @@ namespace BobAliensRecovery
             ILogger<Program> logger, string path, CancellationToken cancellationToken)
         {
             logger.LogDebug("Received cluster config path: {path}", path);
-            if (!File.Exists(path))
+            try
+            {
+                return await BobYamlClusterConfigParser.ParseYaml(path, cancellationToken);
+            }
+            catch (FileNotFoundException)
+            {
                 throw new ConfigurationException($"Cluster configuration file not found in {path}");
-
-            var configContent = await File.ReadAllTextAsync(path, cancellationToken: cancellationToken);
-            var cluster = new Deserializer().Deserialize<ClusterConfiguration>(configContent);
-            return cluster;
+            }
         }
 
         private static IServiceProvider CreateServiceProvider(ProgramArguments args)
