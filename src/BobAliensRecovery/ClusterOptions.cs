@@ -2,19 +2,19 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BobApi.BobEntities;
+using BobApi.Helpers;
 
 namespace BobAliensRecovery
 {
     class ClusterOptions
     {
-        private const string WildcardChar = "*";
+        private readonly Dictionary<string, int> _portByNodeName;
+        private readonly int _defaultPort;
 
-        public ClusterOptions(IEnumerable<(string name, int port)> portOverrides)
+        public ClusterOptions(IEnumerable<string> portOverrides)
         {
-            ClusterNodesPortOverrides = portOverrides.ToDictionary(t => t.name, t => t.port);
+            (_portByNodeName, _defaultPort) = ApiPortOverridesParser.Parse(portOverrides);
         }
-
-        public Dictionary<string, int> ClusterNodesPortOverrides { get; } = new Dictionary<string, int>();
 
         public Uri GetNodeApiUri(ClusterConfiguration.Node node)
         {
@@ -23,11 +23,9 @@ namespace BobAliensRecovery
 
         private int GetApiPort(ClusterConfiguration.Node node)
         {
-            if (ClusterNodesPortOverrides.TryGetValue(node.Name, out var port))
+            if (_portByNodeName.TryGetValue(node.Name, out var port))
                 return port;
-            else if (ClusterNodesPortOverrides.TryGetValue(WildcardChar, out port))
-                return port;
-            return 8000;
+            return _defaultPort;
         }
     }
 }
