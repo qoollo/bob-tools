@@ -45,7 +45,7 @@ public class ClusterRecordsCounter
         foreach (var (name, api) in apiByName)
         {
             var status = await api.GetStatus();
-            if (status is null)
+            if (status.TryGetError(out var _))
             {
                 logger.LogInformation($"Removing unavailable node {name}");
                 nodesToRemove.Add(name);
