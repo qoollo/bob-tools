@@ -2,7 +2,7 @@ using System;
 
 namespace BobApi.Entities
 {
-    public class BobApiResult<T>
+    public readonly struct BobApiResult<T>
     {
         private readonly T _data;
         private readonly ErrorType? _errorType;
@@ -30,7 +30,7 @@ namespace BobApi.Entities
             if (TryGetData(out var d))
                 return $"Ok({d})";
             else if (TryGetError(out var e))
-                return $"Error({Enum.GetName(typeof(ErrorType), e)})";
+                return $"Error({e})";
             else
                 return "Unknown result state";
         }
