@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
 using BobApi.Helpers;
-using BobToolsCLI;
+using BobToolsCli;
 using CommandLine;
 using RemoteFileCopy.Ssh;
 
@@ -14,9 +14,6 @@ namespace BobAliensRecovery
 {
     class ProgramArguments : CommonArguments
     {
-        private const string DefaultClusterConfigPath = "/etc/bob/cluster.yaml";
-
-
         [Option("ssh-cmd", HelpText = "Ssh cmd.", Default = "ssh")]
         public string? SshCmd { get; set; }
 

@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BobApi\BobApi.csproj" />
-    <ProjectReference Include="..\BobToolsCLI\BobToolsCLI.csproj" />
+    <ProjectReference Include="..\BobToolsCli\BobToolsCli.csproj" />
   </ItemGroup>
 
   <ItemGroup>

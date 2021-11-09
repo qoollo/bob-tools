@@ -6,7 +6,7 @@ using BobApi.BobEntities;
 using BobApi.Helpers;
 using CommandLine;
 
-namespace BobToolsCLI
+namespace BobToolsCli
 {
     public class CommonArguments
     {
