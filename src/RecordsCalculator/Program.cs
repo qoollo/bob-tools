@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Newtonsoft.Json;
+using RecordsCalculator.Entities;
 
 namespace RecordsCalculator
 {
@@ -60,17 +61,17 @@ namespace RecordsCalculator
         private static async Task CountRecords()
         {
             var crc = provider.GetRequiredService<ClusterRecordsCounter>();
-            long max = 0, total = 0;
+            RecordsCount recordsCount;
             if (wholeCluster)
-                (max, total) = await CollectRecordsInWholeCluster(crc);
+                recordsCount = await CollectRecordsInWholeCluster(crc);
             else
-                (max, total) = await CollectRecordsFromNodes(crc);
+                recordsCount = await CollectRecordsFromNodes(crc);
 
-            Console.WriteLine($"Total records count: {max}");
-            Console.WriteLine($"Total records count with replicas: {total}");
+            Console.WriteLine($"Total records count: {recordsCount.Unique}");
+            Console.WriteLine($"Total records count with replicas: {recordsCount.WithReplicas}");
         }
 
-        private static async Task<(long max, long total)> CollectRecordsInWholeCluster(ClusterRecordsCounter crc)
+        private static async Task<RecordsCount> CollectRecordsInWholeCluster(ClusterRecordsCounter crc)
         {
             foreach (var node in configuration.Nodes)
             {
@@ -83,10 +84,10 @@ namespace RecordsCalculator
                     logger.LogError($"Failed to parse node from address {node.Address}: {e.Message}");
                 }
             }
-            return (0, 0);
+            return new RecordsCount(0, 0);
         }
 
-        private static async Task<(long max, long total)> CollectRecordsFromNodes(ClusterRecordsCounter crc)
+        private static async Task<RecordsCount> CollectRecordsFromNodes(ClusterRecordsCounter crc)
         {
             var apiByName = new Dictionary<string, BobApiClient>();
             var vdisks = new List<VDisk>();

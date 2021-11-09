@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BobApi;
 using BobApi.Entities;
 using Microsoft.Extensions.Logging;
+using RecordsCalculator.Entities;
 
 public class ClusterRecordsCounter
 {
@@ -15,7 +16,7 @@ public class ClusterRecordsCounter
         this.logger = logger;
     }
 
-    public async Task<(long unique, long withReplicas)> CountRecordsInCluster(Uri baseNode)
+    public async Task<RecordsCount> CountRecordsInCluster(Uri baseNode)
     {
         using var api = new BobApiClient(baseNode);
         var nodeObjResult = await api.GetStatus();
@@ -37,7 +38,7 @@ public class ClusterRecordsCounter
         return await CountRecords(apiByName, vdisks);
     }
 
-    public async Task<(long max, long total)> CountRecords(Dictionary<string, BobApiClient> apiByName, IEnumerable<VDisk> vdisks)
+    public async Task<RecordsCount> CountRecords(Dictionary<string, BobApiClient> apiByName, IEnumerable<VDisk> vdisks)
     {
         var unique = 0L;
         var withReplicas = 0L;
@@ -63,12 +64,11 @@ public class ClusterRecordsCounter
                     logger.LogWarning($"Node {replica.Node} mentioned in replicas of vdisk {vdisk.Id} not found");
                 else if (apiByName.ContainsKey(replica.Node))
                 {
-                    var countObjResult = await apiByName[replica.Node].CountRecordsOnVDisk(vdisk);
-                    if (!countObjResult.TryGetData(out var countObj))
+                    var countResult = await apiByName[replica.Node].CountRecordsOnVDisk(vdisk);
+                    if (!countResult.TryGetData(out var count))
                         logger.LogWarning($"Failed to get count of records from {replica.Node} for vdisk {vdisk.Id}");
                     else
                     {
-                        var count = countObj;
                         if (count > maxCount)
                             maxCount = count;
                         totalCount += count;
@@ -79,6 +79,6 @@ public class ClusterRecordsCounter
             withReplicas += totalCount;
         }
 
-        return (unique, withReplicas);
+        return new RecordsCount(unique, withReplicas);
     }
 }
