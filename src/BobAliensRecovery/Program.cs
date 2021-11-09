@@ -60,26 +60,24 @@ namespace BobAliensRecovery
         private static async Task RecoverAliens(ProgramArguments arguments, CancellationToken cancellationToken)
         {
             var provider = CreateServiceProvider(arguments);
-            var logger = provider.GetRequiredService<ILogger<Program>>();
             var recoverer = provider.GetRequiredService<AliensRecoverer>();
 
-            var cluster = await GetClusterConfiguration(logger, arguments.ClusterConfigPath!, cancellationToken);
+            var cluster = await GetClusterConfiguration(arguments!, cancellationToken);
 
             await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, arguments.AliensRecoveryOptions,
                 cancellationToken);
         }
 
         private static async Task<ClusterConfiguration> GetClusterConfiguration(
-            ILogger<Program> logger, string path, CancellationToken cancellationToken)
+            ProgramArguments arguments, CancellationToken cancellationToken)
         {
-            logger.LogDebug("Received cluster config path: {path}", path);
             try
             {
-                return await BobYamlClusterConfigParser.ParseYaml(path, cancellationToken);
+                return await arguments.FindClusterConfiguration(cancellationToken);
             }
             catch (FileNotFoundException)
             {
-                throw new ConfigurationException($"Cluster configuration file not found in {path}");
+                throw new ConfigurationException($"Cluster configuration file not found");
             }
         }
 
