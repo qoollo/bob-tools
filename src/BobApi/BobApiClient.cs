@@ -69,7 +69,7 @@ namespace BobApi
             => await GetJson<Directory>("alien/dir", cancellationToken);
 
         public async Task<BobApiResult<bool>> SyncAlienData(CancellationToken cancellationToken = default)
-            => await PostIsOk("alien/sync", cancellationToken);
+            => await PostIsOk("alien/detach", cancellationToken);
 
         public async Task<BobApiResult<List<VDisk>>> GetVDisks(CancellationToken cancellationToken = default)
             => await GetJson<List<VDisk>>("vdisks", cancellationToken);

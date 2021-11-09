@@ -9,7 +9,7 @@ namespace BobApi.BobEntities
             RootDir = rootDir;
         }
 
-        [JsonProperty("root_dir")]
+        [JsonProperty("blob_file_name_prefix")]
         public string RootDir { get; }
     }
 }
