@@ -29,7 +29,7 @@ namespace BobAliensRecovery
         [Option("remove-copied", HelpText = "Remove copied blobs", Default = false)]
         public bool RemoveCopied { get; set; }
 
-        public LoggerOptions LoggerOptions => new(VerbosityLevel);
+        public LoggerOptions LoggerOptions => new(GetMinLogLevel());
 
         public ClusterOptions ClusterOptions => new(ApiPortOverrides);
 
