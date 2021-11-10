@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery;
 using BobAliensRecovery.Exceptions;
 using BobApi.BobEntities;
-using BobApi.Helpers;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

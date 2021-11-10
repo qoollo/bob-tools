@@ -2,30 +2,22 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BobApi.BobEntities;
-using BobApi.Helpers;
+using BobToolsCli.Helpers;
 
 namespace BobAliensRecovery
 {
     class ClusterOptions
     {
-        private readonly Dictionary<string, int> _portByNodeName;
-        private readonly int _defaultPort;
+        private readonly NodePortStorage _nodePortStorage;
 
-        public ClusterOptions(IEnumerable<string> portOverrides)
+        public ClusterOptions(NodePortStorage nodePortStorage)
         {
-            (_portByNodeName, _defaultPort) = ApiPortOverridesParser.Parse(portOverrides);
+            _nodePortStorage = nodePortStorage;
         }
 
         public Uri GetNodeApiUri(ClusterConfiguration.Node node)
         {
-            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node));
-        }
-
-        private int GetApiPort(ClusterConfiguration.Node node)
-        {
-            if (_portByNodeName.TryGetValue(node.Name, out var port))
-                return port;
-            return _defaultPort;
+            return _nodePortStorage.GetNodeApiUri(node);
         }
     }
 }

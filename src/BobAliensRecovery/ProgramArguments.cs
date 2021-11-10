@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
-using BobApi.Helpers;
 using BobToolsCli;
 using CommandLine;
 using RemoteFileCopy.Ssh;
@@ -31,7 +30,7 @@ namespace BobAliensRecovery
 
         public LoggerOptions LoggerOptions => new(GetMinLogLevel());
 
-        public ClusterOptions ClusterOptions => new(ApiPortOverrides);
+        public ClusterOptions ClusterOptions => new(GetNodePortStorage());
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 

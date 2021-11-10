@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
-using BobApi.Helpers;
+using BobToolsCli.Helpers;
 using CommandLine;
 using Microsoft.Extensions.Logging;
 using YamlDotNet.Serialization;
@@ -22,7 +22,7 @@ namespace BobToolsCli
         [Option('v', HelpText = "Verbosity level, 0 to 3.", Default = 0)]
         public int VerbosityLevel { get; set; }
 
-        [Option("api-port", HelpText = ApiPortOverridesParser.HelpText, Separator = ',')]
+        [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000. Wildcard char (*) can be used to set port for all nodes.", Separator = ',')]
         public IEnumerable<string> ApiPortOverrides { get; set; } = Enumerable.Empty<string>();
 
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
@@ -56,6 +56,11 @@ namespace BobToolsCli
                 0 => LogLevel.None,
                 _ => throw new ArgumentException("Verbosity must be in range [0; 3]")
             };
+        }
+
+        public NodePortStorage GetNodePortStorage()
+        {
+            return new NodePortStorage(ApiPortOverrides);
         }
     }
 }
