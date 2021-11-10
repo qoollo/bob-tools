@@ -38,6 +38,25 @@ namespace BobToolsCli
             try
             {
                 var config = new Deserializer().Deserialize<ClusterConfiguration>(configContent);
+
+                var nodeNames = config.Nodes.Select(n => n.Name).ToHashSet();
+                var missingNodes = new HashSet<string>();
+                var brokenVDiskIds = new HashSet<long>();
+                foreach (var vd in config.VDisks)
+                    foreach (var r in vd.Replicas)
+                        if (!nodeNames.Contains(r.Node))
+                        {
+                            missingNodes.Add(r.Node);
+                            brokenVDiskIds.Add(vd.Id);
+                        }
+                if (brokenVDiskIds.Count > 0)
+                {
+                    var ids = string.Join(", ", brokenVDiskIds);
+                    var nodes = string.Join(", ", missingNodes);
+                    var error = $"Configuration contains vdisks ({ids}) with not defined nodes ({nodes})";
+                    return YamlReadingResult<ClusterConfiguration>.Error(error);
+                }
+
                 return YamlReadingResult<ClusterConfiguration>.Ok(config);
             }
             catch (Exception e)

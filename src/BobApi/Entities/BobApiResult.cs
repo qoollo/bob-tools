@@ -13,16 +13,18 @@ namespace BobApi.Entities
             _errorType = errorType;
         }
 
+        public bool IsError => _errorType != null;
+
         public bool TryGetData(out T data)
         {
             data = _data;
-            return _errorType == null;
+            return !IsError;
         }
 
         public bool TryGetError(out ErrorType errorType)
         {
             errorType = _errorType ?? 0;
-            return _errorType != null;
+            return IsError;
         }
 
         public override string ToString()

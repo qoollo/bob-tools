@@ -101,8 +101,8 @@ namespace BobApi
             => await GetJson<Partition>($"vdisks/{vDisk.Id}/partitions/{partition}", cancellationToken: cancellationToken);
 
 
-        public async Task<BobApiResult<long>> CountRecordsOnVDisk(VDisk vDisk, CancellationToken cancellationToken = default)
-            => await GetJson<long>($"vdisks/{vDisk.Id}/records/count", cancellationToken: cancellationToken);
+        public async Task<BobApiResult<long>> CountRecordsOnVDisk(long id, CancellationToken cancellationToken = default)
+            => await GetJson<long>($"vdisks/{id}/records/count", cancellationToken: cancellationToken);
 
         public async Task<BobApiResult<NodeConfiguration>> GetNodeConfiguration(CancellationToken cancellationToken = default)
             => await GetJson<NodeConfiguration>("configuration", cancellationToken: cancellationToken);
