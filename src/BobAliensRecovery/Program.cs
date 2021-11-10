@@ -71,14 +71,11 @@ namespace BobAliensRecovery
         private static async Task<ClusterConfiguration> GetClusterConfiguration(
             ProgramArguments arguments, CancellationToken cancellationToken)
         {
-            try
-            {
-                return await arguments.FindClusterConfiguration(cancellationToken);
-            }
-            catch (FileNotFoundException)
-            {
-                throw new ConfigurationException($"Cluster configuration file not found");
-            }
+            var result = await arguments.FindClusterConfiguration(cancellationToken);
+            if (result.IsOk(out var config, out var err))
+                return config;
+            else
+                throw new ConfigurationException(err);
         }
 
         private static IServiceProvider CreateServiceProvider(ProgramArguments args)

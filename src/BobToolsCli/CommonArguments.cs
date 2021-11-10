@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
 using BobApi.Helpers;
 using CommandLine;
+using YamlDotNet.Serialization;
 
 namespace BobToolsCli
 {
@@ -24,9 +27,22 @@ namespace BobToolsCli
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
 
-        public async Task<ClusterConfiguration> FindClusterConfiguration(CancellationToken cancellationToken = default)
+        public async Task<YamlReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
         {
-            return await BobYamlClusterConfigParser.ParseYaml(ClusterConfigPath, cancellationToken);
+            if (!File.Exists(ClusterConfigPath))
+                return YamlReadingResult<ClusterConfiguration>.Error("Configuration file not found");
+
+            var configContent = await File.ReadAllTextAsync(ClusterConfigPath, cancellationToken: cancellationToken);
+
+            try
+            {
+                var config = new Deserializer().Deserialize<ClusterConfiguration>(configContent);
+                return YamlReadingResult<ClusterConfiguration>.Ok(config);
+            }
+            catch (Exception e)
+            {
+                return YamlReadingResult<ClusterConfiguration>.Error(e.Message);
+            }
         }
     }
 }
