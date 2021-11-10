@@ -17,7 +17,7 @@ namespace BobToolsCli
         {
             data = _data;
             error = _error;
-            return _error != null;
+            return _error == null;
         }
 
         internal static YamlReadingResult<T> Ok(T data) => new(data, null);
