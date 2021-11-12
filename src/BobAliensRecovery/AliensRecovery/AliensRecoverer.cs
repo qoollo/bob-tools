@@ -49,7 +49,7 @@ namespace BobAliensRecovery.AliensRecovery
             var unavailableNodes = await GetUnavailableNodes(clusterConfiguration, clusterOptions, cancellationToken);
             if (unavailableNodes.Count > 0)
                 aliensRecoveryOptions.LogErrorWithPossibleException<ClusterStateException>(_logger,
-                    "Unavailable nodes: {nodes}", string.Join(", ", unavailableNodes));
+                    "The following nodes are not available: {nodes}", string.Join(", ", unavailableNodes));
 
             var replicas = await _replicasFinder.FindReplicasByVdiskId(clusterConfiguration,
                 clusterOptions, aliensRecoveryOptions, cancellationToken);
