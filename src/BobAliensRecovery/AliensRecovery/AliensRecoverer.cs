@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
+using BobAliensRecovery.Exceptions;
 using BobApi;
 using BobApi.BobEntities;
 using BobApi.Entities;
@@ -45,6 +46,11 @@ namespace BobAliensRecovery.AliensRecovery
             AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken = default)
         {
+            var unavailableNodes = await GetUnavailableNodes(clusterConfiguration, clusterOptions, cancellationToken);
+            if (unavailableNodes.Count > 0)
+                aliensRecoveryOptions.LogErrorWithPossibleException<ClusterStateException>(_logger,
+                    "Unavailable nodes: {nodes}", string.Join(", ", unavailableNodes));
+
             var replicas = await _replicasFinder.FindReplicasByVdiskId(clusterConfiguration,
                 clusterOptions, aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Replicas found");
@@ -64,6 +70,23 @@ namespace BobAliensRecovery.AliensRecovery
             await _nodesRestarter.RestartTargetNodes(recoveryTransactions, clusterConfiguration,
                 clusterOptions, aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Nodes restarted");
+        }
+
+        private async Task<List<string>> GetUnavailableNodes(
+            ClusterConfiguration clusterConfiguration,
+            ClusterOptions clusterOptions,
+            CancellationToken cancellationToken)
+        {
+            var result = new List<string>();
+            foreach (var node in clusterConfiguration.Nodes)
+            {
+                var addr = clusterOptions.GetNodeApiUri(node);
+                using var client = new BobApiClient(addr);
+                var res = await client.GetStatus(cancellationToken);
+                if (res.TryGetError(out var _))
+                    result.Add(node.Name);
+            }
+            return result;
         }
     }
 }
