@@ -54,11 +54,11 @@ namespace DisksMonitoring.OS.DisksFinding
         private PhysicalDisk ParseDisk(LshwNode diskNode)
         {
             var product = diskNode.FindSingleValue(TokenType.Product);
-            if (product is null) // not a real disk
+            var devPath = GetDevPath(diskNode);
+            if (product is null || devPath is null) // not a real disk
                 return null;
             var volumeNodes = diskNode.Children;
             var physicalIdStr = diskNode.FindSingleValue(TokenType.PhysicalId);
-            var devPath = GetDevPath(diskNode);
             var upperPhysicalId = diskNode.Parent.FindSingleValue(TokenType.PhysicalId);
             var physicalId = CollectPhysicalId(diskNode);
             var volumes = volumeNodes.Select(v => ParseVolume(v, physicalId)).Where(v => v != null).ToList();
