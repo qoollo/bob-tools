@@ -126,7 +126,11 @@ namespace BobApi
             return await InvokeRequest(async client =>
             {
                 using (var response = await client.PostAsync(addr, new StringContent(""), cancellationToken: cancellationToken))
-                    return BobApiResult<bool>.Ok(response.IsSuccessStatusCode);
+                {
+                    if (response.IsSuccessStatusCode)
+                        return BobApiResult<bool>.Ok(true);
+                    return BobApiResult<bool>.Unsuccessful();
+                }
             });
         }
 
