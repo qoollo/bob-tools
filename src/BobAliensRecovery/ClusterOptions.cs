@@ -18,7 +18,7 @@ namespace BobAliensRecovery
 
         public Uri GetNodeApiUri(ClusterConfiguration.Node node)
         {
-            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node));
+            return new Uri("http://" + node.GetIPAddress() + ":" + GetApiPort(node));
         }
 
         private int GetApiPort(ClusterConfiguration.Node node)
