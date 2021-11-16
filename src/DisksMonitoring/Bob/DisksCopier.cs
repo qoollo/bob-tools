@@ -1,15 +1,15 @@
-﻿using BobApi;
-using BobApi.Entities;
-using DisksMonitoring.Config;
-using DisksMonitoring.Entities;
-using DisksMonitoring.OS.Helpers;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using BobApi;
+using BobApi.Entities;
+using DisksMonitoring.Config;
+using DisksMonitoring.Entities;
+using DisksMonitoring.OS.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace DisksMonitoring.Bob
 {
@@ -33,16 +33,16 @@ namespace DisksMonitoring.Bob
                 logger.LogInformation($"DiskStatusAnalyzer path ({configuration.PathToDiskStatusAnalyzer}) is invalid, skipping copy");
                 return;
             }
-            var status = await bobApiClient.GetStatus();
-            if (status is null)
+            var statusResult = await bobApiClient.GetStatus();
+            if (!statusResult.TryGetData(out var status))
             {
                 logger.LogError($"Failed to get status from {bobApiClient}");
                 return;
             }
-            var destName = status?.Name;
+            var destName = status.Name;
             var diskName = bobDisk.DiskNameInBob;
             bool IsCurrent(Replica replica) => replica.Node == destName && replica.Disk == diskName;
-            var vdisks = status?.VDisks.Where(vd => vd.Replicas.Any(IsCurrent));
+            var vdisks = status.VDisks.Where(vd => vd.Replicas.Any(IsCurrent));
             if (!vdisks.Any())
             {
                 logger.LogError($"VDisks with replica ({diskName}, {destName}) not found");

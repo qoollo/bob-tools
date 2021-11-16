@@ -1,15 +1,15 @@
-﻿using BobApi;
-using DisksMonitoring.Config;
-using DisksMonitoring.Entities;
-using DisksMonitoring.OS;
-using DisksMonitoring.OS.DisksFinding;
-using Microsoft.Extensions.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Markup;
+using BobApi;
+using DisksMonitoring.Config;
+using DisksMonitoring.Entities;
+using DisksMonitoring.OS;
+using DisksMonitoring.OS.DisksFinding;
+using Microsoft.Extensions.Logging;
 
 namespace DisksMonitoring.Bob
 {
@@ -37,15 +37,15 @@ namespace DisksMonitoring.Bob
             var disks = await disksFinder.FindDisks();
             foreach (var i in disksToStart)
             {
-                var inactiveDisks = await bobApiClient.GetInactiveDisks();
-                if (inactiveDisks == null)
+                var inactiveDisksResult = await bobApiClient.GetInactiveDisks();
+                if (!inactiveDisksResult.TryGetData(out var inactiveDisks))
                     return;
                 if (!inactiveDisks.Any(d => d.Name == i.DiskNameInBob))
                     continue;
 
                 var disk = disks.FirstOrDefault(d => d.Volumes.Any(v => v.MountPath.Equals(i.MountPath) && v.IsMounted));
                 var volume = disk?.Volumes.First(v => v.MountPath.Equals(i.MountPath) && v.IsMounted);
-                if (disks.Count == 0 
+                if (disks.Count == 0
                     || !disks.Any(d => !d.NoVolumes && d.Volumes.Any(v => v.MountPath.Equals(i.MountPath) && v.IsMounted && !v.IsReadOnly)))
                     continue;
 
@@ -55,7 +55,8 @@ namespace DisksMonitoring.Bob
                 configuration.SaveUUID(await disksMonitor.GetUUID(i));
                 logger.LogInformation($"Starting bobdisk {i}...");
                 int retry = 0;
-                while (!await bobApiClient.StartDisk(i.DiskNameInBob) && retry++ < configuration.StartRetryCount)
+                while (!((await bobApiClient.StartDisk(i.DiskNameInBob)).TryGetData(out var isStarted) && isStarted)
+                    && retry++ < configuration.StartRetryCount)
                     logger.LogWarning($"Failed to start bobdisk in try {retry}, trying again");
                 if (retry == configuration.StartRetryCount)
                     logger.LogError($"Failed to start bobdisk {i}");

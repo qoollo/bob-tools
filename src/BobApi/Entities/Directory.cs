@@ -2,10 +2,17 @@ using System.Collections.Generic;
 
 namespace BobApi.Entities
 {
-    public struct Directory
+    public class Directory
     {
-        public string Name { get; set; }
-        public string Path { get; set; }
-        public List<Directory> Children{ get; set; }
+        public Directory(string name, string path, List<Directory> children)
+        {
+            Name = name;
+            Path = path;
+            Children = children;
+        }
+
+        public string Name { get; }
+        public string Path { get; }
+        public List<Directory> Children { get; }
     }
 }

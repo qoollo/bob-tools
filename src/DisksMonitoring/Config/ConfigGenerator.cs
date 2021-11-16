@@ -1,4 +1,9 @@
-﻿using BobApi;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using BobApi;
 using BobApi.Entities;
 using DisksMonitoring.Entities;
 using DisksMonitoring.OS.DisksFinding;
@@ -6,11 +11,6 @@ using DisksMonitoring.OS.DisksFinding.Entities;
 using DisksMonitoring.OS.DisksProcessing;
 using DisksMonitoring.OS.DisksProcessing.Entities;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DisksMonitoring.Config
 {
@@ -27,8 +27,8 @@ namespace DisksMonitoring.Config
 
         public async Task<IEnumerable<BobDisk>> GenerateConfigFromBob(BobApiClient bobApiClient)
         {
-            var disks = await bobApiClient.GetDisksToMonitor();
-            if (disks == null)
+            var disksResult = await bobApiClient.GetDisks();
+            if (!disksResult.TryGetData(out var disks))
             {
                 logger.LogError($"Failed to get bob disks from {bobApiClient}");
                 return Enumerable.Empty<BobDisk>();

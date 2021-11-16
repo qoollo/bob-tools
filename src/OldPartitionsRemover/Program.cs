@@ -7,9 +7,9 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using BobApi;
 using BobApi.Entities;
+using Newtonsoft.Json;
 
 namespace OldPartitionsRemover
 {
@@ -55,18 +55,18 @@ namespace OldPartitionsRemover
             foreach (var node in configuration.Node)
             {
                 using var api = new BobApiClient(node.Address);
-                var status = await api.GetStatus();
-                if (status == null)
+                var statusResult = await api.GetStatus();
+                if (!statusResult.TryGetData(out var status))
                     continue;
-                foreach (var vDisk in status?.VDisks)
+                foreach (var vDisk in status.VDisks)
                 {
                     foreach (var replica in vDisk.Replicas)
                     {
-                        if (replica.Node == status?.Name)
+                        if (replica.Node == status.Name)
                         {
                             LogInfo($"Processing replica of vdisk {vDisk.Id} on node {node}");
-                            var partitions = await api.GetPartitions(vDisk);
-                            if (partitions == null)
+                            var partitionsResult = await api.GetPartitions(vDisk);
+                            if (!partitionsResult.TryGetData(out var partitions))
                                 LogError($"Partitions for {vDisk} not found");
                             else
                             {
@@ -82,15 +82,15 @@ namespace OldPartitionsRemover
         private static async Task DeleteOldPartitions(Uri uri, VDisk vDisk, List<string> partitions)
         {
             using var api = new BobApiClient(uri);
-            foreach (var partition in partitions)
+            foreach (var partitionId in partitions)
             {
-                var partitionObject = await api.GetPartition(vDisk, partition);
-                if (partitionObject is null)
-                    LogError($"Failed to get partition {partition} on {vDisk}");
-                else if (GetDateTimeFromTimestamp(partitionObject?.Timestamp) < configuration.Threshold)
+                var partitionResult = await api.GetPartition(vDisk, partitionId);
+                if (!partitionResult.TryGetData(out var partition))
+                    LogError($"Failed to get partition {partitionId} on {vDisk}");
+                else if (GetDateTimeFromTimestamp(partition.Timestamp) < configuration.Threshold)
                 {
-                    await api.DeletePartition(vDisk, partitionObject?.Timestamp);
-                    LogInfo($"Deleted partition {partition} on {vDisk}");
+                    await api.DeletePartition(vDisk, partition.Timestamp);
+                    LogInfo($"Deleted partition {partitionId} on {vDisk}");
                 }
             }
         }
