@@ -4,6 +4,6 @@ Section: unknown
 Priority: optional
 Architecture: amd64
 Maintainer: Qoollo <info@qoollo.com>
-Depends: rsync
+Depends: rsync, xxhash
 Homepage: https://github.com/qoollo/bob-tools
 Description: Various tools for interacting with bob

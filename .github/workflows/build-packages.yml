@@ -26,6 +26,8 @@ jobs:
   build-rpm:
     runs-on: ubuntu-latest
     needs: build-release
+    env:
+      VERSION: 1.0.1.1-test
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -35,16 +37,20 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: bob-tools-binaries
-      - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+#      - name: Set env
+#        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: build rpm
         run: |
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools.spec
           sed -i "s/release_number/${{ github.run_id }}/" bob-tools.spec
           mkdir -p ./rpmbuild/{SOURCES,BUILD,RPMS,SPECS,SRPMS}
           cur_dir_name=${PWD##*/}
-          tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
-          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob-tools.spec
+          tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
+#          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob-tools.spec
+      - name: build rpm
+        uses: Antikythera/build-rpm@v1
+        with:
+          spec_file: bob-tools.spec
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -54,6 +60,8 @@ jobs:
   upload-rpm:
     runs-on: ubuntu-latest
     needs: build-rpm
+    env:
+      VERSION: 1.0.1.1-test
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -64,8 +72,8 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: bob-tools-rpm
-      - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+#      - name: Set env
+#        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Upload rpm to release
         uses: svenstaro/upload-release-action@v2
         with:
@@ -78,6 +86,8 @@ jobs:
   build-deb:
     runs-on: ubuntu-latest
     needs: build-release
+    env:
+      VERSION: 1.0.1.1-test
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -87,18 +97,20 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: bob-tools-binaries
-      - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+#      - name: Set env
+#        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: build deb
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
           cp control bob-tools_${{ env.VERSION }}_amd64/DEBIAN/
-          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}_amd64/usr/bin/
-          chmod +x bob-tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator}
+          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}_amd64/usr/bin/
+          chmod +x bob-tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator}
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
-          dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
+#          dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
+      - name: build deb
+        uses: singingwolfboy/build-dpkg-buster@v1
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -108,6 +120,8 @@ jobs:
   upload-deb:
     runs-on: ubuntu-latest
     needs: build-deb
+    env:
+      VERSION: 1.0.1.1-test
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -118,8 +132,8 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: bob-tools-deb
-      - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+#      - name: Set env
+#        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Upload deb to release
         uses: svenstaro/upload-release-action@v2
         with:
@@ -132,6 +146,8 @@ jobs:
   zip-file:
     runs-on: ubuntu-latest
     needs: build-release
+    env:
+      VERSION: 1.0.1.1-test
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -141,16 +157,20 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: bob-tools-binaries
-      - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+#      - name: Set env
+#        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Add zip file
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
-          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}/usr/bin/
-          chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,OldPartitionsRemover,RecordsCalculator}
+          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}/usr/bin/
+          chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator}
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/lib/systemd/system/
-          zip -r bob-tools_${{ env.VERSION }}.zip bob-tools_${{ env.VERSION }}
+#          zip -r bob-tools_${{ env.VERSION }}.zip bob-tools_${{ env.VERSION }}
+      - uses: papeloto/action-zip@v1
+        with:
+          files: bob-tools_${{ env.VERSION }}/
+          dest: bob-tools_${{ env.VERSION }}.zip
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -160,6 +180,8 @@ jobs:
   upload-zip:
     runs-on: ubuntu-latest
     needs: zip-file
+    env:
+      VERSION: 1.0.1.1-test
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -170,8 +192,8 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: bob-tools-zip
-      - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+#      - name: Set env
+#        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: Upload zip file to release
         uses: svenstaro/upload-release-action@v2
         with:
