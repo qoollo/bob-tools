@@ -56,24 +56,24 @@ namespace DiskStatusAnalyzer
         private async Task<NodeWithDirs> CreateNode(ConnectionInfo info)
         {
             var api = new BobApiClient(info.Uri);
-            var status = await api.GetStatus();
-            if (status == null)
+            var statusResult = await api.GetStatus();
+            if (!statusResult.TryGetData(out var status) || status.Name is null)
             {
                 logger.LogWarning($"Failed to get status from {info.Uri}");
                 return null;
             }
             var diskDirs = new List<DiskDir>();
-            foreach (var vDisk in status?.VDisks)
+            foreach (var vDisk in status.VDisks)
             {
-                var dirs = await api.GetDirectories(vDisk);
+                var dirsResult = await api.GetDirectories(vDisk);
                 foreach (var replica in vDisk.Replicas)
                 {
-                    if (replica.Node != status?.Name)
+                    if (replica.Node != status.Name)
                         continue;
                     var parentPath = replica.Path;
                     var name = $"path {replica.Path} on node {info.Uri}";
                     logger.LogInformation($"Reading disk structure from {name}");
-                    if (dirs == null)
+                    if (!dirsResult.TryGetData(out var dirs) || dirs == null)
                     {
                         logger.LogWarning($"Failed to get disk structure for {name}");
                         continue;
@@ -95,9 +95,13 @@ namespace DiskStatusAnalyzer
                         logger.LogWarning($"Dir for {name} no found");
                 }
             }
-            var alienDir = await api.GetAlienDirectory();
-            var alien = nodeStructureCreator.ParseAlien(alienDir, info);
-            return new NodeWithDirs(info, status?.Name, diskDirs, alien);
+            var alienDirResult = await api.GetAlienDirectory();
+            if (alienDirResult.TryGetData(out var alienDir))
+            {
+                var alien = nodeStructureCreator.ParseAlien(alienDir, info);
+                return new NodeWithDirs(info, status.Name, diskDirs, alien);
+            }
+            return null;
         }
     }
 }

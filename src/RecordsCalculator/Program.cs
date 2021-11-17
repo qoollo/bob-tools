@@ -95,14 +95,14 @@ namespace RecordsCalculator
                 try
                 {
                     var api = new BobApiClient(node.Address);
-                    var status = await api.GetStatus();
-                    if (status == null)
+                    var statusResult = await api.GetStatus();
+                    if (!statusResult.TryGetData(out var status))
                     {
                         logger.LogError($"Node {node.Address} not available");
                         continue;
                     }
-                    apiByName.Add(status?.Name, api);
-                    foreach (var vdisk in status?.VDisks)
+                    apiByName.Add(status.Name, api);
+                    foreach (var vdisk in status.VDisks)
                     {
                         if (!vdisks.Any(vd => vd.Id == vdisk.Id))
                             vdisks.Add(vdisk);

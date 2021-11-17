@@ -1,7 +1,8 @@
 using System.Collections.Generic;
-using YamlDotNet.Serialization;
-using System.Threading.Tasks;
 using System.IO;
+using System.Net;
+using System.Threading.Tasks;
+using YamlDotNet.Serialization;
 
 namespace BobApi.BobEntities
 {
@@ -24,6 +25,8 @@ namespace BobApi.BobEntities
             [YamlMember(Alias = "disks")]
             public List<Disk> Disks { get; set; }
 
+            public IPAddress GetIPAddress() => IPAddress.Parse(Address.Split(':')[0]);
+
             public class Disk
             {
                 [YamlMember(Alias = "name")]
@@ -31,6 +34,11 @@ namespace BobApi.BobEntities
 
                 [YamlMember(Alias = "path")]
                 public string Path { get; set; }
+            }
+
+            public override string ToString()
+            {
+                return Name;
             }
         }
 
@@ -50,6 +58,11 @@ namespace BobApi.BobEntities
                 [YamlMember(Alias = "disk")]
                 public string Disk { get; set; }
             }
+        }
+
+        public string FindDiskName(string nodeName, long vdiskId)
+        {
+            return VDisks.Find(vd => vd.Id == vdiskId)?.Replicas.Find(r => r.Node == nodeName)?.Disk;
         }
 
         public static async Task<ClusterConfiguration> FromYamlFile(string filename)

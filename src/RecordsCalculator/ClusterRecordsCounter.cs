@@ -18,12 +18,12 @@ public class ClusterRecordsCounter
     public async Task<(long unique, long withReplicas)> CountRecordsInCluster(Uri baseNode)
     {
         using var api = new BobApiClient(baseNode);
-        var nodeObj = await api.GetStatus();
-        if (nodeObj is null)
+        var nodeObjResult = await api.GetStatus();
+        if (!nodeObjResult.TryGetData(out var nodeObj))
             throw new Exception("Failed to get node status");
-        var vdisks = nodeObj.Value.VDisks;
-        var nodes = await api.GetNodes();
-        if (nodes is null)
+        var vdisks = nodeObj.VDisks;
+        var nodesResult = await api.GetNodes();
+        if (!nodesResult.TryGetData(out var nodes))
             throw new Exception("Failed to get nodes information");
 
         var apiByName = nodes.ToDictionary(n => n.Name, n =>
@@ -45,13 +45,13 @@ public class ClusterRecordsCounter
         foreach (var (name, api) in apiByName)
         {
             var status = await api.GetStatus();
-            if (status is null)
+            if (status.TryGetError(out var _))
             {
                 logger.LogInformation($"Removing unavailable node {name}");
                 nodesToRemove.Add(name);
             }
         }
-        foreach(var name in nodesToRemove)
+        foreach (var name in nodesToRemove)
             apiByName.Remove(name);
         foreach (var vdisk in vdisks)
         {
@@ -63,12 +63,12 @@ public class ClusterRecordsCounter
                     logger.LogWarning($"Node {replica.Node} mentioned in replicas of vdisk {vdisk.Id} not found");
                 else if (apiByName.ContainsKey(replica.Node))
                 {
-                    var countObj = await apiByName[replica.Node].CountRecordsOnVDisk(vdisk);
-                    if (countObj is null)
+                    var countObjResult = await apiByName[replica.Node].CountRecordsOnVDisk(vdisk);
+                    if (!countObjResult.TryGetData(out var countObj))
                         logger.LogWarning($"Failed to get count of records from {replica.Node} for vdisk {vdisk.Id}");
                     else
                     {
-                        var count = countObj.Value;
+                        var count = countObj;
                         if (count > maxCount)
                             maxCount = count;
                         totalCount += count;
