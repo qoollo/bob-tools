@@ -48,9 +48,10 @@ jobs:
           tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
 #          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob-tools.spec
       - name: build rpm
-        uses: Antikythera/build-rpm@v1
+        uses: robertdebock/rpmbuild-action@1.1.1
         with:
           spec_file: bob-tools.spec
+          sources: ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -110,7 +111,9 @@ jobs:
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
 #          dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
       - name: build deb
-        uses: singingwolfboy/build-dpkg-buster@v1
+        uses: dawidd6/action-debian-package@v1
+        with: 
+          source_directory: ./bob-tools_${{ env.VERSION }}_amd64
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
