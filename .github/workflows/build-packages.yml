@@ -51,8 +51,8 @@ jobs:
       - name: build rpm
         uses: Antikythera/build-rpm@v1
         with:
-          spec_file: /rpmbuild/SPECS/bob-tools.spec
-          sources: ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz
+          spec_file: rpmbuild/SPECS/bob-tools.spec
+          sources: rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -103,14 +103,14 @@ jobs:
 #        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
       - name: build deb
         run: |
-          mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
-          cp control bob-tools_${{ env.VERSION }}_amd64/DEBIAN/
+          mkdir -p bob-tools_${{ env.VERSION }}_amd64/{debian,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
+          cp control bob-tools_${{ env.VERSION }}_amd64/debian/
           cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}_amd64/usr/bin/
           chmod +x bob-tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator}
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
-          sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
-          touch bob-tools_${{ env.VERSION }}_amd64/DEBIAN/changelog
+          sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/debian/control
+          touch bob-tools_${{ env.VERSION }}_amd64/debian/changelog
 #          dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
 
       - name: build deb
