@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-release
     env:
-      VERSION: 1.0.1.1-test
+      VERSION: 1.0.1.1_test
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -47,11 +47,6 @@ jobs:
           cur_dir_name=${PWD##*/}
           tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
           rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob-tools.spec
-      - name: build rpm
-        uses: Antikythera/build-rpm@v1
-        with:
-          spec_file: rpmbuild/SPECS/bob-tools.spec
-          sources: rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -62,7 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-rpm
     env:
-      VERSION: 1.0.1.1-test
+      VERSION: 1.0.1.1_test
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -88,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-release
     env:
-      VERSION: 1.0.1.1-test
+      VERSION: 1.0.1.1_test
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -110,12 +105,6 @@ jobs:
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
           dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
-
-      - name: build deb
-        uses: dawidd6/action-debian-package@v1
-        with: 
-          source_directory: ./bob-tools_${{ env.VERSION }}_amd64
-          os_distribution: bionic
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -126,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-deb
     env:
-      VERSION: 1.0.1.1-test
+      VERSION: 1.0.1.1_test
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -152,7 +141,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-release
     env:
-      VERSION: 1.0.1.1-test
+      VERSION: 1.0.1.1_test
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -186,7 +175,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: zip-file
     env:
-      VERSION: 1.0.1.1-test
+      VERSION: 1.0.1.1_test
     environment: prod
     steps:
       - name: Checks-out repository 
