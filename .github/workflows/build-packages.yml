@@ -46,11 +46,12 @@ jobs:
           mkdir -p ./rpmbuild/{SOURCES,BUILD,RPMS,SPECS,SRPMS}
           cur_dir_name=${PWD##*/}
           tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
+          cp bob-tools.spec ./rpmbuild/SPECS/
 #          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob-tools.spec
       - name: build rpm
         uses: Antikythera/build-rpm@v1
         with:
-          spec_file: bob-tools.spec
+          spec_file: /rpmbuild/SPECS/bob-tools.spec
           sources: ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -109,7 +110,9 @@ jobs:
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
+          touch bob-tools_${{ env.VERSION }}_amd64/DEBIAN/changelog
 #          dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
+
       - name: build deb
         uses: dawidd6/action-debian-package@v1
         with: 
