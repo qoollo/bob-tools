@@ -77,7 +77,8 @@ namespace BobAliensRecovery
                 throw new ConfigurationException($"Cluster configuration file not found in {path}");
 
             var configContent = await File.ReadAllTextAsync(path, cancellationToken: cancellationToken);
-            var cluster = new Deserializer().Deserialize<ClusterConfiguration>(configContent);
+            var cluster = new DeserializerBuilder().IgnoreUnmatchedProperties().Build()
+                .Deserialize<ClusterConfiguration>(configContent);
             return cluster;
         }
 
