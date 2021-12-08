@@ -32,9 +32,9 @@ namespace RemoteFileCopy.Ssh
         {
             return new[]
             {
-                "-p" + _configuration.Port.ToString(),
-                "-i" + _configuration.PathToKey,
-                "-oStrictHostKeyChecking=no",
+                "-p " + _configuration.Port.ToString(),
+                "-i " + _configuration.PathToKey,
+                "-o StrictHostKeyChecking=no",
             };
         }
 
