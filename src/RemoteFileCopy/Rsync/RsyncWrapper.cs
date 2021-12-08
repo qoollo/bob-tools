@@ -47,7 +47,7 @@ namespace RemoteFileCopy.Rsync
 
             var rsyncCommand = new StringBuilder(RsyncExecutable);
             var sshCommandForRsyncSb = new StringBuilder(_sshWrapper.SshCommand + " ");
-            sshCommandForRsyncSb.Append(string.Join(" ", _sshWrapper.GetSshCommandAndArguments()));
+            sshCommandForRsyncSb.Append(string.Join(" ", _sshWrapper.GetSshCommandAndArguments(true)));
 
             rsyncCommand.Append($" -e '{sshCommandForRsyncSb}'");
             rsyncCommand.Append(" -av");

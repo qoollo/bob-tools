@@ -18,8 +18,6 @@ namespace RemoteFileCopy.DependenciesChecking
         public async Task<bool> SshConnectionExists(IPAddress address, CancellationToken cancellationToken = default)
         {
             var result = await _sshWrapper.InvokeSshProcess(address, "echo \'\'", cancellationToken);
-            foreach (var l in result.StdErr)
-                System.Console.WriteLine($"\"{l}\"");
             return !result.IsError;
         }
 
