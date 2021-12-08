@@ -34,7 +34,7 @@ namespace RemoteFileCopy.Ssh
             {
                 "-p" + (withSpace ? " " : "") + _configuration.Port.ToString(),
                 "-i" + (withSpace ? " " : "") + _configuration.PathToKey,
-                "-o" + (withSpace ? " " : "") + StrictHostKeyChecking=no",
+                "-o" + (withSpace ? " " : "") + "StrictHostKeyChecking=no",
             };
         }
 
