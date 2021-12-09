@@ -40,6 +40,9 @@ namespace BobAliensRecovery
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
 
+        [Option("restart-nodes", HelpText = "Restart nodes after aliens have been copied", Default = false)]
+        public bool RestartNodes { get; set; }
+
         public LoggerOptions LoggerOptions => new(VerbosityLevel);
 
         public ClusterOptions ClusterOptions
@@ -47,6 +50,6 @@ namespace BobAliensRecovery
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 
-        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveCopied, ContinueOnError);
+        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveCopied, ContinueOnError, RestartNodes);
     }
 }
