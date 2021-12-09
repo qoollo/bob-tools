@@ -30,11 +30,12 @@ namespace RemoteFileCopy.Ssh
 
         public IEnumerable<string> GetSshCommandAndArguments(bool withSpace)
         {
+            var space = withSpace ? " " : "";
             return new[]
             {
-                "-p" + (withSpace ? " " : "") + _configuration.Port.ToString(),
-                "-i" + (withSpace ? " " : "") + _configuration.PathToKey,
-                "-o" + (withSpace ? " " : "") + "StrictHostKeyChecking=no",
+                "-p" + space + _configuration.Port.ToString(),
+                "-i" + space + _configuration.PathToKey,
+                "-o" + space + "StrictHostKeyChecking=no",
             };
         }
 
