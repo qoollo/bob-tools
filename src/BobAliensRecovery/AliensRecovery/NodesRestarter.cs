@@ -23,9 +23,6 @@ namespace BobAliensRecovery.AliensRecovery
             ClusterConfiguration clusterConfiguration, ClusterOptions clusterOptions,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
-            if (!aliensRecoveryOptions.RestartNodes)
-                return;
-
             var restartOperations = GetRestartOperations(recoveryTransactions, clusterConfiguration);
 
             foreach (var ro in restartOperations.Distinct())

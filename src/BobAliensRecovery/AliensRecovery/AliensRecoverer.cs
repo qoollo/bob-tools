@@ -67,9 +67,12 @@ namespace BobAliensRecovery.AliensRecovery
                  cancellationToken);
             _logger.LogInformation("Blobs transfer finished");
 
-            await _nodesRestarter.RestartTargetNodes(recoveryTransactions, clusterConfiguration,
-                clusterOptions, aliensRecoveryOptions, cancellationToken);
-            _logger.LogInformation("Nodes restarted");
+            if (aliensRecoveryOptions.RestartNodes)
+            {
+                await _nodesRestarter.RestartTargetNodes(recoveryTransactions, clusterConfiguration,
+                    clusterOptions, aliensRecoveryOptions, cancellationToken);
+                _logger.LogInformation("Nodes restarted");
+            }
         }
 
         private async Task<List<string>> GetUnavailableNodes(
