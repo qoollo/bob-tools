@@ -44,9 +44,6 @@ namespace RemoteFileCopy.FilesFinding
         public async Task<IEnumerable<RemoteFileInfo>> FindFiles(RemoteDir dir,
             CancellationToken cancellationToken = default)
         {
-            if (!await _remoteDependenciesChecker.RemoteProgramExists(dir.Address, "xxhsum", cancellationToken))
-                throw new MissingDependencyException("xxhsum");
-
             var scriptFile = Path.GetTempFileName();
             await File.WriteAllTextAsync(scriptFile, _scriptContent, cancellationToken: cancellationToken);
             try
