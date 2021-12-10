@@ -44,7 +44,8 @@ namespace RemoteFileCopy.FilesFinding
         public async Task<IEnumerable<RemoteFileInfo>> FindFiles(RemoteDir dir,
             CancellationToken cancellationToken = default)
         {
-            var scriptFile = Path.Combine(Directory.GetCurrentDirectory(), "list_files.sh");// Path.GetTempFileName();
+            // var scriptFile = Path.GetTempFileName();
+            var scriptFile = Path.Combine(Directory.GetCurrentDirectory(), "list_files_1.sh");
             await File.WriteAllTextAsync(scriptFile, _scriptContent, cancellationToken: cancellationToken);
             try
             {
