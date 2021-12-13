@@ -37,7 +37,8 @@ namespace BobToolsCli
 
             try
             {
-                var config = new Deserializer().Deserialize<ClusterConfiguration>(configContent);
+                var config = new DeserializerBuilder().IgnoreUnmatchedProperties().Build()
+                    .Deserialize<ClusterConfiguration>(configContent);
 
                 var nodeNames = config.Nodes.Select(n => n.Name).ToHashSet();
                 var missingNodes = new HashSet<string>();

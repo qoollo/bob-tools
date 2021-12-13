@@ -1,0 +1,13 @@
+[Unit]
+Description=DisksMonitoring
+Wants=bob.service
+After=bob.service
+
+[Service]
+Type=simple
+Restart=on-failure
+WorkingDirectory=/etc/DisksMonitoring
+ExecStart=/usr/bin/DisksMonitoring monitor
+
+[Install]
+WantedBy=multi-user.target
