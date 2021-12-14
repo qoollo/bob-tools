@@ -19,11 +19,11 @@ namespace RecordsCalculator
         private readonly NodePortStorage _nodePortStorage;
 
         public ClusterRecordsCounter(ILogger<ClusterRecordsCounter> logger,
-            ProgramArguments programArguments)
+            ProgramArguments programArguments, NodePortStorage nodePortStorage)
         {
             _logger = logger;
             _programArguments = programArguments;
-            _nodePortStorage = programArguments.GetNodePortStorage();
+            _nodePortStorage = nodePortStorage;
         }
 
         public async Task<RecordsCount> CountRecordsInCluster(ClusterConfiguration clusterConfiguration, CancellationToken cancellationToken = default)

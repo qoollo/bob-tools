@@ -57,7 +57,8 @@ namespace BobToolsCli
             {
                 var services = new ServiceCollection()
                     .AddLogging(b => b.AddConsole().SetMinimumLevel(args.GetMinLogLevel()))
-                    .AddSingleton<T>(args);
+                    .AddSingleton(args)
+                    .AddSingleton(args.GetNodePortStorage());
 
                 return f(args, services);
             };
@@ -65,7 +66,8 @@ namespace BobToolsCli
 
         private static Task ProcessErrors(IEnumerable<Error> errs)
         {
-            Console.WriteLine($"Errors: {string.Join(", ", errs)}");
+            // This should be enabled only for debug purposes
+            // Console.WriteLine($"Errors: {string.Join(", ", errs)}");
             return Task.CompletedTask;
         }
     }
