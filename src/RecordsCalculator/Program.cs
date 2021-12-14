@@ -15,20 +15,28 @@ namespace RecordsCalculator
             await CliHelper.RunWithParsed<ProgramArguments>(args, CountRecords);
         }
 
-        private static async Task CountRecords(ProgramArguments arguments, CancellationToken cancellationToken)
+        private static async Task CountRecords(ProgramArguments arguments, IServiceCollection services,
+            CancellationToken cancellationToken)
         {
-            var provider = new ServiceCollection()
-                .AddLogging(b => b.AddConsole().SetMinimumLevel(arguments.GetMinLogLevel()))
+            var provider = services
                 .AddTransient<ClusterRecordsCounter>()
                 .AddSingleton(arguments)
                 .BuildServiceProvider();
+
             var counter = provider.GetRequiredService<ClusterRecordsCounter>();
             var configResult = await arguments.FindClusterConfiguration(cancellationToken);
             if (configResult.IsOk(out var configuration, out var error))
             {
-                var result = await counter.CountRecordsInCluster(configuration, cancellationToken);
-                Console.WriteLine($"Total records count: {result.Unique}");
-                Console.WriteLine($"Total records count with replicas: {result.WithReplicas}");
+                try
+                {
+                    var result = await counter.CountRecordsInCluster(configuration, cancellationToken);
+                    Console.WriteLine($"Total records count: {result.Unique}");
+                    Console.WriteLine($"Total records count with replicas: {result.WithReplicas}");
+                }
+                catch (InvalidOperationException)
+                {
+                    Console.WriteLine("Error reading counts");
+                }
             }
             else
             {

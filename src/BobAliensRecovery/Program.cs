@@ -45,9 +45,9 @@ namespace BobAliensRecovery
             }
         }
 
-        private static async Task RecoverAliens(ProgramArguments arguments, CancellationToken cancellationToken)
+        private static async Task RecoverAliens(ProgramArguments arguments, IServiceCollection services, CancellationToken cancellationToken)
         {
-            var provider = CreateServiceProvider(arguments);
+            var provider = CreateServiceProvider(services, arguments);
             var recoverer = provider.GetRequiredService<AliensRecoverer>();
 
             var cluster = await GetClusterConfiguration(arguments!, cancellationToken);
@@ -66,12 +66,8 @@ namespace BobAliensRecovery
                 throw new ConfigurationException(err);
         }
 
-        private static IServiceProvider CreateServiceProvider(ProgramArguments args)
+        private static IServiceProvider CreateServiceProvider(IServiceCollection services, ProgramArguments args)
         {
-            var services = new ServiceCollection();
-
-            services.AddLogging(b => b.AddConsole().SetMinimumLevel(args.LoggerOptions.MinLevel));
-
             services
                 .AddScoped<AliensRecoverer>()
                 .AddScoped<AlienDirsFinder>()
