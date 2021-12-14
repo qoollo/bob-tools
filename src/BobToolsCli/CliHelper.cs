@@ -55,7 +55,10 @@ namespace BobToolsCli
         {
             return args =>
             {
-                var services = new ServiceCollection().AddLogging(b => b.AddConsole().SetMinimumLevel(args.GetMinLogLevel()));
+                var services = new ServiceCollection()
+                    .AddLogging(b => b.AddConsole().SetMinimumLevel(args.GetMinLogLevel()))
+                    .AddSingleton<T>(args);
+
                 return f(args, services);
             };
         }

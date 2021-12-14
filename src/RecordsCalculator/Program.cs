@@ -20,7 +20,6 @@ namespace RecordsCalculator
         {
             var provider = services
                 .AddTransient<ClusterRecordsCounter>()
-                .AddSingleton(arguments)
                 .BuildServiceProvider();
 
             var counter = provider.GetRequiredService<ClusterRecordsCounter>();
