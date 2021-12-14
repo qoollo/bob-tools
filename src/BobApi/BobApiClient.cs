@@ -79,9 +79,8 @@ namespace BobApi
 
         public async Task<BobApiResult<List<string>>> GetPartitions(ClusterConfiguration.VDisk vDisk, CancellationToken cancellationToken = default)
             => await GetPartitions(vDisk.Id, cancellationToken);
-
-        public async Task<BobApiResult<bool>> DeletePartition(long vDiskId, long? partition, CancellationToken cancellationToken = default)
-            => await DeleteIsOk($"vdisks/{vDiskId}/partitions/{partition}", cancellationToken);
+        public async Task<BobApiResult<bool>> DeletePartition(VDisk vDisk, long? timestamp, CancellationToken cancellationToken = default)
+            => await DeleteIsOk($"vdisks/{vDisk.Id}/partitions/by_timestamp/{timestamp}", cancellationToken);
 
         public async Task<BobApiResult<Partition>> GetPartition(long id, string partition,
             CancellationToken cancellationToken = default)
