@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using BobToolsCli;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,21 +12,7 @@ namespace RecordsCalculator
     {
         private static async Task Main(string[] args)
         {
-            var cancellationTokenSource = new CancellationTokenSource();
-            Console.CancelKeyPress += (s, e) =>
-            {
-                cancellationTokenSource.Cancel();
-            };
-            var parsed = Parser.Default.ParseArguments<ProgramArguments>(args);
-
-            try
-            {
-                _ = await parsed.WithParsedAsync(args => CountRecords(args, cancellationTokenSource.Token));
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine("Cancelled");
-            }
+            await CliHelper.RunWithParsed<ProgramArguments>(args, CountRecords);
         }
 
         private static async Task CountRecords(ProgramArguments arguments, CancellationToken cancellationToken)
