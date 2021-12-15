@@ -45,22 +45,14 @@ namespace RemoteFileCopy
             var filesByAddress = fileInfos.GroupBy(f => f.Address);
             foreach (var group in filesByAddress)
             {
-                // var scriptFile = Path.GetTempFileName();
-                var scriptFile = Path.Combine(Directory.GetCurrentDirectory(), "list_files_2.sh");
                 var content = new StringBuilder();
-                content.AppendLine("#!/bin/sh");
+                content.AppendLine("'EOF'");
                 foreach (var file in group)
                     content.AppendLine($"rm -f '{file.Filename}'");
-                await File.WriteAllTextAsync(scriptFile, content.ToString(), cancellationToken: cancellationToken);
-                try
-                {
-                    var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"sh -s < {scriptFile}", cancellationToken);
-                    error |= sshResults.IsError;
-                }
-                finally
-                {
-                    File.Delete(scriptFile);
-                }
+                content.AppendLine("EOF");
+
+                var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"bash << {content}", cancellationToken);
+                error |= sshResults.IsError;
             }
             return !error;
         }

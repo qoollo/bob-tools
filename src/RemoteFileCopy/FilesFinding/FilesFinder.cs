@@ -18,63 +18,52 @@ namespace RemoteFileCopy.FilesFinding
     public class FilesFinder
     {
         private static readonly Regex s_fileInfo = new(@"f(.+) l(\d+) c(.+)");
-
         private readonly SshWrapper _sshWrapper;
         private readonly ILogger<FilesFinder> _logger;
-        private readonly RemoteDependenciesChecker _remoteDependenciesChecker;
-        private readonly string _scriptContent;
 
-        public FilesFinder(SshWrapper sshWrapper, ILogger<FilesFinder> logger,
-            RemoteDependenciesChecker remoteDependenciesChecker)
+        public FilesFinder(SshWrapper sshWrapper, ILogger<FilesFinder> logger)
         {
             _sshWrapper = sshWrapper;
             _logger = logger;
-            _remoteDependenciesChecker = remoteDependenciesChecker;
-
-            var scriptName = Assembly.GetExecutingAssembly().GetManifestResourceNames()
-                .Single(s => s.EndsWith("Scripts.list_files.sh"));
-            using var scriptStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(scriptName);
-            if (scriptStream is null)
-                throw new ArgumentException("Failed to find script for files listing");
-
-            using var reader = new StreamReader(scriptStream);
-            _scriptContent = reader.ReadToEnd();
         }
 
         public async Task<IEnumerable<RemoteFileInfo>> FindFiles(RemoteDir dir,
             CancellationToken cancellationToken = default)
         {
-            // var scriptFile = Path.GetTempFileName();
-            // var scriptFile = Path.Combine(Directory.GetCurrentDirectory(), "list_files_1.sh");
-            // await File.WriteAllTextAsync(scriptFile, _scriptContent, cancellationToken: cancellationToken);
-            try
-            {
-                var script = $"'EOF'{Environment.NewLine}{_scriptContent.Replace("PLACEHOLDER", $"\"{dir.Path}\"")}{Environment.NewLine}EOF";
-                var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {script}", cancellationToken);
+            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {GetBashHereDoc(dir.Path)}", cancellationToken);
 
-                if (sshResult.IsError)
-                {
-                    _logger.LogWarning("Failed to get files from {dir}", dir);
-                    _logger.LogDebug("Finder stderr: {output}", string.Join(Environment.NewLine, sshResult.StdErr));
-                    _logger.LogDebug("Finder stdout: {output}", string.Join(Environment.NewLine, sshResult.StdOut));
-                    throw new CommandLineFailureException("find");
-                }
-
-                var result = new List<RemoteFileInfo>();
-                foreach (var line in sshResult.StdOut)
-                {
-                    var match = s_fileInfo.Match(line);
-                    if (match.Success && long.TryParse(match.Groups[2].Value, out var size))
-                        result.Add(new RemoteFileInfo(dir.Address, match.Groups[1].Value, size, match.Groups[3].Value));
-                    else
-                        _logger.LogDebug("Failed to parse {line} into file info", line);
-                }
-                return result;
-            }
-            finally
+            if (sshResult.IsError)
             {
-                // File.Delete(scriptFile);
+                _logger.LogWarning("Failed to get files from {dir}", dir);
+                _logger.LogDebug("Finder stderr: {output}", string.Join(Environment.NewLine, sshResult.StdErr));
+                _logger.LogDebug("Finder stdout: {output}", string.Join(Environment.NewLine, sshResult.StdOut));
+                throw new CommandLineFailureException("find");
             }
+
+            var result = new List<RemoteFileInfo>();
+            foreach (var line in sshResult.StdOut)
+            {
+                var match = s_fileInfo.Match(line);
+                if (match.Success && long.TryParse(match.Groups[2].Value, out var size))
+                    result.Add(new RemoteFileInfo(dir.Address, match.Groups[1].Value, size, match.Groups[3].Value));
+                else
+                    _logger.LogDebug("Failed to parse {line} into file info", line);
+            }
+            return result;
+        }
+
+        internal static string GetBashHereDoc(string path)
+        {
+            return $@"'EOF'
+if [ -d {path} ]
+then 
+    for f in $(find {path} -type f -print) ; do
+        hash=$(sha1sum < $f | awk '{{ print $1 }}')
+        size=$(stat -c%s $f)
+        echo f$f l$size c$hash
+    done
+fi
+EOF";
         }
     }
 }
