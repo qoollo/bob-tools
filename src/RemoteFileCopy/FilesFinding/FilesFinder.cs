@@ -45,11 +45,12 @@ namespace RemoteFileCopy.FilesFinding
             CancellationToken cancellationToken = default)
         {
             // var scriptFile = Path.GetTempFileName();
-            var scriptFile = Path.Combine(Directory.GetCurrentDirectory(), "list_files_1.sh");
-            await File.WriteAllTextAsync(scriptFile, _scriptContent, cancellationToken: cancellationToken);
+            // var scriptFile = Path.Combine(Directory.GetCurrentDirectory(), "list_files_1.sh");
+            // await File.WriteAllTextAsync(scriptFile, _scriptContent, cancellationToken: cancellationToken);
             try
             {
-                var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"sh -s < {scriptFile} {dir.Path}", cancellationToken);
+                var script = $"'EOF'{Environment.NewLine}{_scriptContent.Replace("PLACEHOLDER", $"\"{dir.Path}\"")}{Environment.NewLine}EOF";
+                var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {script}", cancellationToken);
 
                 if (sshResult.IsError)
                 {
@@ -72,7 +73,7 @@ namespace RemoteFileCopy.FilesFinding
             }
             finally
             {
-                File.Delete(scriptFile);
+                // File.Delete(scriptFile);
             }
         }
     }
