@@ -15,7 +15,11 @@ namespace OldPartitionsRemover.ByDateRemoving.Entities
         public PartitionFunctions(ClusterConfiguration.VDisk vdisk, NodeApi nodeApi)
         {
             FindPartitionById = async id => await nodeApi.Invoke((c, t) => c.GetPartition(vdisk.Id, id, t));
-            RemovePartitionsByTimestamp = async ts => await nodeApi.Invoke((c, t) => c.DeletePartitionsByTimestamp(vdisk.Id, ts, t));
+            RemovePartitionsByTimestamp = async ts =>
+            {
+                Result<bool> result = await nodeApi.Invoke((c, t) => c.DeletePartitionsByTimestamp(vdisk.Id, ts, t));
+                return result.Bind(r => r ? Result<bool>.Ok(true) : Result<bool>.Error("Failed to remove partitions though the bob API"));
+            };
             FindPartitionIds = async () => await nodeApi.Invoke((c, t) => c.GetPartitions(vdisk, t));
         }
 

@@ -27,6 +27,7 @@ namespace OldPartitionsRemover
 
         private static async Task RemoveOldPartitions(ByDateRemoving.Arguments args, IServiceCollection services, CancellationToken cancellationToken)
         {
+            services.AddTransient<ByDateRemoving.Remover>();
             var provider = services.BuildServiceProvider();
             var remover = provider.GetRequiredService<ByDateRemoving.Remover>();
             var logger = provider.GetRequiredService<ILogger<Program>>();
@@ -39,7 +40,7 @@ namespace OldPartitionsRemover
             }
             else
             {
-                logger.LogError("Failed to delete partitions: {Error}", error);
+                logger.LogError("Error: {Error}", error);
             }
         }
     }
