@@ -4,12 +4,12 @@ using BobToolsCli;
 using CommandLine;
 using OldPartitionsRemover.Entites;
 
-namespace OldPartitionsRemover
+namespace OldPartitionsRemover.ByDateRemoving
 {
-    public class ProgramArguments : CommonArguments
+    [Verb("by-date")]
+    public class Arguments : CommonArguments
     {
         private static readonly Regex s_daysOffsetRegex = new(@"^\-(\d+)d$");
-
 
         [Option('t', "threshold", HelpText = "Removal threshold. Can be either date or in relative days count format, e.g. \"-3d\"", Required = true)]
         public string ThresholdString { get; set; }

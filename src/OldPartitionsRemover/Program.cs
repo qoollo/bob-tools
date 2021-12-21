@@ -21,10 +21,10 @@ namespace OldPartitionsRemover
     {
         private static async Task Main(string[] args)
         {
-            await CliHelper.RunWithParsed<ProgramArguments>(args, RemoveOldPartitions);
+            await CliHelper.RunWithParsed<ByDateRemoving.Arguments>(args, RemoveOldPartitions);
         }
 
-        private static async Task RemoveOldPartitions(ProgramArguments args, IServiceCollection services, CancellationToken cancellationToken)
+        private static async Task RemoveOldPartitions(ByDateRemoving.Arguments args, IServiceCollection services, CancellationToken cancellationToken)
         {
             var provider = services.BuildServiceProvider();
             var storage = provider.GetRequiredService<NodePortStorage>();
