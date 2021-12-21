@@ -7,7 +7,7 @@ Release: release_number
 Source0: %{name}-%{version}.tar.gz
 Group: Development/Tools
 BuildArch: x86_64
-Requires: rsync, xxhash
+Requires: rsync
 
 %global debug_package %{nil}
 %global __os_install_post %{nil}

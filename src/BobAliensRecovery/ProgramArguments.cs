@@ -28,12 +28,15 @@ namespace BobAliensRecovery
         [Option("remove-copied", HelpText = "Remove copied blobs", Default = false)]
         public bool RemoveCopied { get; set; }
 
+        [Option("restart-nodes", HelpText = "Restart nodes after aliens have been copied", Default = false)]
+        public bool RestartNodes { get; set; }
+
         public LoggerOptions LoggerOptions => new(GetMinLogLevel());
 
         public ClusterOptions ClusterOptions => new(GetNodePortStorage());
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 
-        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveCopied, ContinueOnError);
+        public AliensRecoveryOptions AliensRecoveryOptions => new(RemoveCopied, ContinueOnError, RestartNodes);
     }
 }

@@ -47,9 +47,9 @@ namespace RemoteFileCopy.Rsync
 
             var rsyncCommand = new StringBuilder(RsyncExecutable);
             var sshCommandForRsyncSb = new StringBuilder(_sshWrapper.SshCommand + " ");
-            sshCommandForRsyncSb.Append(string.Join(" ", _sshWrapper.GetSshCommandAndArguments()));
+            sshCommandForRsyncSb.Append(string.Join(" ", _sshWrapper.GetSshCommandAndArguments(true)));
 
-            rsyncCommand.Append($" -e'{sshCommandForRsyncSb}'");
+            rsyncCommand.Append($" -e '{sshCommandForRsyncSb}'");
             rsyncCommand.Append(" -av");
             rsyncCommand.Append(" --exclude='*.lock'");
             // rsyncCommand.Append(" --dry-run");
@@ -57,7 +57,7 @@ namespace RemoteFileCopy.Rsync
             rsyncCommand.Append(" --compress"); // Compress during transfer
             rsyncCommand.Append(" --out-format='f\"%f\" l\"%l\" c\"%C\"'"); // %f - filename, %l - length of the file, %C - checksum
             rsyncCommand.Append(" --checksum"); // calculate checksum before sending
-            rsyncCommand.Append(" --checksum-choice=xxh128"); // checksum algorithm
+            // rsyncCommand.Append(" --checksum-choice=xxh128"); // checksum algorithm
 
             // rsyncCommand.Append(" --min-size=20"); // Larger than 100b
 

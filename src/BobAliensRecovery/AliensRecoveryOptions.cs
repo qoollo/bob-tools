@@ -10,15 +10,19 @@ namespace BobAliensRecovery
         private static readonly Regex s_curlyRegex = new(@"\{.*?\D.*?\}");
 
         public AliensRecoveryOptions(bool removeCopied,
-            bool continueOnError)
+            bool continueOnError,
+            bool restartNodes)
         {
             RemoveCopied = removeCopied;
             ContinueOnError = continueOnError;
+            RestartNodes = restartNodes;
         }
 
         public bool RemoveCopied { get; }
 
         public bool ContinueOnError { get; }
+
+        public bool RestartNodes { get; }
 
         public void LogErrorWithPossibleException<E>(ILogger logger, string format, params object[] args)
             where E : Exception, new()

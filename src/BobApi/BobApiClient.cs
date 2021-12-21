@@ -93,8 +93,8 @@ namespace BobApi
             });
         }
 
-        public async Task DeletePartition(VDisk vDisk, long? partition)
-            => await _client.DeleteAsync($"vdisks/{vDisk.Id}/partitions/{partition}");
+        public async Task DeletePartition(VDisk vDisk, long? timestamp)
+            => await _client.DeleteAsync($"vdisks/{vDisk.Id}/partitions/by_timestamp/{timestamp}");
 
         public async Task<BobApiResult<Partition>> GetPartition(VDisk vDisk, string partition,
             CancellationToken cancellationToken = default)
