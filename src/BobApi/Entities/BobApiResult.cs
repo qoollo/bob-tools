@@ -1,4 +1,6 @@
 using System;
+using System.Net;
+using System.Net.Http;
 using System.Threading.Tasks;
 
 namespace BobApi.Entities
@@ -6,9 +8,9 @@ namespace BobApi.Entities
     public readonly struct BobApiResult<T>
     {
         private readonly T _data;
-        private readonly ErrorType? _errorType;
+        private readonly BobApiError _errorType;
 
-        private BobApiResult(T data, ErrorType? errorType)
+        private BobApiResult(T data, BobApiError errorType)
         {
             _data = data;
             _errorType = errorType;
@@ -16,7 +18,7 @@ namespace BobApi.Entities
 
         public bool IsError => _errorType != null;
 
-        public bool IsOk(out T data, out ErrorType? errorType)
+        public bool IsOk(out T data, out BobApiError errorType)
         {
             data = _data;
             errorType = _errorType;
@@ -29,9 +31,9 @@ namespace BobApi.Entities
             return !IsError;
         }
 
-        public bool TryGetError(out ErrorType errorType)
+        public bool TryGetError(out BobApiError errorType)
         {
-            errorType = _errorType ?? 0;
+            errorType = _errorType;
             return IsError;
         }
 
@@ -83,7 +85,7 @@ namespace BobApi.Entities
             return BobApiResult<T[]>.Ok(result);
         }
 
-        internal static BobApiResult<T> Unavailable() => new BobApiResult<T>(default, ErrorType.NodeIsUnavailable);
-        internal static BobApiResult<T> Unsuccessful() => new BobApiResult<T>(default, ErrorType.UnsuccessfulResponse);
+        internal static BobApiResult<T> Unavailable() => new BobApiResult<T>(default, BobApiError.NodeIsUnavailable());
+        internal static BobApiResult<T> Unsuccessful(HttpResponseMessage response) => new BobApiResult<T>(default, BobApiError.UnsuccessfulResponse(response));
     }
 }

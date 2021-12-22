@@ -110,16 +110,15 @@ namespace BobApi
             {
                 using (var response = await client.GetAsync($"vdisks/{id}/partitions", cancellationToken))
                 {
-                    if (response.IsSuccessStatusCode)
+                    return await ParseResponse(response, async resp =>
                     {
-                        var content = await response.Content.ReadAsStringAsync();
+                        var content = await resp.Content.ReadAsStringAsync();
                         var partitions = JsonConvert.DeserializeAnonymousType(content, new
                         {
                             Partitions = new List<string>()
                         }).Partitions;
-                        return BobApiResult<List<string>>.Ok(partitions);
-                    }
-                    return BobApiResult<List<string>>.Unsuccessful();
+                        return partitions;
+                    });
                 }
             });
         }
@@ -134,9 +133,7 @@ namespace BobApi
             {
                 using (var response = await client.PostAsync(addr, new StringContent(""), cancellationToken: cancellationToken))
                 {
-                    if (response.IsSuccessStatusCode)
-                        return BobApiResult<bool>.Ok(true);
-                    return BobApiResult<bool>.Unsuccessful();
+                    return ParseResponse(response, _ => true);
                 }
             });
         }
@@ -147,9 +144,7 @@ namespace BobApi
             {
                 using (var response = await client.DeleteAsync(addr, cancellationToken: cancellationToken))
                 {
-                    if (response.IsSuccessStatusCode)
-                        return BobApiResult<bool>.Ok(true);
-                    return BobApiResult<bool>.Unsuccessful();
+                    return ParseResponse(response, _ => true);
                 }
             });
         }
@@ -161,14 +156,24 @@ namespace BobApi
             {
                 using (var response = await client.GetAsync(addr, cancellationToken))
                 {
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var content = await response.Content.ReadAsStringAsync();
-                        return BobApiResult<T>.Ok(parse(content));
-                    }
-                    return BobApiResult<T>.Unsuccessful();
+                    return await ParseResponse(response, async resp => parse(await resp.Content.ReadAsStringAsync()));
                 }
             });
+        }
+
+        private async Task<BobApiResult<T>> ParseResponse<T>(HttpResponseMessage response,
+            Func<HttpResponseMessage, Task<T>> parse)
+        {
+            if (response.IsSuccessStatusCode)
+                return BobApiResult<T>.Ok(await parse(response));
+            return BobApiResult<T>.Unsuccessful(response);
+        }
+
+        private BobApiResult<T> ParseResponse<T>(HttpResponseMessage response, Func<HttpResponseMessage, T> parse)
+        {
+            if (response.IsSuccessStatusCode)
+                return BobApiResult<T>.Ok(parse(response));
+            return BobApiResult<T>.Unsuccessful(response);
         }
 
         private async Task<BobApiResult<T>> InvokeRequest<T>(Func<HttpClient, Task<BobApiResult<T>>> f)
