@@ -133,7 +133,7 @@ namespace BobApi
             {
                 using (var response = await client.PostAsync(addr, new StringContent(""), cancellationToken: cancellationToken))
                 {
-                    return ParseResponse(response, _ => true);
+                    return await ParseResponse(response, _ => true);
                 }
             });
         }
@@ -144,7 +144,7 @@ namespace BobApi
             {
                 using (var response = await client.DeleteAsync(addr, cancellationToken: cancellationToken))
                 {
-                    return ParseResponse(response, _ => true);
+                    return await ParseResponse(response, _ => true);
                 }
             });
         }
@@ -166,14 +166,14 @@ namespace BobApi
         {
             if (response.IsSuccessStatusCode)
                 return BobApiResult<T>.Ok(await parse(response));
-            return BobApiResult<T>.Unsuccessful(response);
+            return await BobApiResult<T>.Unsuccessful(response);
         }
 
-        private BobApiResult<T> ParseResponse<T>(HttpResponseMessage response, Func<HttpResponseMessage, T> parse)
+        private async Task<BobApiResult<T>> ParseResponse<T>(HttpResponseMessage response, Func<HttpResponseMessage, T> parse)
         {
             if (response.IsSuccessStatusCode)
                 return BobApiResult<T>.Ok(parse(response));
-            return BobApiResult<T>.Unsuccessful(response);
+            return await BobApiResult<T>.Unsuccessful(response);
         }
 
         private async Task<BobApiResult<T>> InvokeRequest<T>(Func<HttpClient, Task<BobApiResult<T>>> f)

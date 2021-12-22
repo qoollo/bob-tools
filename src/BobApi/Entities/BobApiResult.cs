@@ -86,6 +86,7 @@ namespace BobApi.Entities
         }
 
         internal static BobApiResult<T> Unavailable() => new BobApiResult<T>(default, BobApiError.NodeIsUnavailable());
-        internal static BobApiResult<T> Unsuccessful(HttpResponseMessage response) => new BobApiResult<T>(default, BobApiError.UnsuccessfulResponse(response));
+        internal static async Task<BobApiResult<T>> Unsuccessful(HttpResponseMessage response)
+            => new BobApiResult<T>(default, await BobApiError.UnsuccessfulResponse(response));
     }
 }
