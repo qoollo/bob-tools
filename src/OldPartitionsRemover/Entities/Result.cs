@@ -46,6 +46,11 @@ namespace OldPartitionsRemover.Entites
 
         private bool IsError => _error != null;
 
+        public override string ToString()
+        {
+            return IsOk(out var d, out var e) ? $"Ok({d})" : $"Err({e})";
+        }
+
         public static Result<T> Ok(T data) => new(data, null);
         public static Result<T> Error(string error) => new(default, error);
 

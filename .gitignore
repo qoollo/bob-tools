@@ -11,3 +11,4 @@ DiskStatusAnalyzer.sln.DotSettings.user
 .vscode/
 */log.txt
 .editorconfig
+/**/test-coverage/

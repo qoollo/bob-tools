@@ -8,6 +8,7 @@ using BobApi.BobEntities;
 using BobApi.Entities;
 using BobToolsCli;
 using BobToolsCli.BobApliClientFactories;
+using BobToolsCli.ConfigurationFinding;
 using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
 using OldPartitionsRemover.ByDateRemoving.Entities;
@@ -20,18 +21,20 @@ namespace OldPartitionsRemover.ByDateRemoving
         private readonly Arguments _arguments;
         private readonly ILogger<Remover> _logger;
         private readonly IBobApiClientFactory _bobApiClientFactory;
+        private readonly IConfigurationFinder _configurationFinder;
 
         public Remover(Arguments arguments, ILogger<Remover> logger,
-            IBobApiClientFactory bobApiClientFactory)
+            IBobApiClientFactory bobApiClientFactory, IConfigurationFinder configurationFinder)
         {
             _arguments = arguments;
             _logger = logger;
             _bobApiClientFactory = bobApiClientFactory;
+            _configurationFinder = configurationFinder;
         }
 
         public async Task<Result<bool>> RemoveOldPartitions(CancellationToken cancellationToken)
         {
-            Result<ClusterConfiguration> configResult = await _arguments.FindClusterConfiguration(cancellationToken);
+            Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(cancellationToken);
             var removeOperations = await configResult.Bind(c => FindInCluster(c, cancellationToken));
             return await removeOperations.Bind(InvokeOperations);
         }

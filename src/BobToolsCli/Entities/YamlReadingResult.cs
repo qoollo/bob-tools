@@ -20,7 +20,7 @@ namespace BobToolsCli
             return _error == null;
         }
 
-        internal static YamlReadingResult<T> Ok(T data) => new(data, null);
-        internal static YamlReadingResult<T> Error(string error) => new(default, error);
+        public static YamlReadingResult<T> Ok(T data) => new(data, null);
+        public static YamlReadingResult<T> Error(string error) => new(default, error);
     }
 }
