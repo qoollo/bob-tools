@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using BobToolsCli.BobApliClientFactories;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -58,7 +59,8 @@ namespace BobToolsCli
                 var services = new ServiceCollection()
                     .AddLogging(b => b.AddConsole().SetMinimumLevel(args.GetMinLogLevel()))
                     .AddSingleton(args)
-                    .AddSingleton(args.GetNodePortStorage());
+                    .AddSingleton(args.GetNodePortStorage())
+                    .AddSingleton<IBobApiClientFactory, PortBasedBobApiClientFactory>();
 
                 return f(args, services);
             };

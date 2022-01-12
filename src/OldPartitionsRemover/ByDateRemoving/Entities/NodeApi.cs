@@ -7,15 +7,15 @@ namespace OldPartitionsRemover.ByDateRemoving.Entities
 {
     internal readonly struct NodeApi
     {
-        private readonly BobApiClient _bobApiClient;
+        private readonly IPartitionsBobApiClient _bobApiClient;
         private readonly CancellationToken _cancellationToken;
 
-        public NodeApi(BobApiClient bobApiClient, CancellationToken cancellationToken)
+        public NodeApi(IPartitionsBobApiClient bobApiClient, CancellationToken cancellationToken)
         {
             _bobApiClient = bobApiClient;
             _cancellationToken = cancellationToken;
         }
 
-        public async Task<T> Invoke<T>(Func<BobApiClient, CancellationToken, Task<T>> f) => await f(_bobApiClient, _cancellationToken);
+        public async Task<T> Invoke<T>(Func<IPartitionsBobApiClient, CancellationToken, Task<T>> f) => await f(_bobApiClient, _cancellationToken);
     }
 }

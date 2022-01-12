@@ -12,7 +12,8 @@ using Path = System.IO.Path;
 
 namespace BobApi
 {
-    public class BobApiClient : IDisposable
+
+    public class BobApiClient : IDisposable, IPartitionsBobApiClient
     {
         private readonly HttpClient _client;
         private readonly bool _throwOnNoConnection;

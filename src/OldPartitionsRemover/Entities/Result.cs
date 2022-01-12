@@ -5,7 +5,7 @@ using BobToolsCli;
 
 namespace OldPartitionsRemover.Entites
 {
-    internal class Result<T>
+    public class Result<T>
     {
         private readonly T _data;
         private readonly string _error;
