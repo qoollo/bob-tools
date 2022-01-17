@@ -45,7 +45,7 @@ public class RemoverTests
         var result = await sut.RemoveOldPartitions(CancellationToken.None);
 
         result.IsOk(out var _, out var err).Should().BeFalse();
-        err.Should().Contain("Unavailable");
+        err.Should().ContainEquivalentOf("Unavailable");
     }
 
     [Test, SutFactory]
@@ -78,7 +78,7 @@ public class RemoverTests
         var result = await sut.RemoveOldPartitions(CancellationToken.None);
 
         result.IsOk(out var _, out var err).Should().BeFalse();
-        err.Should().Contain("Unavailable");
+        err.Should().ContainEquivalentOf("unavailable");
     }
 
     [Test, SutFactory]
@@ -96,7 +96,7 @@ public class RemoverTests
         var result = await sut.RemoveOldPartitions(CancellationToken.None);
 
         result.IsOk(out var _, out var err).Should().BeFalse();
-        err.Should().Contain("Unavailable");
+        err.Should().ContainEquivalentOf("Unavailable");
     }
 
     [Test, SutFactory]
