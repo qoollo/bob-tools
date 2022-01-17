@@ -30,17 +30,16 @@ namespace OldPartitionsRemover
             services.AddTransient<ByDateRemoving.Remover>();
             var provider = services.BuildServiceProvider();
             var remover = provider.GetRequiredService<ByDateRemoving.Remover>();
-            var logger = provider.GetRequiredService<ILogger<Program>>();
 
             var removeResult = await remover.RemoveOldPartitions(cancellationToken);
             if (removeResult.IsOk(out var success, out var error))
             {
                 if (!success)
-                    logger.LogError("Failed to delete partitions due to internal error");
+                    Console.WriteLine("Failed to delete partitions due to internal error");
             }
             else
             {
-                logger.LogError("Error: {Error}", error);
+                Console.WriteLine($"Error: {error}");
             }
         }
     }
