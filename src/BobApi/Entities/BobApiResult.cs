@@ -47,43 +47,7 @@ namespace BobApi.Entities
                 return "Unknown result state";
         }
 
-        public BobApiResult<Y> Map<Y>(Func<T, Y> f)
-        {
-            return new BobApiResult<Y>(IsError ? default : f(_data), _errorType);
-        }
-
-        public BobApiResult<Y> Bind<Y>(Func<T, BobApiResult<Y>> f)
-        {
-            if (IsError)
-                return new BobApiResult<Y>(default, _errorType);
-            return f(_data);
-        }
-
-        public async Task<BobApiResult<Y>> Bind<Y>(Func<T, Task<BobApiResult<Y>>> f)
-        {
-            if (IsError)
-                return new BobApiResult<Y>(default, _errorType);
-            return await f(_data);
-        }
-
         public static BobApiResult<T> Ok(T data) => new BobApiResult<T>(data, null);
-        public static async Task<BobApiResult<T>> Traverse(BobApiResult<Task<T>> r)
-        {
-            if (r.IsError)
-                return new BobApiResult<T>(default, r._errorType);
-            return Ok(await r._data);
-        }
-
-        public static BobApiResult<T[]> Traverse(BobApiResult<T>[] r)
-        {
-            var result = new T[r.Length];
-            for (var i = 0; i < r.Length; i++)
-                if (r[i].IsError)
-                    return new BobApiResult<T[]>(default, r[i]._errorType);
-                else
-                    result[i] = r[i]._data;
-            return BobApiResult<T[]>.Ok(result);
-        }
 
         public static BobApiResult<T> Unavailable() => new BobApiResult<T>(default, BobApiError.NodeIsUnavailable());
         public static async Task<BobApiResult<T>> Unsuccessful(HttpResponseMessage response)

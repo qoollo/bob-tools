@@ -46,11 +46,6 @@ namespace OldPartitionsRemover.Entites
 
         private bool IsError => _error != null;
 
-        public override string ToString()
-        {
-            return IsOk(out var d, out var e) ? $"Ok({d})" : $"Err({e})";
-        }
-
         public static Result<T> Ok(T data) => new(data, null);
         public static Result<T> Error(string error) => new(default, error);
 
@@ -65,7 +60,7 @@ namespace OldPartitionsRemover.Entites
         {
             if (r.IsOk(out var d, out var e))
                 return Ok(d);
-            return Error(e?.ToString() ?? "Unknown error");
+            return Error(e.ToString());
         }
 
         public static async Task<Result<T>> Sequence(Result<Task<T>> r)

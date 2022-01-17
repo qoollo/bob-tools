@@ -14,7 +14,7 @@ namespace OldPartitionsRemover.ByDateRemoving
         [Option('t', "threshold", HelpText = "Removal threshold. Can be either date or in relative days count format, e.g. \"-3d\"", Required = true)]
         public string ThresholdString { get; set; }
 
-        internal Result<DateTimeOffset> GetThreshold()
+        public Result<DateTimeOffset> GetThreshold()
         {
             if (string.IsNullOrWhiteSpace(ThresholdString))
                 return Result<DateTimeOffset>.Error("Removal threshold not set");

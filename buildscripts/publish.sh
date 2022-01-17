@@ -1,5 +1,5 @@
 #! /bin/sh
-VERSION=$(git describe --tags)
+VERSION=1.0.0
 CONFIGURATION=Release
 RUNTIME=linux-x64
 echo $VERSION
