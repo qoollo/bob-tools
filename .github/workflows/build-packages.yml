@@ -73,7 +73,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob-tools-${{ env.VERSION }}-${{ github.run_id }}.x86_64.rpm
           asset_name: bob-tools-${{ env.VERSION }}.x86_64.rpm
-          tag: ${{ env.VERSION }}
+          tag: ${{ github.ref }}
           overwrite: true
 
   build-deb:
@@ -127,7 +127,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob-tools_${{ env.VERSION }}_amd64.deb
           asset_name: bob-tools_${{ env.VERSION }}_amd64.deb
-          tag: ${{ env.VERSION }}
+          tag: ${{ github.ref }}
           overwrite: true
 
   zip-file:
@@ -179,5 +179,5 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob-tools_${{ env.VERSION }}.zip
           asset_name: bob-tools_${{ env.VERSION }}.zip
-          tag: ${{ env.VERSION }}
+          tag: ${{ github.ref }}
           overwrite: true
