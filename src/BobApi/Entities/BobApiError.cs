@@ -31,7 +31,7 @@ namespace BobApi.Entities
             return Type switch
             {
                 ErrorType.UnsuccessfulResponse => $"Request \"{RequestInfo}\", response [{StatusCode}]: {Content}",
-                ErrorType.NodeIsUnavailable => $"Request \"{RequestInfo}\" failed, node is unavailable",
+                ErrorType.NodeIsUnavailable => "Node is unavailable",
                 _ => Type.ToString()
             };
         }
