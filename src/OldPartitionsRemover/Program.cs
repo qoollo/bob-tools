@@ -15,6 +15,7 @@ using BobToolsCli.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using OldPartitionsRemover.Infrastructure;
 
 namespace OldPartitionsRemover
 {
@@ -36,6 +37,7 @@ namespace OldPartitionsRemover
             where TRem : class
         {
             services.AddTransient<TRem>();
+            services.AddTransient<ResultsCombiner>();
             var provider = services.BuildServiceProvider();
             var remover = provider.GetRequiredService<TRem>();
 

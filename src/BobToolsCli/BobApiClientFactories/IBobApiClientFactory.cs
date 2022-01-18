@@ -5,6 +5,7 @@ namespace BobToolsCli.BobApliClientFactories
 {
     public interface IBobApiClientFactory
     {
-        public IPartitionsBobApiClient GetPartitionsBobApiClient(ClusterConfiguration.Node node);
+        IPartitionsBobApiClient GetPartitionsBobApiClient(ClusterConfiguration.Node node);
+        ISpaceBobApiClient GetSpaceBobApiClient(ClusterConfiguration.Node node);
     }
 }

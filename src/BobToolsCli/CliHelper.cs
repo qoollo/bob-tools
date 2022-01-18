@@ -60,6 +60,7 @@ namespace BobToolsCli
                 var services = new ServiceCollection()
                     .AddLogging(b => b.AddConsole().SetMinimumLevel(args.GetMinLogLevel()))
                     .AddSingleton(args)
+                    .AddSingleton<CommonArguments>(args)
                     .AddSingleton<IConfigurationFinder>(args)
                     .AddSingleton(args.GetNodePortStorage())
                     .AddSingleton<IBobApiClientFactory, PortBasedBobApiClientFactory>();

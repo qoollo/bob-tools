@@ -56,6 +56,9 @@ public class SutFactory : AutoDataAttribute
         var partitionsBobApiClient = fixture.Freeze<IPartitionsBobApiClient>();
         A.CallTo(() => factory.GetPartitionsBobApiClient(A<ClusterConfiguration.Node>.Ignored))
             .Returns(partitionsBobApiClient);
+        var spaceBobApiClient = fixture.Freeze<ISpaceBobApiClient>();
+        A.CallTo(() => factory.GetSpaceBobApiClient(A<ClusterConfiguration.Node>.Ignored))
+            .Returns(spaceBobApiClient);
 
         var configurationFinder = fixture.Freeze<IConfigurationFinder>();
         A.CallTo<Task<YamlReadingResult<ClusterConfiguration>>>(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))

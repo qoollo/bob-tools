@@ -13,7 +13,7 @@ using Path = System.IO.Path;
 namespace BobApi
 {
 
-    public class BobApiClient : IDisposable, IPartitionsBobApiClient
+    public class BobApiClient : IDisposable, IPartitionsBobApiClient, ISpaceBobApiClient
     {
         private readonly HttpClient _client;
         private readonly bool _throwOnNoConnection;
@@ -190,6 +190,11 @@ namespace BobApi
                     throw new BobConnectionException(_client.BaseAddress, e);
                 return BobApiResult<T>.Unavailable();
             }
+        }
+
+        public Task<BobApiResult<ulong>> GetFreeSpaceBytes(CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
     }
 }

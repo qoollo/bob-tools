@@ -13,6 +13,7 @@ using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
 using OldPartitionsRemover.ByDateRemoving.Entities;
 using OldPartitionsRemover.Entities;
+using OldPartitionsRemover.Infrastructure;
 
 namespace OldPartitionsRemover.ByDateRemoving
 {
@@ -22,14 +23,17 @@ namespace OldPartitionsRemover.ByDateRemoving
         private readonly ILogger<Remover> _logger;
         private readonly IBobApiClientFactory _bobApiClientFactory;
         private readonly IConfigurationFinder _configurationFinder;
+        private readonly ResultsCombiner _resultsCombiner;
 
         public Remover(Arguments arguments, ILogger<Remover> logger,
-            IBobApiClientFactory bobApiClientFactory, IConfigurationFinder configurationFinder)
+            IBobApiClientFactory bobApiClientFactory, IConfigurationFinder configurationFinder,
+            ResultsCombiner resultsCombiner)
         {
             _arguments = arguments;
             _logger = logger;
             _bobApiClientFactory = bobApiClientFactory;
             _configurationFinder = configurationFinder;
+            _resultsCombiner = resultsCombiner;
         }
 
         public async Task<Result<bool>> RemoveOldPartitions(CancellationToken cancellationToken)
@@ -41,7 +45,7 @@ namespace OldPartitionsRemover.ByDateRemoving
 
         private async Task<Result<List<RemoveOperation>>> FindInCluster(ClusterConfiguration clusterConfig,
             CancellationToken cancellationToken)
-            => await CollectResults(clusterConfig.Nodes, async node => await FindOnNode(clusterConfig, node, cancellationToken));
+            => await _resultsCombiner.CollectResults(clusterConfig.Nodes, async node => await FindOnNode(clusterConfig, node, cancellationToken));
 
         private async Task<Result<List<RemoveOperation>>> FindOnNode(ClusterConfiguration clusterConfig,
             ClusterConfiguration.Node node, CancellationToken cancellationToken)
@@ -51,7 +55,7 @@ namespace OldPartitionsRemover.ByDateRemoving
             var vdisksOnNode = clusterConfig.VDisks.Where(vd => vd.Replicas.Any(r => r.Node == node.Name));
             var nodeApi = new NodeApi(_bobApiClientFactory.GetPartitionsBobApiClient(node), cancellationToken);
 
-            return await CollectResults(vdisksOnNode, async vdisk => await FindOnVDisk(vdisk, nodeApi));
+            return await _resultsCombiner.CollectResults(vdisksOnNode, async vdisk => await FindOnVDisk(vdisk, nodeApi));
         }
 
         private async Task<Result<List<RemoveOperation>>> FindOnVDisk(ClusterConfiguration.VDisk vdisk, NodeApi nodeApi)
@@ -73,7 +77,7 @@ namespace OldPartitionsRemover.ByDateRemoving
         private async Task<Result<List<Partition>>> GetPartitions(List<string> partitionIds,
             PartitionFunctions.PartitionFinder find)
         {
-            return await CollectResults(partitionIds, async p => await find(p));
+            return await _resultsCombiner.CollectResults(partitionIds, async p => await find(p));
         }
 
         private Result<List<RemoveOperation>> FindWithinPartitions(List<Partition> partitionInfos,
@@ -99,50 +103,10 @@ namespace OldPartitionsRemover.ByDateRemoving
             return Result<List<RemoveOperation>>.Ok(removeOperations);
         }
 
-        private async Task<Result<List<Y>>> CollectResults<T, Y>(IEnumerable<T> elems, Func<T, Task<Result<Y>>> f)
-        {
-            return await CombineResults(elems, new List<Y>(),
-                async (l, p) => (await f(p)).Map(part => { l.Add(part); return l; }));
-        }
-
-        private async Task<Result<List<Y>>> CollectResults<T, Y>(IEnumerable<T> elems, Func<T, Task<Result<List<Y>>>> f)
-        {
-            return await CombineResults(elems, new List<Y>(),
-                async (l, p) => (await f(p)).Map(part => { l.AddRange(part); return l; }));
-        }
-
-        private async Task<Result<Y>> CombineResults<T, Y>(IEnumerable<T> elems, Y seed, Func<Y, T, Task<Result<Y>>> f)
-        {
-            return await elems.Aggregate(
-                Task.FromResult(Result<Y>.Ok(seed)),
-                (task, next) => task.ContinueWith(async resultTask =>
-                {
-                    var result = await resultTask;
-                    var nextResult = await Combine(f, next, result);
-                    return SelectBestResult(result, nextResult);
-                }).Unwrap());
-        }
-
-        private Result<Y> SelectBestResult<Y>(Result<Y> prevResult, Result<Y> nextResult)
-        {
-            if (!nextResult.IsOk(out var _, out var err) && _arguments.ContinueOnError)
-            {
-                _logger.LogError("Error: {Error}", err);
-                return prevResult;
-            }
-            return nextResult;
-        }
-
-        private static async Task<Result<Y>> Combine<T, Y>(Func<Y, T, Task<Result<Y>>> f, T next, Result<Y> result)
-        {
-            var combined = await Result<Result<Y>>.Sequence(result.Map(v => f(v, next)));
-            return combined.Bind(_ => _);
-        }
-
         private async Task<Result<bool>> InvokeOperations(List<RemoveOperation> ops)
         {
             _logger.LogInformation("Invoking {RemoveOperationsCount} remove operations", ops.Count);
-            return await CombineResults(ops, true, (_, n) => n.Func());
+            return await _resultsCombiner.CombineResults(ops, true, (_, n) => n.Func());
         }
     }
 }

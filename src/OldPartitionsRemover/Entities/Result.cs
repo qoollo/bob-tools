@@ -44,6 +44,13 @@ namespace OldPartitionsRemover.Entities
             return Result<Y>.Ok(f(_data));
         }
 
+        public async Task<Result<Y>> Map<Y>(Func<T, Task<Y>> f)
+        {
+            if (IsError)
+                return Result<Y>.Error(_error);
+            return Result<Y>.Ok(await f(_data));
+        }
+
         private bool IsError => _error != null;
 
         public static Result<T> Ok(T data) => new(data, null);

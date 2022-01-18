@@ -15,6 +15,16 @@ namespace BobToolsCli.BobApliClientFactories
 
         public IPartitionsBobApiClient GetPartitionsBobApiClient(ClusterConfiguration.Node node)
         {
+            return GetBobApiClient(node);
+        }
+
+        public ISpaceBobApiClient GetSpaceBobApiClient(ClusterConfiguration.Node node)
+        {
+            return GetBobApiClient(node);
+        }
+
+        private BobApiClient GetBobApiClient(ClusterConfiguration.Node node)
+        {
             return new BobApiClient(_nodePortStorage.GetNodeApiUri(node));
         }
     }
