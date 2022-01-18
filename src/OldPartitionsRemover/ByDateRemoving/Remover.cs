@@ -41,8 +41,7 @@ namespace OldPartitionsRemover.ByDateRemoving
 
         private async Task<Result<List<RemoveOperation>>> FindInCluster(ClusterConfiguration clusterConfig,
             CancellationToken cancellationToken)
-            => await Traverse(clusterConfig.Nodes, new List<RemoveOperation>(),
-                async (l, node) => (await FindOnNode(clusterConfig, node, cancellationToken)).Map(ops => { l.AddRange(ops); return l; }));
+            => await CollectResults(clusterConfig.Nodes, async node => await FindOnNode(clusterConfig, node, cancellationToken));
 
         private async Task<Result<List<RemoveOperation>>> FindOnNode(ClusterConfiguration clusterConfig,
             ClusterConfiguration.Node node, CancellationToken cancellationToken)
@@ -52,8 +51,7 @@ namespace OldPartitionsRemover.ByDateRemoving
             var vdisksOnNode = clusterConfig.VDisks.Where(vd => vd.Replicas.Any(r => r.Node == node.Name));
             var nodeApi = new NodeApi(_bobApiClientFactory.GetPartitionsBobApiClient(node), cancellationToken);
 
-            return await Traverse(vdisksOnNode, new List<RemoveOperation>(),
-                async (l, vdisk) => (await FindOnVDisk(vdisk, nodeApi)).Map(ops => { l.AddRange(ops); return l; }));
+            return await CollectResults(vdisksOnNode, async vdisk => await FindOnVDisk(vdisk, nodeApi));
         }
 
         private async Task<Result<List<RemoveOperation>>> FindOnVDisk(ClusterConfiguration.VDisk vdisk, NodeApi nodeApi)
@@ -75,8 +73,7 @@ namespace OldPartitionsRemover.ByDateRemoving
         private async Task<Result<List<Partition>>> GetPartitions(List<string> partitionIds,
             PartitionFunctions.PartitionFinder find)
         {
-            return await Traverse(partitionIds, new List<Partition>(),
-                async (l, p) => (await find(p)).Map(part => { l.Add(part); return l; }));
+            return await CollectResults(partitionIds, async p => await find(p));
         }
 
         private Result<List<RemoveOperation>> FindWithinPartitions(List<Partition> partitionInfos,
@@ -102,7 +99,19 @@ namespace OldPartitionsRemover.ByDateRemoving
             return Result<List<RemoveOperation>>.Ok(removeOperations);
         }
 
-        private async Task<Result<Y>> Traverse<T, Y>(IEnumerable<T> elems, Y seed, Func<Y, T, Task<Result<Y>>> f)
+        private async Task<Result<List<Y>>> CollectResults<T, Y>(IEnumerable<T> elems, Func<T, Task<Result<Y>>> f)
+        {
+            return await CombineResults(elems, new List<Y>(),
+                async (l, p) => (await f(p)).Map(part => { l.Add(part); return l; }));
+        }
+
+        private async Task<Result<List<Y>>> CollectResults<T, Y>(IEnumerable<T> elems, Func<T, Task<Result<List<Y>>>> f)
+        {
+            return await CombineResults(elems, new List<Y>(),
+                async (l, p) => (await f(p)).Map(part => { l.AddRange(part); return l; }));
+        }
+
+        private async Task<Result<Y>> CombineResults<T, Y>(IEnumerable<T> elems, Y seed, Func<Y, T, Task<Result<Y>>> f)
         {
             return await elems.Aggregate(
                 Task.FromResult(Result<Y>.Ok(seed)),
@@ -133,7 +142,7 @@ namespace OldPartitionsRemover.ByDateRemoving
         private async Task<Result<bool>> InvokeOperations(List<RemoveOperation> ops)
         {
             _logger.LogInformation("Invoking {RemoveOperationsCount} remove operations", ops.Count);
-            return await Traverse(ops, true, (_, n) => n.Func());
+            return await CombineResults(ops, true, (_, n) => n.Func());
         }
     }
 }
