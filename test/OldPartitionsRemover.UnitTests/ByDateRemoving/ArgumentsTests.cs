@@ -2,7 +2,7 @@ using System;
 using FluentAssertions;
 using NUnit.Framework;
 using OldPartitionsRemover.ByDateRemoving;
-using OldPartitionsRemover.Entites;
+using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.UnitTests.ByDateRemoving;
 

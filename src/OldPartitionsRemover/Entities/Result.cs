@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using BobApi.Entities;
 using BobToolsCli;
 
-namespace OldPartitionsRemover.Entites
+namespace OldPartitionsRemover.Entities
 {
     public class Result<T>
     {

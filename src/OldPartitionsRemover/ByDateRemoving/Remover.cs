@@ -12,7 +12,7 @@ using BobToolsCli.ConfigurationFinding;
 using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
 using OldPartitionsRemover.ByDateRemoving.Entities;
-using OldPartitionsRemover.Entites;
+using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.ByDateRemoving
 {

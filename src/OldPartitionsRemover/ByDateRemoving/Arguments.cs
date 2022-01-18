@@ -2,7 +2,7 @@ using System;
 using System.Text.RegularExpressions;
 using BobToolsCli;
 using CommandLine;
-using OldPartitionsRemover.Entites;
+using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.ByDateRemoving
 {

@@ -1,6 +1,6 @@
 using System;
 using System.Threading.Tasks;
-using OldPartitionsRemover.Entites;
+using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.ByDateRemoving.Entities
 {

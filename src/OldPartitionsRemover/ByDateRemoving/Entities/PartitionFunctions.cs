@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using BobApi;
 using BobApi.BobEntities;
-using OldPartitionsRemover.Entites;
+using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.ByDateRemoving.Entities
 {
