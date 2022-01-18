@@ -36,7 +36,7 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: echo "VERSION=$(git describe --tags --abbrev=0 | sed -r 's/v(.*)/\1/g' | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: build rpm
         run: |
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools.spec
@@ -65,14 +65,14 @@ jobs:
         with:
           name: bob-tools-rpm
       - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: echo "VERSION=$(git describe --tags --abbrev=0 | sed -r 's/v(.*)/\1/g' | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: Upload rpm to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob-tools-${{ env.VERSION }}-${{ github.run_id }}.x86_64.rpm
           asset_name: bob-tools-${{ env.VERSION }}.x86_64.rpm
-          tag: ${{ env.VERSION }}
+          tag: ${{ github.ref }}
           overwrite: true
 
   build-deb:
@@ -88,7 +88,7 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: echo "VERSION=$(git describe --tags --abbrev=0 | sed -r 's/v(.*)/\1/g' | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: build deb
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
@@ -119,14 +119,14 @@ jobs:
         with:
           name: bob-tools-deb
       - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: echo "VERSION=$(git describe --tags --abbrev=0 | sed -r 's/v(.*)/\1/g' | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: Upload deb to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob-tools_${{ env.VERSION }}_amd64.deb
           asset_name: bob-tools_${{ env.VERSION }}_amd64.deb
-          tag: ${{ env.VERSION }}
+          tag: ${{ github.ref }}
           overwrite: true
 
   zip-file:
@@ -142,7 +142,7 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: echo "VERSION=$(git describe --tags --abbrev=0 | sed -r 's/v(.*)/\1/g' | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: Create file structure 
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
@@ -150,11 +150,7 @@ jobs:
           chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator}
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/lib/systemd/system/
-      - name: Add zip file
-        uses: papeloto/action-zip@v1
-        with:
-          files: bob-tools_${{ env.VERSION }}/
-          dest: bob-tools_${{ env.VERSION }}.zip
+          zip -r bob-tools_${{ env.VERSION }}.zip bob-tools_${{ env.VERSION }}
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -175,12 +171,12 @@ jobs:
         with:
           name: bob-tools-zip
       - name: Set env
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+        run: echo "VERSION=$(git describe --tags --abbrev=0 | sed -r 's/v(.*)/\1/g' | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: Upload zip file to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bob-tools_${{ env.VERSION }}.zip
           asset_name: bob-tools_${{ env.VERSION }}.zip
-          tag: ${{ env.VERSION }}
+          tag: ${{ github.ref }}
           overwrite: true
