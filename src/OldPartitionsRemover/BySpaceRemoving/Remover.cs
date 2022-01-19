@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi;
@@ -49,7 +51,55 @@ namespace OldPartitionsRemover.BySpaceRemoving
             {
                 var spaceClient = _bobApiClientFactory.GetSpaceBobApiClient(n);
                 Result<ulong> space = await spaceClient.GetFreeSpaceBytes(cancellationToken);
-                return space.Map(d => p && d > threshold.Bytes);
+                return await space.Bind(async d =>
+                {
+                    if (p && d > threshold.Bytes)
+                        return Result<bool>.Ok(true);
+                    return await RemoveOnNode(clusterConfiguration, n, threshold, cancellationToken);
+                });
+            });
+        }
+
+        private async Task<Result<bool>> RemoveOnNode(ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node, ByteSize threshold,
+            CancellationToken cancellationToken)
+        {
+            var vdisksToCheck = clusterConfiguration.VDisks.Where(r => r.Replicas.Any(r => r.Node == node.Name));
+            return await _resultsCombiner.CombineResults(vdisksToCheck, false, async (enoughSpaceOnNode, vd) =>
+            {
+                if (enoughSpaceOnNode)
+                    return Result<bool>.Ok(enoughSpaceOnNode);
+
+                var partitionsApi = _bobApiClientFactory.GetPartitionsBobApiClient(node);
+                return await RemoveOnVDiskUntilEnoughSpace(vd, CheckIfEnoughSpace, partitionsApi, cancellationToken);
+            });
+
+            async Task<Result<bool>> CheckIfEnoughSpace()
+            {
+                var spaceApi = _bobApiClientFactory.GetSpaceBobApiClient(node);
+                Result<ulong> sizeResult = await spaceApi.GetFreeSpaceBytes(cancellationToken);
+                return sizeResult.Map(d => d > threshold.Bytes);
+            }
+        }
+
+        private async Task<Result<bool>> RemoveOnVDiskUntilEnoughSpace(ClusterConfiguration.VDisk vd, Func<Task<Result<bool>>> checkIfEnoughSpace, IPartitionsBobApiClient partitionsApi, CancellationToken cancellationToken)
+        {
+            Result<List<string>> partitionIdsResult = await partitionsApi.GetPartitions(vd, cancellationToken);
+            return await partitionIdsResult.Bind(async partitionIds =>
+            {
+                var partitionsResult = await _resultsCombiner.CollectResults<string, Partition>(partitionIds,
+                    async p => await partitionsApi.GetPartition(vd.Id, p, cancellationToken));
+                return await partitionsResult.Bind(async partitions =>
+                {
+                    var timestamps = partitions.Select(p => p.Timestamp).Distinct().OrderBy(_ => _);
+                    return await _resultsCombiner.CombineResults(timestamps, false, async (enoughSpaceOnVdisk, ts) =>
+                    {
+                        if (enoughSpaceOnVdisk)
+                            return Result<bool>.Ok(enoughSpaceOnVdisk);
+
+                        Result<bool> deleteResult = await partitionsApi.DeletePartitionsByTimestamp(vd.Id, ts, cancellationToken);
+                        return await deleteResult.Bind(async _ => await checkIfEnoughSpace());
+                    });
+                });
             });
         }
     }

@@ -84,9 +84,9 @@ namespace BobApi
         public async Task<BobApiResult<bool>> DeletePartitionsByTimestamp(long vDiskId, long timestamp, CancellationToken cancellationToken = default)
             => await DeleteIsOk($"vdisks/{vDiskId}/partitions/by_timestamp/{timestamp}", cancellationToken);
 
-        public async Task<BobApiResult<Partition>> GetPartition(long id, string partition,
+        public async Task<BobApiResult<Partition>> GetPartition(long vdiskId, string partition,
             CancellationToken cancellationToken = default)
-            => await GetJson<Partition>($"vdisks/{id}/partitions/{partition}", cancellationToken: cancellationToken);
+            => await GetJson<Partition>($"vdisks/{vdiskId}/partitions/{partition}", cancellationToken: cancellationToken);
 
 
         public async Task<BobApiResult<long>> CountRecordsOnVDisk(long id, CancellationToken cancellationToken = default)
