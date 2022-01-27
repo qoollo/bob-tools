@@ -26,6 +26,11 @@ namespace RecordsCalculator
             {
                 Console.WriteLine("Cancelled");
             }
+            catch (ProcessInterruptException) { }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error: {e.Message}");
+            }
         }
 
         private static async Task CountRecords(ProgramArguments arguments, CancellationToken cancellationToken)

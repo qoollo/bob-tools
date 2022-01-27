@@ -31,7 +31,7 @@ namespace BobToolsCli
         public async Task<YamlReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
         {
             if (!File.Exists(ClusterConfigPath))
-                return YamlReadingResult<ClusterConfiguration>.Error("Configuration file not found");
+                return YamlReadingResult<ClusterConfiguration>.Error($"Configuration file not found at {ClusterConfigPath}");
 
             var configContent = await File.ReadAllTextAsync(ClusterConfigPath, cancellationToken: cancellationToken);
 
@@ -62,7 +62,7 @@ namespace BobToolsCli
             }
             catch (Exception e)
             {
-                return YamlReadingResult<ClusterConfiguration>.Error(e.Message);
+                return YamlReadingResult<ClusterConfiguration>.Error($"Cluster configuration parsing error: {e.Message}");
             }
         }
 

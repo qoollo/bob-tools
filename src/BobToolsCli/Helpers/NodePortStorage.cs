@@ -16,7 +16,7 @@ namespace BobToolsCli.Helpers
         internal NodePortStorage(IEnumerable<string> portOverrides)
         {
             _portByNodeName = portOverrides.ToDictionary(s => s.Split(NamePortSeparator)[0], s => int.Parse(s.Split(NamePortSeparator)[1]));
-            if (!_portByNodeName.TryGetValue("*", out var defaultPort))
+            if (!_portByNodeName.TryGetValue("*", out _defaultPort))
                 _defaultPort = DefaultPort;
         }
 
