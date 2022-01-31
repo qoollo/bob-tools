@@ -2,8 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using BobApi;
 using BobApi.BobEntities;
 using BobToolsCli.Helpers;
 using CommandLine;
@@ -28,10 +30,18 @@ namespace BobToolsCli
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
 
-        public async Task<YamlReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
+        [Option("bootstrap-node", HelpText = "Load config from node instead of file. Node is specified by address and port.")]
+        public IPEndPoint BootstrapNode { get; set; }
+
+        public async Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
         {
+            if (BootstrapNode != null)
+            {
+                return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(BootstrapNode, cancellationToken);
+            }
+
             if (!File.Exists(ClusterConfigPath))
-                return YamlReadingResult<ClusterConfiguration>.Error($"Configuration file not found at {ClusterConfigPath}");
+                return ConfigurationReadingResult<ClusterConfiguration>.Error($"Configuration file not found at {ClusterConfigPath}");
 
             var configContent = await File.ReadAllTextAsync(ClusterConfigPath, cancellationToken: cancellationToken);
 
@@ -55,14 +65,14 @@ namespace BobToolsCli
                     var ids = string.Join(", ", brokenVDiskIds);
                     var nodes = string.Join(", ", missingNodes);
                     var error = $"Configuration contains vdisks ({ids}) with not defined nodes ({nodes})";
-                    return YamlReadingResult<ClusterConfiguration>.Error(error);
+                    return ConfigurationReadingResult<ClusterConfiguration>.Error(error);
                 }
 
-                return YamlReadingResult<ClusterConfiguration>.Ok(config);
+                return ConfigurationReadingResult<ClusterConfiguration>.Ok(config);
             }
             catch (Exception e)
             {
-                return YamlReadingResult<ClusterConfiguration>.Error($"Cluster configuration parsing error: {e.Message}");
+                return ConfigurationReadingResult<ClusterConfiguration>.Error($"Cluster configuration parsing error: {e.Message}");
             }
         }
 

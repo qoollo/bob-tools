@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BobApi.BobEntities;
+using BobApi.Entities;
 
 namespace BobToolsCli.Helpers
 {
@@ -22,12 +23,17 @@ namespace BobToolsCli.Helpers
 
         public Uri GetNodeApiUri(ClusterConfiguration.Node node)
         {
-            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node));
+            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node.Name));
         }
 
-        private int GetApiPort(ClusterConfiguration.Node node)
+        public Uri GetNodeApiUri(Node node)
         {
-            if (_portByNodeName.TryGetValue(node.Name, out var port))
+            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node.Name));
+        }
+
+        private int GetApiPort(string nodeName)
+        {
+            if (_portByNodeName.TryGetValue(nodeName, out var port))
                 return port;
             return _defaultPort;
         }

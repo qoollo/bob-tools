@@ -15,6 +15,13 @@ namespace BobApi.Entities
 
         public bool IsError => _errorType != null;
 
+        public bool IsOk(out T data, out ErrorType? errorType)
+        {
+            data = _data;
+            errorType = _errorType;
+            return !IsError;
+        }
+
         public bool TryGetData(out T data)
         {
             data = _data;
