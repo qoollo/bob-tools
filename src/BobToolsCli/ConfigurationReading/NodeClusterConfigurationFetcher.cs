@@ -7,8 +7,9 @@ using System.Threading.Tasks;
 using BobApi;
 using BobApi.BobEntities;
 using BobApi.Entities;
+using BobToolsCli.Helpers;
 
-namespace BobToolsCli.Helpers
+namespace BobToolsCli.ConfigurationReading
 {
     internal class NodeClusterConfigurationFetcher
     {

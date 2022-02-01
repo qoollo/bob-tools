@@ -7,10 +7,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobApi;
 using BobApi.BobEntities;
+using BobToolsCli.ConfigurationReading;
 using BobToolsCli.Helpers;
 using CommandLine;
 using Microsoft.Extensions.Logging;
-using YamlDotNet.Serialization;
 
 namespace BobToolsCli
 {
@@ -30,50 +30,20 @@ namespace BobToolsCli
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
 
-        [Option("bootstrap-node", HelpText = "Load config from node instead of file. Node is specified by address and port.")]
-        public IPEndPoint BootstrapNode { get; set; }
+        [Option("bootstrap-node", HelpText = "Load config from node instead of file. Node is specified by address and port, e.g. 127.0.0.1:8000")]
+        public string BootstrapNode { get; set; }
 
         public async Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
         {
             if (BootstrapNode != null)
             {
-                return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(BootstrapNode, cancellationToken);
+                if (IPEndPoint.TryParse(BootstrapNode, out var endPoint))
+                    return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(endPoint, cancellationToken);
+                else
+                    return ConfigurationReadingResult<ClusterConfiguration>.Error("Failed to parse bootstrap node address");
             }
 
-            if (!File.Exists(ClusterConfigPath))
-                return ConfigurationReadingResult<ClusterConfiguration>.Error($"Configuration file not found at {ClusterConfigPath}");
-
-            var configContent = await File.ReadAllTextAsync(ClusterConfigPath, cancellationToken: cancellationToken);
-
-            try
-            {
-                var config = new DeserializerBuilder().IgnoreUnmatchedProperties().Build()
-                    .Deserialize<ClusterConfiguration>(configContent);
-
-                var nodeNames = config.Nodes.Select(n => n.Name).ToHashSet();
-                var missingNodes = new HashSet<string>();
-                var brokenVDiskIds = new HashSet<long>();
-                foreach (var vd in config.VDisks)
-                    foreach (var r in vd.Replicas)
-                        if (!nodeNames.Contains(r.Node))
-                        {
-                            missingNodes.Add(r.Node);
-                            brokenVDiskIds.Add(vd.Id);
-                        }
-                if (brokenVDiskIds.Count > 0)
-                {
-                    var ids = string.Join(", ", brokenVDiskIds);
-                    var nodes = string.Join(", ", missingNodes);
-                    var error = $"Configuration contains vdisks ({ids}) with not defined nodes ({nodes})";
-                    return ConfigurationReadingResult<ClusterConfiguration>.Error(error);
-                }
-
-                return ConfigurationReadingResult<ClusterConfiguration>.Ok(config);
-            }
-            catch (Exception e)
-            {
-                return ConfigurationReadingResult<ClusterConfiguration>.Error($"Cluster configuration parsing error: {e.Message}");
-            }
+            return await new ClusterConfigurationReader().ReadConfigurationFromFile(ClusterConfigPath, cancellationToken);
         }
 
         public LogLevel GetMinLogLevel()

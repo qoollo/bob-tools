@@ -1,6 +1,6 @@
 using System;
 
-namespace BobToolsCli
+namespace BobToolsCli.ConfigurationReading
 {
     public readonly struct ConfigurationReadingResult<T>
     {
