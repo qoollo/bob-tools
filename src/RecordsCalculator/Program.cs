@@ -43,7 +43,6 @@ namespace RecordsCalculator
             var configResult = await arguments.FindClusterConfiguration(cancellationToken);
             if (configResult.IsOk(out var configuration, out var error))
             {
-                Console.WriteLine($"Configuration nodes: {configuration.Nodes.Count}");
                 var result = await counter.CountRecordsInCluster(configuration, cancellationToken);
                 Console.WriteLine($"Total records count: {result.Unique}");
                 Console.WriteLine($"Total records count with replicas: {result.WithReplicas}");

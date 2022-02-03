@@ -19,9 +19,9 @@ namespace BobToolsCli.ConfigurationReading
             _nodePortStorage = nodePortStorage;
         }
 
-        public async Task<ConfigurationReadingResult<ClusterConfiguration>> GetConfigurationFromNode(IPEndPoint address, CancellationToken cancellationToken)
+        public async Task<ConfigurationReadingResult<ClusterConfiguration>> GetConfigurationFromNode(string host, int port, CancellationToken cancellationToken)
         {
-            var client = new BobApiClient(new Uri($"http://{address.Address}:{address.Port}"));
+            var client = new BobApiClient(new Uri($"http://{host}:{port}"));
             var nodesResult = await client.GetNodes(cancellationToken);
             if (nodesResult.IsOk(out var nodes, out var nodesError))
             {

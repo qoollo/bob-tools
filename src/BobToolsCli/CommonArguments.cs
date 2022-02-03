@@ -30,17 +30,17 @@ namespace BobToolsCli
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
 
-        [Option("bootstrap-node", HelpText = "Load config from node instead of file. Node is specified by address and port, e.g. 127.0.0.1:8000")]
+        [Option("bootstrap-node", HelpText = "Load config from node instead of file. Node is specified by host and port, e.g. 127.0.0.1:8000, localhost:8000")]
         public string BootstrapNode { get; set; }
 
         public async Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
         {
             if (BootstrapNode != null)
             {
-                if (IPEndPoint.TryParse(BootstrapNode, out var endPoint))
-                    return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(endPoint, cancellationToken);
+                if (TryParseHostPort(BootstrapNode, out var host, out var port))
+                    return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(host, port, cancellationToken);
                 else
-                    return ConfigurationReadingResult<ClusterConfiguration>.Error("Failed to parse bootstrap node address");
+                    return ConfigurationReadingResult<ClusterConfiguration>.Error($"Failed to parse bootstrap node address from \"{BootstrapNode}\"");
             }
 
             return await new ClusterConfigurationReader().ReadConfigurationFromFile(ClusterConfigPath, cancellationToken);
@@ -61,6 +61,23 @@ namespace BobToolsCli
         public NodePortStorage GetNodePortStorage()
         {
             return new NodePortStorage(ApiPortOverrides);
+        }
+
+        private static bool TryParseHostPort(string s, out string host, out int port)
+        {
+            host = null;
+            port = 0;
+            if (s.Contains(':'))
+            {
+                var split = s.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (split.Length == 2 && int.TryParse(split[1], out port))
+                {
+                    host = split[0];
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }
