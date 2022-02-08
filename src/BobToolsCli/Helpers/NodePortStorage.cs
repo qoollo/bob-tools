@@ -22,13 +22,19 @@ namespace BobToolsCli.Helpers
         }
 
         public Uri GetNodeApiUri(ClusterConfiguration.Node node)
-        {
-            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node.Name));
-        }
+            => GetNodeApiUriWithPortOverride(node.GetUri(), node.Name);
+
 
         public Uri GetNodeApiUri(Node node)
+            => GetNodeApiUriWithPortOverride(node.GetUri(), node.Name);
+
+        private Uri GetNodeApiUriWithPortOverride(Uri nodeUri, string nodeName)
         {
-            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node.Name));
+            var uri = new UriBuilder(nodeUri)
+            {
+                Port = GetApiPort(nodeName)
+            };
+            return uri.Uri;
         }
 
         private int GetApiPort(string nodeName)

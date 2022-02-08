@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -25,7 +26,7 @@ namespace BobApi.BobEntities
             [YamlMember(Alias = "disks")]
             public List<Disk> Disks { get; set; }
 
-            public IPAddress GetIPAddress() => IPAddress.Parse(Address.Split(':')[0]);
+            public Uri GetUri() => new Uri($"http://{Address}");
 
             public class Disk
             {

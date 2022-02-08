@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Net;
 
@@ -9,6 +10,6 @@ namespace BobApi.Entities
         public string Address { get; set; }
         public List<VDisk> VDisks { get; set; }
 
-        public IPAddress GetIPAddress() => IPAddress.Parse(Address.Split(':')[0]);
+        public Uri GetUri() => new Uri($"http://{Address}");
     }
 }
