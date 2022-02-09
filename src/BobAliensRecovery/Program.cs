@@ -11,7 +11,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Extensions;
-using YamlDotNet.Serialization;
 
 namespace BobAliensRecovery
 {
@@ -60,26 +59,22 @@ namespace BobAliensRecovery
         private static async Task RecoverAliens(ProgramArguments arguments, CancellationToken cancellationToken)
         {
             var provider = CreateServiceProvider(arguments);
-            var logger = provider.GetRequiredService<ILogger<Program>>();
             var recoverer = provider.GetRequiredService<AliensRecoverer>();
 
-            var cluster = await GetClusterConfiguration(logger, arguments.ClusterConfigPath!, cancellationToken);
+            var cluster = await GetClusterConfiguration(arguments!, cancellationToken);
 
             await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, arguments.AliensRecoveryOptions,
                 cancellationToken);
         }
 
         private static async Task<ClusterConfiguration> GetClusterConfiguration(
-            ILogger<Program> logger, string path, CancellationToken cancellationToken)
+            ProgramArguments arguments, CancellationToken cancellationToken)
         {
-            logger.LogDebug("Received cluster config path: {path}", path);
-            if (!File.Exists(path))
-                throw new ConfigurationException($"Cluster configuration file not found in {path}");
-
-            var configContent = await File.ReadAllTextAsync(path, cancellationToken: cancellationToken);
-            var cluster = new DeserializerBuilder().IgnoreUnmatchedProperties().Build()
-                .Deserialize<ClusterConfiguration>(configContent);
-            return cluster;
+            var result = await arguments.FindClusterConfiguration(cancellationToken);
+            if (result.IsOk(out var config, out var err))
+                return config;
+            else
+                throw new ConfigurationException(err);
         }
 
         private static IServiceProvider CreateServiceProvider(ProgramArguments args)

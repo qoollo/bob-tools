@@ -2,9 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BobApi\BobApi.csproj" />
+    <ProjectReference Include="..\BobToolsCli\BobToolsCli.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+      <PackageReference Include="CommandLineParser" Version="2.8.0" />
       <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.9" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.9" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.9" />

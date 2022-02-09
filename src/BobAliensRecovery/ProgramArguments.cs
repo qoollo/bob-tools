@@ -2,26 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using BobApi.BobEntities;
+using BobToolsCli;
 using CommandLine;
 using RemoteFileCopy.Ssh;
 
 namespace BobAliensRecovery
 {
-    class ProgramArguments
+    class ProgramArguments : CommonArguments
     {
-        private const char NamePortSeparator = ':';
-        private const string DefaultClusterConfigPath = "/etc/bob/cluster.yaml";
-
-
-        [Option("cluster-config", HelpText = "Cluster config of bob instance.", Default = DefaultClusterConfigPath)]
-        public string? ClusterConfigPath { get; set; }
-
-        [Option('v', HelpText = "Verbosity level, 0 to 3.", Default = 0)]
-        public int VerbosityLevel { get; set; }
-
-        [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000. Wildcard char (*) can be used to set port for all nodes.", Separator = ',')]
-        public IEnumerable<string> ApiPortOverrides { get; set; } = Enumerable.Empty<string>();
-
         [Option("ssh-cmd", HelpText = "Ssh cmd.", Default = "ssh")]
         public string? SshCmd { get; set; }
 
@@ -37,16 +28,12 @@ namespace BobAliensRecovery
         [Option("remove-copied", HelpText = "Remove copied blobs", Default = false)]
         public bool RemoveCopied { get; set; }
 
-        [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
-        public bool ContinueOnError { get; set; }
-
         [Option("restart-nodes", HelpText = "Restart nodes after aliens have been copied", Default = false)]
         public bool RestartNodes { get; set; }
 
-        public LoggerOptions LoggerOptions => new(VerbosityLevel);
+        public LoggerOptions LoggerOptions => new(GetMinLogLevel());
 
-        public ClusterOptions ClusterOptions
-            => new(ApiPortOverrides.Select(s => (s.Split(NamePortSeparator)[0], int.Parse(s.Split(NamePortSeparator)[1]))));
+        public ClusterOptions ClusterOptions => new(GetNodePortStorage());
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 
