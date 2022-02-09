@@ -1,0 +1,22 @@
+FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build
+
+ARG Version="1.0.0.0"
+ARG InformationalVersion="1.0.0.0"
+# Tool to ease csproj copy for dotnet restore
+RUN dotnet tool install -g dotnet-references
+ENV PATH="${PATH}:/root/.dotnet/tools"
+# Separate restore stage so docker can cache it
+COPY ./src/RecordsCalculator.sln /src/RecordsCalculator.sln
+COPY ./src/*/*.csproj /src
+RUN dotnet references fix -ep /src/RecordsCalculator.sln -wd /src -rupf
+RUN dotnet restore -r linux-musl-x64 /src/RecordsCalculator
+# Actual build
+COPY ./src /src
+RUN dotnet publish --no-restore -c Release -r linux-musl-x64 -p:Version=${Version} -p:InformationalVersion=${InformationalVersion} -o publish /src/RecordsCalculator
+
+FROM alpine
+
+COPY --from=build /publish/RecordsCalculator /root/RecordsCalculator
+RUN apk add krb5-libs libstdc++ libgcc
+
+ENTRYPOINT ["/root/RecordsCalculator"]
