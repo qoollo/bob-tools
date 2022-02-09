@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,11 +59,18 @@ namespace BobAliensRecovery.AliensRecovery
                         if (nodeConfigurationResult.TryGetData(out var nodeConfiguration) && nodeConfiguration?.RootDir != null)
                         {
                             var targetPath = Path.Combine(disk.Path, nodeConfiguration.RootDir, vdisk.Id.ToString());
-                            result.Add(node.Name, new RemoteDir(node.GetIPAddress(), targetPath));
+                            var addr = await node.FindIPAddress();
+                            if (addr != null)
+                                result.Add(node.Name, new RemoteDir(addr, targetPath));
+                            else
+                                aliensRecoveryOptions.LogErrorWithPossibleException<OperationException>(_logger,
+                                "Failed to find ip address of {node}", node);
                         }
                         else
+                        {
                             aliensRecoveryOptions.LogErrorWithPossibleException<ClusterStateException>(_logger,
                                 "Failed to get node configuration from {node}", node);
+                        }
                     }
                     else
                         throw new ConfigurationException("Configuration does not match running cluster");

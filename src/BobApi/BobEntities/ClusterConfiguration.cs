@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using YamlDotNet.Serialization;
@@ -25,7 +27,16 @@ namespace BobApi.BobEntities
             [YamlMember(Alias = "disks")]
             public List<Disk> Disks { get; set; }
 
-            public IPAddress GetIPAddress() => IPAddress.Parse(Address.Split(':')[0]);
+            public Uri GetUri() => new Uri($"http://{Address}");
+
+            public async ValueTask<IPAddress> FindIPAddress()
+            {
+                var host = GetUri().Host;
+                if (!IPAddress.TryParse(host, out var addr))
+                    addr = (await Dns.GetHostAddressesAsync(host)).FirstOrDefault();
+                return addr;
+
+            }
 
             public class Disk
             {
