@@ -24,7 +24,11 @@ Tool for recovering aliens from nodes.
 
 ### Requirements
 
-+ rsync (with xxh128 support)
-+ sshd
-+ find
-+ xxhash
+- rsync (with xxh128 support)
+- sshd
+- find
+- xxhash
+
+### Building dockers
+
+To build docker images simply pass appropriate dockerfile from `dockerfiles` dir, using root folder as context. E.g. `docker build -f dockerfiles/RecordsCalculatorDockerfile .`.
