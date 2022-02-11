@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build
 
-ARG AppName=RecordsCalculator
+ARG AppName=BobAliensRecovery
 ARG Version="1.0.0.0"
 ARG InformationalVersion="1.0.0.0"
 # Tool to ease csproj copy for dotnet restore
@@ -20,4 +20,4 @@ FROM alpine
 COPY --from=build /publish/${AppName} /root/${AppName}
 RUN apk add krb5-libs libstdc++ libgcc
 
-ENTRYPOINT ["/root/RecordsCalculator"]
+ENTRYPOINT ["/root/BobAliensRecovery"]
