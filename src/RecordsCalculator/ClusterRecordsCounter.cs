@@ -62,7 +62,7 @@ namespace RecordsCalculator
 
                 _logger.LogError("Error counting values for vdisk {vdiskId}: {errors}", vDisk.Id, string.Join(", ", errors));
                 if (!_programArguments.ContinueOnError)
-                    throw new InvalidOperationException();
+                    throw new ProcessInterruptException($"Error counting values for vdisk {vDisk.Id}, {string.Join(", ", errors)}");
             }
 
             return results;

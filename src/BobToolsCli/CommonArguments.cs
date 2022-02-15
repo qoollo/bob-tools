@@ -2,14 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using BobApi;
 using BobApi.BobEntities;
 using BobToolsCli.ConfigurationFinding;
+using BobToolsCli.ConfigurationReading;
 using BobToolsCli.Helpers;
 using CommandLine;
 using Microsoft.Extensions.Logging;
-using YamlDotNet.Serialization;
 
 namespace BobToolsCli
 {
@@ -29,42 +31,20 @@ namespace BobToolsCli
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
 
-        public async Task<YamlReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
+        [Option("bootstrap-node", HelpText = "Load config from node instead of file. Node is specified by host and port, e.g. 127.0.0.1:8000, localhost:8000")]
+        public string BootstrapNode { get; set; }
+
+        public async Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
         {
-            if (!File.Exists(ClusterConfigPath))
-                return YamlReadingResult<ClusterConfiguration>.Error("Configuration file not found");
-
-            var configContent = await File.ReadAllTextAsync(ClusterConfigPath, cancellationToken: cancellationToken);
-
-            try
+            if (BootstrapNode != null)
             {
-                var config = new DeserializerBuilder().IgnoreUnmatchedProperties().Build()
-                    .Deserialize<ClusterConfiguration>(configContent);
-
-                var nodeNames = config.Nodes.Select(n => n.Name).ToHashSet();
-                var missingNodes = new HashSet<string>();
-                var brokenVDiskIds = new HashSet<long>();
-                foreach (var vd in config.VDisks)
-                    foreach (var r in vd.Replicas)
-                        if (!nodeNames.Contains(r.Node))
-                        {
-                            missingNodes.Add(r.Node);
-                            brokenVDiskIds.Add(vd.Id);
-                        }
-                if (brokenVDiskIds.Count > 0)
-                {
-                    var ids = string.Join(", ", brokenVDiskIds);
-                    var nodes = string.Join(", ", missingNodes);
-                    var error = $"Configuration contains vdisks ({ids}) with not defined nodes ({nodes})";
-                    return YamlReadingResult<ClusterConfiguration>.Error(error);
-                }
-
-                return YamlReadingResult<ClusterConfiguration>.Ok(config);
+                if (TryParseHostPort(BootstrapNode, out var host, out var port))
+                    return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(host, port, cancellationToken);
+                else
+                    return ConfigurationReadingResult<ClusterConfiguration>.Error($"Failed to parse bootstrap node address from \"{BootstrapNode}\"");
             }
-            catch (Exception e)
-            {
-                return YamlReadingResult<ClusterConfiguration>.Error(e.Message);
-            }
+
+            return await new ClusterConfigurationReader().ReadConfigurationFromFile(ClusterConfigPath, cancellationToken);
         }
 
         public LogLevel GetMinLogLevel()
@@ -82,6 +62,23 @@ namespace BobToolsCli
         public NodePortStorage GetNodePortStorage()
         {
             return new NodePortStorage(ApiPortOverrides);
+        }
+
+        private static bool TryParseHostPort(string s, out string host, out int port)
+        {
+            host = null;
+            port = 0;
+            if (s.Contains(':'))
+            {
+                var split = s.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                if (split.Length == 2 && int.TryParse(split[1], out port))
+                {
+                    host = split[0];
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

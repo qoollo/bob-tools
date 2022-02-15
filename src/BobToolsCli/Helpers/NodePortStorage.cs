@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BobApi.BobEntities;
+using BobApi.Entities;
 
 namespace BobToolsCli.Helpers
 {
@@ -16,18 +17,29 @@ namespace BobToolsCli.Helpers
         internal NodePortStorage(IEnumerable<string> portOverrides)
         {
             _portByNodeName = portOverrides.ToDictionary(s => s.Split(NamePortSeparator)[0], s => int.Parse(s.Split(NamePortSeparator)[1]));
-            if (!_portByNodeName.TryGetValue("*", out var defaultPort))
+            if (!_portByNodeName.TryGetValue("*", out _defaultPort))
                 _defaultPort = DefaultPort;
         }
 
         public Uri GetNodeApiUri(ClusterConfiguration.Node node)
+            => GetNodeApiUriWithPortOverride(node.GetUri(), node.Name);
+
+
+        public Uri GetNodeApiUri(Node node)
+            => GetNodeApiUriWithPortOverride(node.GetUri(), node.Name);
+
+        private Uri GetNodeApiUriWithPortOverride(Uri nodeUri, string nodeName)
         {
-            return new Uri("http://" + node.GetIPAddress() + ':' + GetApiPort(node));
+            var uri = new UriBuilder(nodeUri)
+            {
+                Port = GetApiPort(nodeName)
+            };
+            return uri.Uri;
         }
 
-        private int GetApiPort(ClusterConfiguration.Node node)
+        private int GetApiPort(string nodeName)
         {
-            if (_portByNodeName.TryGetValue(node.Name, out var port))
+            if (_portByNodeName.TryGetValue(nodeName, out var port))
                 return port;
             return _defaultPort;
         }
