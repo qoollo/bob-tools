@@ -22,6 +22,10 @@ Tool for discovery, formatting and mounting of new disks
 
 Tool for recovering aliens from nodes.
 
+### Dockerized
+
+Requires ssh key to be available to run.
+
 ### Requirements
 
 - rsync (with xxh128 support)
