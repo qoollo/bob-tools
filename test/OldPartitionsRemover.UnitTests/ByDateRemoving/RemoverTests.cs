@@ -9,6 +9,7 @@ using BobApi.Entities;
 using BobToolsCli;
 using BobToolsCli.BobApliClientFactories;
 using BobToolsCli.ConfigurationFinding;
+using BobToolsCli.ConfigurationReading;
 using FakeItEasy;
 using FluentAssertions;
 using NUnit.Framework;
@@ -25,7 +26,7 @@ public class RemoverTests
         Remover sut)
     {
         A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
-            .Returns(YamlReadingResult<ClusterConfiguration>.Error(""));
+            .Returns(ConfigurationReadingResult<ClusterConfiguration>.Error(""));
 
         var result = await sut.RemoveOldPartitions(CancellationToken.None);
 
@@ -35,7 +36,6 @@ public class RemoverTests
     [Test, SutFactory]
     public async Task RemoveOldPartitions_WithoutConnection_ReturnsError(
         [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
-        [Frozen] Arguments arguments,
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))

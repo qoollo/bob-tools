@@ -8,6 +8,7 @@ using BobApi.Entities;
 using BobToolsCli;
 using BobToolsCli.BobApliClientFactories;
 using BobToolsCli.ConfigurationFinding;
+using BobToolsCli.ConfigurationReading;
 using FakeItEasy;
 using FluentAssertions;
 using NUnit.Framework;
@@ -24,7 +25,7 @@ public class RemoverTests
         Remover sut)
     {
         A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
-            .Returns(YamlReadingResult<ClusterConfiguration>.Error(""));
+            .Returns(ConfigurationReadingResult<ClusterConfiguration>.Error(""));
 
         var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
 
@@ -223,7 +224,7 @@ public class RemoverTests
     {
         arguments.ThresholdString = "1000B";
         A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
-            .Returns(YamlReadingResult<ClusterConfiguration>.Ok(new ClusterConfiguration
+            .Returns(ConfigurationReadingResult<ClusterConfiguration>.Ok(new ClusterConfiguration
             {
                 Nodes = new List<ClusterConfiguration.Node>
                 {

@@ -12,7 +12,14 @@ namespace RecordsCalculator
     {
         private static async Task Main(string[] args)
         {
-            await CliHelper.RunWithParsed<ProgramArguments>(args, CountRecords);
+            try
+            {
+                await CliHelper.RunWithParsed<ProgramArguments>(args, CountRecords);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Error: {e.Message}");
+            }
         }
 
         private static async Task CountRecords(ProgramArguments arguments, IServiceCollection services,

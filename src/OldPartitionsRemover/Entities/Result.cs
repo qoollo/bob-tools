@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using BobApi.Entities;
 using BobToolsCli;
+using BobToolsCli.ConfigurationReading;
 
 namespace OldPartitionsRemover.Entities
 {
@@ -56,7 +57,7 @@ namespace OldPartitionsRemover.Entities
         public static Result<T> Ok(T data) => new(data, null);
         public static Result<T> Error(string error) => new(default, error);
 
-        public static implicit operator Result<T>(YamlReadingResult<T> r)
+        public static implicit operator Result<T>(ConfigurationReadingResult<T> r)
         {
             if (r.IsOk(out var d, out var e))
                 return Ok(d);

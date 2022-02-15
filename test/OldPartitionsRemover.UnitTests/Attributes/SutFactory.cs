@@ -9,6 +9,7 @@ using BobApi.BobEntities;
 using BobToolsCli;
 using BobToolsCli.BobApliClientFactories;
 using BobToolsCli.ConfigurationFinding;
+using BobToolsCli.ConfigurationReading;
 using FakeItEasy;
 
 namespace OldPartitionsRemover.UnitTests.Attributes;
@@ -61,8 +62,8 @@ public class SutFactory : AutoDataAttribute
             .Returns(spaceBobApiClient);
 
         var configurationFinder = fixture.Freeze<IConfigurationFinder>();
-        A.CallTo<Task<YamlReadingResult<ClusterConfiguration>>>(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
-            .Returns(YamlReadingResult<ClusterConfiguration>.Ok(s_defaultConfiguration));
+        A.CallTo<Task<ConfigurationReadingResult<ClusterConfiguration>>>(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
+            .Returns(ConfigurationReadingResult<ClusterConfiguration>.Ok(s_defaultConfiguration));
 
         return fixture;
     })
