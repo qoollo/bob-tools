@@ -38,52 +38,73 @@ namespace BobToolsCli.ConfigurationReading
             var result = new List<ClusterConfiguration.Node>();
             foreach (var node in nodes)
             {
-                var nodeClient = new BobApiClient(_nodePortStorage.GetNodeApiUri(node));
-                var nodeDisksResult = await nodeClient.GetDisks(cancellationToken);
-                if (nodeDisksResult.IsOk(out var nodeDisks, out var nodeDisksError))
+                var nodeAddr = _nodePortStorage.GetNodeApiUri(node);
+                var nodeClient = new BobApiClient(nodeAddr);
+                var statusResult = await nodeClient.GetStatus(cancellationToken);
+                if (statusResult.IsOk(out var status, out var statusError))
                 {
-                    var resultNode = new ClusterConfiguration.Node
+                    if (status.Name == node.Name)
                     {
-                        Address = node.Address,
-                        Name = node.Name,
-                        Disks = nodeDisks.Select(Convert).ToList()
-                    };
-                    result.Add(resultNode);
+                        var nodeDisksResult = await nodeClient.GetDisks(cancellationToken);
+                        if (nodeDisksResult.IsOk(out var nodeDisks, out var nodeDisksError))
+                        {
+                            var resultNode = new ClusterConfiguration.Node
+                            {
+                                Address = node.Address,
+                                Name = node.Name,
+                                Disks = nodeDisks.GroupBy(d => d.Name).Select(g => g.First()).Select(Convert).ToList()
+                            };
+                            result.Add(resultNode);
+                        }
+                        else
+                            return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
+                                .Error($"Error fetching disks for node {node.Name}: {nodeDisksError}");
+                    }
+                    else
+                        return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
+                            .Error($"Expected to find node \"{node.Name}\" at \"{nodeAddr.Host}:{nodeAddr.Port}\", but found \"{status.Name}\"");
                 }
                 else
                     return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
-                        .Error($"Error fetching disks for node {node.Name}: {nodeDisksError}");
+                        .Error($"Error getting status for node {node.Name}: {statusError}");
             }
             return ConfigurationReadingResult<List<ClusterConfiguration.Node>>.Ok(result);
         }
 
         private static List<ClusterConfiguration.VDisk> GetVDisks(List<Node> nodes)
         {
-            return nodes.SelectMany(n => n.VDisks.Select(Convert)).ToList();
+            var vdisks = new Dictionary<int, ClusterConfiguration.VDisk>();
+            foreach (var node in nodes)
+            {
+                foreach (var vd in node.VDisks)
+                {
+                    var convertedVdisk = Convert(vd);
+                    if (vdisks.TryGetValue(vd.Id, out var vdisk))
+                    {
+                        var newReplicas = convertedVdisk.Replicas.Where(r => !vdisk.Replicas.Contains(r)).ToArray();
+                        vdisk.Replicas.AddRange(newReplicas);
+                    }
+                    else
+                    {
+                        vdisks.Add(vd.Id, convertedVdisk);
+                    }
+                }
+            }
+
+            return vdisks.Values.ToList();
         }
 
         private static ClusterConfiguration.VDisk Convert(VDisk vdisk)
-        {
-            return new ClusterConfiguration.VDisk
+            => new()
             {
                 Id = vdisk.Id,
-                Replicas = vdisk.Replicas.Select(r => new ClusterConfiguration.VDisk.Replica { Disk = r.Disk, Node = r.Node }).ToList()
+                Replicas = vdisk.Replicas.Select(Convert).ToList()
             };
-        }
+
+        private static ClusterConfiguration.VDisk.Replica Convert(Replica r)
+            => new() { Disk = r.Disk, Node = r.Node };
 
         private static ClusterConfiguration.Node.Disk Convert(Disk d)
-        {
-            return new ClusterConfiguration.Node.Disk { Name = d.Name, Path = d.Path };
-        }
-
-        private static ClusterConfiguration.Node GetNodeProto(Node node)
-        {
-            return new ClusterConfiguration.Node
-            {
-                Address = node.Address,
-                Name = node.Name,
-                Disks = new List<ClusterConfiguration.Node.Disk>()
-            };
-        }
+            => new() { Name = d.Name, Path = d.Path };
     }
 }
