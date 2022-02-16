@@ -95,9 +95,7 @@ namespace BobApi
             => await GetJson<NodeConfiguration>("configuration", cancellationToken: cancellationToken);
 
         public async Task<BobApiResult<ulong>> GetFreeSpaceBytes(CancellationToken cancellationToken = default)
-        {
-            return BobApiResult<ulong>.Ok(0);
-        }
+            => (await GetJson<SpaceInfo>("status/space", cancellationToken)).Map(i => i.FreeDiskSpaceBytes);
 
         public void Dispose()
         {

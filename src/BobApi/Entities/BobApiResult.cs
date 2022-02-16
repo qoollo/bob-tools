@@ -25,6 +25,13 @@ namespace BobApi.Entities
             return !IsError;
         }
 
+        public BobApiResult<Y> Map<Y>(Func<T, Y> f)
+        {
+            if (IsError)
+                return new BobApiResult<Y>(default, _errorType);
+            return new BobApiResult<Y>(f(_data), _errorType);
+        }
+
         public bool TryGetData(out T data)
         {
             data = _data;

@@ -59,7 +59,9 @@ namespace OldPartitionsRemover.BySpaceRemoving
                 {
                     if (p && d > threshold.Bytes)
                         return Result<bool>.Ok(true);
-                    _logger.LogInformation("Removing partitions on node {Node}", n.Name);
+
+                    _logger.LogInformation("Not enough space on node {Node} ({Actual} < {Threshold})",
+                        n.Name, ByteSize.FromBytes(d), threshold);
                     return await RemoveOnNode(clusterConfiguration, n, threshold, cancellationToken);
                 });
             });
@@ -74,8 +76,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
                 if (enoughSpaceOnNode)
                     return Result<bool>.Ok(enoughSpaceOnNode);
 
-                _logger.LogDebug("Due to not enough space, removing partitions on vdisk {VDisk} on node {Node}",
-                    vd.Id, node.Name);
+                _logger.LogDebug("Removing partitions on vdisk {VDisk} on node {Node}", vd.Id, node.Name);
 
                 var partitionsApi = _bobApiClientFactory.GetPartitionsBobApiClient(node);
                 return await RemoveOnVDiskUntilEnoughSpace(vd, CheckIfEnoughSpace, partitionsApi, cancellationToken);
@@ -105,7 +106,6 @@ namespace OldPartitionsRemover.BySpaceRemoving
                         if (enoughSpaceOnVdisk)
                             return Result<bool>.Ok(enoughSpaceOnVdisk);
 
-                        _logger.LogDebug("Due to not enough space on VDisk, removing partiions with timestamp {Timestamp}", ts);
                         Result<bool> deleteResult = await partitionsApi.DeletePartitionsByTimestamp(vd.Id, ts, cancellationToken);
                         return await deleteResult.Bind(async _ => await checkIfEnoughSpace());
                     });
