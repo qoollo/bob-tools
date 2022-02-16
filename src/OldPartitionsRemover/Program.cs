@@ -31,7 +31,7 @@ namespace OldPartitionsRemover
             => await RemovePartitions<ByDateRemoving.Remover>(services, r => r.RemoveOldPartitions(cancellationToken));
 
         private static async Task RemovePartitionsBySpace(BySpaceRemoving.Arguments args, IServiceCollection services, CancellationToken cancellationToken)
-            => await RemovePartitions<BySpaceRemoving.Remover>(services, r => throw new NotImplementedException());
+            => await RemovePartitions<BySpaceRemoving.Remover>(services, r => r.RemovePartitionsBySpace(cancellationToken));
 
         private static async Task RemovePartitions<TRem>(IServiceCollection services, Func<TRem, Task<Entities.Result<bool>>> remove)
             where TRem : class

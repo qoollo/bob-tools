@@ -88,12 +88,16 @@ namespace BobApi
             CancellationToken cancellationToken = default)
             => await GetJson<Partition>($"vdisks/{vdiskId}/partitions/{partition}", cancellationToken: cancellationToken);
 
-
         public async Task<BobApiResult<long>> CountRecordsOnVDisk(long id, CancellationToken cancellationToken = default)
             => await GetJson<long>($"vdisks/{id}/records/count", cancellationToken: cancellationToken);
 
         public async Task<BobApiResult<NodeConfiguration>> GetNodeConfiguration(CancellationToken cancellationToken = default)
             => await GetJson<NodeConfiguration>("configuration", cancellationToken: cancellationToken);
+
+        public async Task<BobApiResult<ulong>> GetFreeSpaceBytes(CancellationToken cancellationToken = default)
+        {
+            return BobApiResult<ulong>.Ok(0);
+        }
 
         public void Dispose()
         {
@@ -190,11 +194,6 @@ namespace BobApi
                     throw new BobConnectionException(_client.BaseAddress, e);
                 return BobApiResult<T>.Unavailable();
             }
-        }
-
-        public Task<BobApiResult<ulong>> GetFreeSpaceBytes(CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
         }
     }
 }
