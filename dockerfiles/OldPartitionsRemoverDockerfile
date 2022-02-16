@@ -2,7 +2,7 @@ FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build
 
 ARG Version="1.0.0.0"
 ARG InformationalVersion="1.0.0.0"
-ARG AppName=BobAliensRecovery
+ARG AppName=OldPartitionsRemover
 # Tool to ease csproj copy for dotnet restore
 ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet tool install -g dotnet-references
@@ -18,6 +18,6 @@ RUN dotnet publish --no-restore -c Release -r linux-musl-x64 -p:Version=${Versio
 FROM alpine
 
 COPY --from=build /publish/${AppName} /root/${AppName}
-RUN apk add krb5-libs libstdc++ libgcc openssh
+RUN apk add krb5-libs libstdc++ libgcc
 
-ENTRYPOINT ["/root/BobAliensRecovery"]
+ENTRYPOINT ["/root/OldPartitionsRemover"]

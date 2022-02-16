@@ -1,11 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build
 
-ARG AppName=RecordsCalculator
 ARG Version="1.0.0.0"
 ARG InformationalVersion="1.0.0.0"
+ARG AppName=RecordsCalculator
 # Tool to ease csproj copy for dotnet restore
-RUN dotnet tool install -g dotnet-references
 ENV PATH="${PATH}:/root/.dotnet/tools"
+RUN dotnet tool install -g dotnet-references
 # Separate restore stage so docker can cache it
 COPY ./src/${AppName}.sln /src/${AppName}.sln
 COPY ./src/*/*.csproj /src
