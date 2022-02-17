@@ -176,8 +176,8 @@ namespace ClusterModifier
             [Option("remove-source", Required = false, HelpText = "Remove source files after copy")]
             public bool RemoveSourceFiles { get; set; } = false;
 
-            [Option("dsa", Required = true, HelpText = "Path to disk status analyzer")]
-            public string DiskStatusAnalyzer { get; set; }
+            [Option("dsa", HelpText = "Path to disk status analyzer")]
+            public string DiskStatusAnalyzer { get; set; } = "./DiskStatusAnalyzer";
         }
     }
 }

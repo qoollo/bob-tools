@@ -6,19 +6,19 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using CommandLine;
 using DiskStatusAnalyzer.Entities;
 using DiskStatusAnalyzer.NodeStructureCreation;
+using DiskStatusAnalyzer.ReplicaRestoring;
 using DiskStatusAnalyzer.Rsync;
 using DiskStatusAnalyzer.Rsync.Entities;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using YamlDotNet.Serialization;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using Microsoft.Extensions.Configuration;
-using DiskStatusAnalyzer.ReplicaRestoring;
-using CommandLine;
+using YamlDotNet.Serialization;
 using Logger = Microsoft.Extensions.Logging.ILogger<DiskStatusAnalyzer.ProgramStub>;
-using Microsoft.Extensions.FileProviders;
 
 namespace DiskStatusAnalyzer
 {
@@ -46,9 +46,13 @@ namespace DiskStatusAnalyzer
 
         static void AddConfiguration(IServiceCollection services)
         {
-            var curDirProv = new PhysicalFileProvider(Directory.GetCurrentDirectory());
-            var exeDirProv = new PhysicalFileProvider(Path.GetDirectoryName(System.AppContext.BaseDirectory));
-            var prov = new CompositeFileProvider(curDirProv, exeDirProv);
+            var dirs = new[]
+            {
+                Directory.GetCurrentDirectory(),
+                Path.GetDirectoryName(System.AppContext.BaseDirectory)
+            };
+            var providers = dirs.Where(d => !string.IsNullOrWhiteSpace(d)).Select(d => new PhysicalFileProvider(d));
+            var prov = new CompositeFileProvider(providers);
             configuration = new ConfigurationBuilder()
                 .SetFileProvider(prov)
                 .AddJsonFile("appsettings.json", false)
