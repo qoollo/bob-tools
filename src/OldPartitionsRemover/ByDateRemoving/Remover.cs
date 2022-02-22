@@ -50,7 +50,7 @@ namespace OldPartitionsRemover.ByDateRemoving
         private async Task<Result<List<RemoveOperation>>> FindOnNode(ClusterConfiguration clusterConfig,
             ClusterConfiguration.Node node, CancellationToken cancellationToken)
         {
-            _logger.LogDebug("Removing partitions on node {Node}", node.Name);
+            _logger.LogInformation("Removing partitions on node {Node}", node.Name);
 
             var vdisksOnNode = clusterConfig.VDisks.Where(vd => vd.Replicas.Any(r => r.Node == node.Name));
             var nodeApi = new NodeApi(_bobApiClientFactory.GetPartitionsBobApiClient(node), cancellationToken);
