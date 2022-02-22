@@ -45,7 +45,7 @@ namespace OldPartitionsRemover
             if (removeResult.IsOk(out var success, out var error))
             {
                 if (!success)
-                    Console.WriteLine("Failed to delete partitions due to internal error");
+                    Console.WriteLine("Operation is unsuccessful");
             }
             else
             {
