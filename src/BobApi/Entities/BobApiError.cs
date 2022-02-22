@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace BobApi.Entities
@@ -9,8 +10,11 @@ namespace BobApi.Entities
         private BobApiError(ErrorType type, HttpResponseMessage responseMessage = null, string content = null)
         {
             Type = type;
-            StatusCode = responseMessage.StatusCode;
-            RequestInfo = $"{responseMessage.RequestMessage.Method}: {responseMessage.RequestMessage.RequestUri}";
+            if (responseMessage != null)
+            {
+                StatusCode = responseMessage.StatusCode;
+                RequestInfo = $"{responseMessage.RequestMessage.Method}: {responseMessage.RequestMessage.RequestUri}";
+            }
             Content = content;
         }
 
@@ -37,11 +41,17 @@ namespace BobApi.Entities
 
         private string GetUnsuccessfulResponseMessage()
         {
-            var message = $"Request \"{RequestInfo}\", response [{StatusCode}]: {Content}.";
+            var result = new StringBuilder($"Request \"{RequestInfo}\", response [{StatusCode}]");
+
+            if (Content == null || Content.Contains('\n'))
+                result.Append('.');
+            else
+                result.Append(": {Content}.");
+
             var hint = FindHint();
             if (hint != null)
-                return message + " " + hint;
-            return message;
+                result.Append($" {hint}");
+            return result.ToString();
         }
 
         private string FindHint()
