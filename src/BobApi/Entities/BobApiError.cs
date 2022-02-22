@@ -46,7 +46,7 @@ namespace BobApi.Entities
             if (Content == null || Content.Contains('\n'))
                 result.Append('.');
             else
-                result.Append(": {Content}.");
+                result.Append($": {Content}.");
 
             var hint = FindHint();
             if (hint != null)
