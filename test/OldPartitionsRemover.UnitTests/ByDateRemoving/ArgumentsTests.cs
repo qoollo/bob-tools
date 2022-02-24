@@ -31,64 +31,20 @@ public class ArgumentsTests
         threshold.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [Test]
-    public void GetThreshold_WithMinusDayString_ReturnsThresholdWithinPreviousTwoDays()
+    [TestCase("-1y", "400.00:00:00", "300.00:00:00")]
+    [TestCase("-1m", "40.00:00:00", "20.00:00:00")]
+    [TestCase("-1d", "1.01:00:00", "0.23:00:00")]
+    [TestCase("-1h", "01:10:00", "00:50:00")]
+    public void GetThreshold_WithThresholdAndEps_LiesWithinInterval(string thresholdString, string minBefore, string maxBefore)
     {
-        var arguments = new Arguments
-        {
-            ThresholdString = "-1d"
-        };
+        var arguments = new Arguments { ThresholdString = thresholdString };
 
         var threshold = arguments.GetThreshold();
 
+        var dt = DateTimeOffset.Now;
         threshold.IsOk(out var d, out var _).Should().BeTrue();
-        d.Should().BeBefore(DateTimeOffset.Now);
-        d.Should().BeAfter(DateTimeOffset.Now - TimeSpan.FromDays(2));
-    }
-
-    [Test]
-    public void GetThreshold_WithMinusHourString_ReturnsThresholdWithinPreviousTwoHours()
-    {
-        var arguments = new Arguments
-        {
-            ThresholdString = "-1h"
-        };
-
-        var threshold = arguments.GetThreshold();
-
-        threshold.IsOk(out var d, out var _).Should().BeTrue();
-        d.Should().BeBefore(DateTimeOffset.Now);
-        d.Should().BeAfter(DateTimeOffset.Now - TimeSpan.FromHours(2));
-    }
-
-    [Test]
-    public void GetThreshold_WithMinusMonthString_ReturnsThresholdWithin10Days()
-    {
-        var arguments = new Arguments
-        {
-            ThresholdString = "-1m"
-        };
-
-        var threshold = arguments.GetThreshold();
-
-        threshold.IsOk(out var d, out var _).Should().BeTrue();
-        d.Should().BeBefore(DateTimeOffset.Now - TimeSpan.FromDays(20));
-        d.Should().BeAfter(DateTimeOffset.Now - TimeSpan.FromDays(40));
-    }
-
-    [Test]
-    public void GetThreshold_WithMinusYearString_ReturnsThresholdWithinHundredDays()
-    {
-        var arguments = new Arguments
-        {
-            ThresholdString = "-1y"
-        };
-
-        var threshold = arguments.GetThreshold();
-
-        threshold.IsOk(out var d, out var _).Should().BeTrue();
-        d.Should().BeBefore(DateTimeOffset.Now - TimeSpan.FromDays(300));
-        d.Should().BeAfter(DateTimeOffset.Now - TimeSpan.FromDays(400));
+        d.Should().BeBefore(dt - TimeSpan.Parse(maxBefore));
+        d.Should().BeAfter(dt - TimeSpan.Parse(minBefore));
     }
 
     [Test]
