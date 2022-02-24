@@ -112,7 +112,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
 
         private async Task<Result<bool>> CheckIfEnoughSpace(ClusterConfiguration.Node node, ByteSize threshold, CancellationToken cancellationToken)
         {
-            await Task.Delay(_arguments.DelaySeconds * 1000, cancellationToken);
+            await Task.Delay(_arguments.DelayMilliseconds, cancellationToken);
             var spaceApi = _bobApiClientFactory.GetSpaceBobApiClient(node);
             Result<ulong> sizeResult = await spaceApi.GetFreeSpaceBytes(cancellationToken);
             return sizeResult.Map(d =>

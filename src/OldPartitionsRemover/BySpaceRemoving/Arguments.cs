@@ -13,8 +13,8 @@ namespace OldPartitionsRemover.BySpaceRemoving
         [Option('t', "threshold", HelpText = "Removal threshold, min space to preserve on each node", Required = true)]
         public string ThresholdString { get; set; }
 
-        [Option('d', "delay", Default = 5, HelpText = "Delay in seconds before each subsequent size request", Required = false)]
-        public int DelaySeconds { get; set; }
+        [Option('d', "delay", Default = 300, HelpText = "Delay in milliseconds before each subsequent size request", Required = false)]
+        public int DelayMilliseconds { get; set; }
 
         public Result<ByteSize> GetThreshold()
         {
