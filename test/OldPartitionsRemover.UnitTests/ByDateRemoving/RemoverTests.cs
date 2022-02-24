@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using AutoFixture;
 using AutoFixture.NUnit3;
 using BobApi;
 using BobApi.BobEntities;
@@ -14,15 +15,15 @@ using FakeItEasy;
 using FluentAssertions;
 using NUnit.Framework;
 using OldPartitionsRemover.ByDateRemoving;
-using OldPartitionsRemover.UnitTests.Attributes;
+using OldPartitionsRemover.UnitTests.Customizations;
 
 namespace OldPartitionsRemover.UnitTests.ByDateRemoving;
 
 public class RemoverTests
 {
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithoutConfig_ReturnsError(
-        [Frozen] IConfigurationFinder configurationFinder,
+        IConfigurationFinder configurationFinder,
         Remover sut)
     {
         A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
@@ -33,9 +34,9 @@ public class RemoverTests
         result.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithoutConnection_ReturnsError(
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -47,13 +48,13 @@ public class RemoverTests
         err.Should().ContainEquivalentOf("Unavailable");
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithoutConnectionWithContinueOnErrorFlag_ReturnsOk(
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
-        [Frozen] CommonArguments commonArguments,
+        IPartitionsBobApiClient partitionsBobApiClient,
+        Arguments arguments,
         Remover sut)
     {
-        commonArguments.ContinueOnError = true;
+        arguments.ContinueOnError = true;
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
             .Returns(BobApiResult<List<string>>.Unavailable());
 
@@ -62,9 +63,9 @@ public class RemoverTests
         result.IsOk(out var _, out var err).Should().BeTrue();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithFailOnPartitionFetch_ReturnsError(
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -78,9 +79,9 @@ public class RemoverTests
         err.Should().ContainEquivalentOf("unavailable");
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithFailOnSecondPartitionFetch_ReturnsError(
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -94,10 +95,10 @@ public class RemoverTests
         err.Should().ContainEquivalentOf("Unavailable");
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithPartitionsWithTimestampOverThreshold_DoesNotRemoveAnything(
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
-        [Frozen] Arguments arguments,
+        IPartitionsBobApiClient partitionsBobApiClient,
+        Arguments arguments,
         Remover sut)
     {
         arguments.ThresholdString = "-1d";
@@ -112,10 +113,10 @@ public class RemoverTests
             .MustNotHaveHappened();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithPartitionsWithOldTimestampAndNewTimestamp_RemovesOldTimestampPartition(
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
-        [Frozen] Arguments arguments,
+        IPartitionsBobApiClient partitionsBobApiClient,
+        Arguments arguments,
         Remover sut)
     {
         arguments.ThresholdString = "-1d";
@@ -133,10 +134,10 @@ public class RemoverTests
             .MustHaveHappened();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithSuccessfullDeletion_ReturnsOk(
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
-        [Frozen] Arguments arguments,
+        IPartitionsBobApiClient partitionsBobApiClient,
+        Arguments arguments,
         Remover sut)
     {
         arguments.ThresholdString = "-1d";
@@ -150,5 +151,23 @@ public class RemoverTests
         var result = await sut.RemoveOldPartitions(CancellationToken.None);
 
         result.IsOk(out var _, out var _).Should().BeTrue();
+    }
+
+    private class ADAttribute : AutoDataAttribute
+    {
+        public ADAttribute() : base(() =>
+        {
+            var fixture = new Fixture();
+            fixture.Customize(new FrozenApiClientsCustomization());
+            fixture.Customize(new SingleNodeConfigCustomization());
+            fixture.Customize(new FrozenArgumentsCustomization<Arguments>(args =>
+            {
+                args.ThresholdString = "-1d";
+                args.ContinueOnError = false;
+            }));
+
+            return fixture;
+        })
+        { }
     }
 }

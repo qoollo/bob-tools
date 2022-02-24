@@ -70,12 +70,5 @@ namespace OldPartitionsRemover.Entities
                 return Ok(d);
             return Error(e.ToString());
         }
-
-        public static async Task<Result<T>> Sequence(Result<Task<T>> r)
-        {
-            if (r.IsError)
-                return Error(r._error);
-            return Ok(await r._data);
-        }
     }
 }

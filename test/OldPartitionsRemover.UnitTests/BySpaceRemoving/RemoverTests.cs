@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using AutoFixture;
+using AutoFixture.AutoFakeItEasy;
 using AutoFixture.NUnit3;
 using BobApi;
 using BobApi.BobEntities;
@@ -13,15 +15,15 @@ using FakeItEasy;
 using FluentAssertions;
 using NUnit.Framework;
 using OldPartitionsRemover.BySpaceRemoving;
-using OldPartitionsRemover.UnitTests.Attributes;
+using OldPartitionsRemover.UnitTests.Customizations;
 
 namespace OldPartitionsRemover.UnitTests.BySpaceRemoving;
 
 public class RemoverTests
 {
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemoveOldPartitions_WithoutConfig_ReturnsError(
-        [Frozen] IConfigurationFinder configurationFinder,
+        IConfigurationFinder configurationFinder,
         Remover sut)
     {
         A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
@@ -32,13 +34,11 @@ public class RemoverTests
         result.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithEnoughSpace_ReturnsOk(
-        [Frozen] Arguments arguments,
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
+        ISpaceBobApiClient spaceBobApiClient,
         Remover sut)
     {
-        arguments.ThresholdString = "1000B";
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Ok(2000));
 
@@ -48,13 +48,11 @@ public class RemoverTests
         r.Should().BeTrue();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithConnectionError_ReturnsError(
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
-        [Frozen] Arguments arguments,
+        ISpaceBobApiClient spaceBobApiClient,
         Remover sut)
     {
-        arguments.ThresholdString = "1000B";
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Unavailable());
 
@@ -64,15 +62,13 @@ public class RemoverTests
         e.Should().ContainEquivalentOf("Unavailable");
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithConnectionErrorAndErrorSkip_ReturnsOk(
-        [Frozen] CommonArguments com,
-        [Frozen] Arguments arguments,
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
+        Arguments arguments,
+        ISpaceBobApiClient spaceBobApiClient,
         Remover sut)
     {
-        arguments.ThresholdString = "1000B";
-        com.ContinueOnError = true;
+        arguments.ContinueOnError = true;
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Unavailable());
 
@@ -81,14 +77,12 @@ public class RemoverTests
         result.IsOk(out var _, out var e).Should().BeTrue();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithNotEnoughSpace_RemovesSinglePartition(
-        [Frozen] Arguments arguments,
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
-        arguments.ThresholdString = "1000B";
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Ok(500));
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -102,14 +96,12 @@ public class RemoverTests
             .MustHaveHappened();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithMultiplePartitions_RemovesUntilSpaceIsEnough(
-       [Frozen] Arguments arguments,
-       [Frozen] ISpaceBobApiClient spaceBobApiClient,
-       [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+       ISpaceBobApiClient spaceBobApiClient,
+       IPartitionsBobApiClient partitionsBobApiClient,
        Remover sut)
     {
-        arguments.ThresholdString = "1000B";
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .ReturnsNextFromSequence(BobApiResult<ulong>.Ok(500), BobApiResult<ulong>.Ok(1500));
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -125,14 +117,12 @@ public class RemoverTests
             .MustNotHaveHappened();
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithErrorInPartitionsCall_ReturnsError(
-      [Frozen] Arguments arguments,
-      [Frozen] ISpaceBobApiClient spaceBobApiClient,
-      [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
-      Remover sut)
+        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
+        Remover sut)
     {
-        arguments.ThresholdString = "1000B";
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Ok(500));
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -144,14 +134,12 @@ public class RemoverTests
         err.Should().ContainEquivalentOf("Unavailable");
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithErrorInSinglePartitionCall_ReturnsError(
-        [Frozen] Arguments arguments,
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
-        arguments.ThresholdString = "1000B";
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Ok(500));
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -165,14 +153,12 @@ public class RemoverTests
         err.Should().ContainEquivalentOf("Unavailable");
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithErrorInDeleteCall_ReturnsError(
-        [Frozen] Arguments arguments,
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
-        arguments.ThresholdString = "1000B";
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Ok(500));
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -188,16 +174,14 @@ public class RemoverTests
         err.Should().ContainEquivalentOf("Unavailable");
     }
 
-    [Test, SutFactory]
+    [Test, AD]
     public async Task RemovePartitionsBySpace_WithErrorInFirstPartitionCallAndSkipErrors_ReturnsOk(
-        [Frozen] CommonArguments com,
-        [Frozen] Arguments arguments,
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
+        Arguments arguments,
+        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
-        com.ContinueOnError = true;
-        arguments.ThresholdString = "1000B";
+        arguments.ContinueOnError = true;
         A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
             .Returns(BobApiResult<ulong>.Ok(500));
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -214,63 +198,22 @@ public class RemoverTests
         result.IsOk(out var _, out var err).Should().BeTrue();
     }
 
-    [Test, SutFactory]
-    public async Task RemovePartitionsBySpace_WithSpaceFreedByFirstVdisk_DoesNotCheckSecondVdisk(
-        [Frozen] IConfigurationFinder configurationFinder,
-        [Frozen] Arguments arguments,
-        [Frozen] ISpaceBobApiClient spaceBobApiClient,
-        [Frozen] IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    private class ADAttribute : AutoDataAttribute
     {
-        arguments.ThresholdString = "1000B";
-        A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
-            .Returns(ConfigurationReadingResult<ClusterConfiguration>.Ok(new ClusterConfiguration
+        public ADAttribute() : base(() =>
+        {
+            var fixture = new Fixture();
+            fixture.Customize(new FrozenApiClientsCustomization());
+            fixture.Customize(new SingleNodeConfigCustomization());
+            fixture.Customize(new FrozenArgumentsCustomization<Arguments>(args =>
             {
-                Nodes = new List<ClusterConfiguration.Node>
-                {
-                    new ClusterConfiguration.Node
-                    {
-                        Name = "node1"
-                    }
-                },
-                VDisks = new List<ClusterConfiguration.VDisk>
-                {
-                    new ClusterConfiguration.VDisk
-                    {
-                        Id = 0,
-                        Replicas = new List<ClusterConfiguration.VDisk.Replica>
-                        {
-                            new ClusterConfiguration.VDisk.Replica
-                            {
-                                Node = "node1"
-                            }
-                        }
-                    },
-                    new ClusterConfiguration.VDisk
-                    {
-                        Id = 1,
-                        Replicas = new List<ClusterConfiguration.VDisk.Replica>
-                        {
-                            new ClusterConfiguration.VDisk.Replica
-                            {
-                                Node = "node1"
-                            }
-                        }
-                    }
-                }
+                args.DelayMilliseconds = 0;
+                args.ThresholdString = "1000B";
+                args.ContinueOnError = false;
             }));
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .ReturnsNextFromSequence(BobApiResult<ulong>.Ok(500), BobApiResult<ulong>.Ok(1500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 100 }));
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(0, 100, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<bool>.Ok(true));
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
-
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.That.Matches(v => v.Id == 1), A<CancellationToken>.Ignored))
-            .MustNotHaveHappened();
+            return fixture;
+        })
+        { }
     }
 }
