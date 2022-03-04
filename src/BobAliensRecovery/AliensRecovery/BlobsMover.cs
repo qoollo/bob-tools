@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
@@ -37,7 +38,9 @@ namespace BobAliensRecovery.AliensRecovery
             AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken)
         {
-            var blobsToRemove = await CopyBlobs(recoveryTransactions, aliensRecoveryOptions, cancellationToken);
+            _logger.LogInformation("{count} transactions to invoke, {degree} parallel requests", recoveryTransactions.Count(),
+                aliensRecoveryOptions.CopyParallelDegree);
+            var blobsToRemove = await CopyBlobsInParallel(recoveryTransactions, aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Copied {blobsCount} blobs", blobsToRemove.Count);
 
             if (aliensRecoveryOptions.RemoveCopied)
@@ -46,27 +49,75 @@ namespace BobAliensRecovery.AliensRecovery
             }
         }
 
-        private async Task<List<BlobInfo>> CopyBlobs(IEnumerable<RecoveryTransaction> recoveryTransactions,
+        private async Task<List<BlobInfo>> CopyBlobsInParallel(IEnumerable<RecoveryTransaction> recoveryTransactions,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
-            var blobsToRemove = new List<BlobInfo>();
-            foreach (var transaction in recoveryTransactions)
-            {
-                var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
-                if (!rsyncResult.IsError)
-                {
-                    _logger.LogDebug("Synced {transaction}", transaction);
-                    var partitions = _partitionInfoAggregator.GetPartitionInfos(rsyncResult.SyncedFiles);
+            var countByAddress = recoveryTransactions.SelectMany(t => new[] { t.From.Address, t.To.Address }).Distinct()
+                .ToDictionary(a => a, _ => 0);
 
-                    foreach (var partition in partitions)
-                        blobsToRemove.AddRange(partition.Blobs.Where(b => b.IsClosed));
-                }
-                else
+            var remaining = recoveryTransactions.ToList();
+            var notify = new AutoResetEvent(false);
+            var tasks = new List<Task<List<BlobInfo>>>();
+            var cts = new CancellationTokenSource();
+            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token;
+            while (remaining.Count > 0 && !cancellationToken.IsCancellationRequested)
+            {
+                var completed = tasks.Count(t => t.IsCompleted);
+                while (remaining.Count > 0 && tasks.Count - completed < aliensRecoveryOptions.CopyParallelDegree)
                 {
-                    aliensRecoveryOptions.LogErrorWithPossibleException<OperationException>(_logger, "Recovery transaction {transaction} failed", transaction);
+                    var transaction = TakeTransaction(remaining, countByAddress);
+                    tasks.Add(InvokeTransaction(transaction, aliensRecoveryOptions, cts, cancellationToken)
+                        .ContinueWith(t => { CleanUp(transaction, countByAddress, notify); return t.Result; }));
                 }
+                notify.WaitOne(500);
+            }
+            return (await Task.WhenAll(tasks)).SelectMany(_ => _).ToList();
+        }
+
+        private static RecoveryTransaction TakeTransaction(List<RecoveryTransaction> remaining, Dictionary<IPAddress, int> countByAddress)
+        {
+            RecoveryTransaction transaction;
+            lock (countByAddress)
+            {
+                transaction = remaining.OrderBy(t => countByAddress[t.From.Address]).ThenBy(t => countByAddress[t.To.Address]).First();
+                remaining.Remove(transaction);
+                countByAddress[transaction.From.Address]++;
+                countByAddress[transaction.To.Address]++;
             }
 
+            return transaction;
+        }
+
+        private static void CleanUp(RecoveryTransaction transaction, Dictionary<IPAddress, int> countByAddress, AutoResetEvent notify)
+        {
+            lock (countByAddress)
+            {
+                countByAddress[transaction.From.Address]--;
+                countByAddress[transaction.To.Address]--;
+            }
+            notify.Set();
+        }
+
+        private async Task<List<BlobInfo>> InvokeTransaction(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions,
+            CancellationTokenSource cts, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Starting {transaction}", transaction);
+            var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
+
+            var blobsToRemove = new List<BlobInfo>();
+            if (!rsyncResult.IsError)
+            {
+                _logger.LogDebug("Synced {transaction}", transaction);
+                var partitions = _partitionInfoAggregator.GetPartitionInfos(rsyncResult.SyncedFiles);
+                foreach (var partition in partitions)
+                    blobsToRemove.AddRange(partition.Blobs.Where(b => b.IsClosed));
+            }
+            else
+            {
+                if (!aliensRecoveryOptions.ContinueOnError)
+                    cts.Cancel();
+                aliensRecoveryOptions.LogErrorWithPossibleException<OperationException>(_logger, "Recovery transaction {transaction} failed", transaction);
+            }
             return blobsToRemove;
         }
 
