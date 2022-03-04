@@ -67,18 +67,42 @@ namespace RemoteFileCopy.Ssh
             process.StartInfo.ArgumentList.Add($"{_configuration.Username}@{address}");
             process.StartInfo.ArgumentList.Add(command);
 
+            var (stdOutLines, stdErrLines) = await InvokeProcess(process, cancellationToken);
+
+            return new SshResult(address, stdOutLines.ToArray(), stdErrLines.ToArray());
+        }
+
+        private async Task<(string[] stdOut, string[] stdErr)> InvokeProcess(Process process, CancellationToken cancellationToken)
+        {
             _logger.LogDebug($"Starting process {process.StartInfo.FileName} {string.Join(" ", process.StartInfo.ArgumentList)}");
+            var stdOutLines = new List<string>();
+            var stdErrLines = new List<string>();
+            var stdOutHandler = CreateEventHandler(stdOutLines);
+            var stdErrHandler = CreateEventHandler(stdErrLines);
+            process.OutputDataReceived += stdOutHandler;
+            process.ErrorDataReceived += stdErrHandler;
+            try
+            {
+                process.Start();
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                await process.WaitForExitAsync(cancellationToken);
+            }
+            finally
+            {
+                process.OutputDataReceived -= stdOutHandler;
+                process.ErrorDataReceived -= stdErrHandler;
+            }
+            return (stdOutLines.ToArray(), stdErrLines.ToArray());
+        }
 
-            process.Start();
-
-            await process.WaitForExitAsync(cancellationToken);
-
-            var stdOut = (await process.StandardOutput.ReadToEndAsync())
-                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var stdErr = (await process.StandardError.ReadToEndAsync())
-                .Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-            return new SshResult(address, stdOut, stdErr);
+        private static DataReceivedEventHandler CreateEventHandler(List<string> sink)
+        {
+            return (_, a) =>
+            {
+                if (a.Data != null)
+                    sink.Add(a.Data);
+            };
         }
     }
 }
