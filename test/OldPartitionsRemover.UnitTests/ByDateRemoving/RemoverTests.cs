@@ -101,7 +101,6 @@ public class RemoverTests
         Arguments arguments,
         Remover sut)
     {
-        arguments.ThresholdString = "-1d";
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
              .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1" }));
         A.CallTo(() => partitionsBobApiClient.GetPartition(A<long>.Ignored, A<string>.Ignored, A<CancellationToken>.Ignored))
@@ -119,7 +118,6 @@ public class RemoverTests
         Arguments arguments,
         Remover sut)
     {
-        arguments.ThresholdString = "-1d";
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
              .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
         var oldTimestamp = DateTimeOffset.MinValue.ToUnixTimeSeconds();
@@ -140,7 +138,6 @@ public class RemoverTests
         Arguments arguments,
         Remover sut)
     {
-        arguments.ThresholdString = "-1d";
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
              .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
         A.CallTo(() => partitionsBobApiClient.GetPartition(A<long>.Ignored, A<string>.Ignored, A<CancellationToken>.Ignored))
