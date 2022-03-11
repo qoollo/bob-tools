@@ -98,7 +98,6 @@ public class RemoverTests
     [Test, AD]
     public async Task RemoveOldPartitions_WithPartitionsWithTimestampOverThreshold_DoesNotRemoveAnything(
         IPartitionsBobApiClient partitionsBobApiClient,
-        Arguments arguments,
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -115,7 +114,6 @@ public class RemoverTests
     [Test, AD]
     public async Task RemoveOldPartitions_WithPartitionsWithOldTimestampAndNewTimestamp_RemovesOldTimestampPartition(
         IPartitionsBobApiClient partitionsBobApiClient,
-        Arguments arguments,
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -135,7 +133,6 @@ public class RemoverTests
     [Test, AD]
     public async Task RemoveOldPartitions_WithSuccessfullDeletion_ReturnsOk(
         IPartitionsBobApiClient partitionsBobApiClient,
-        Arguments arguments,
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
