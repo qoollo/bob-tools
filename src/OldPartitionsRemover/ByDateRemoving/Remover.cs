@@ -106,7 +106,7 @@ namespace OldPartitionsRemover.ByDateRemoving
         private async Task<Result<bool>> InvokeOperations(List<RemoveOperation> ops)
         {
             _logger.LogInformation("Invoking {RemoveOperationsCount} remove operations", ops.Count);
-            return await _resultsCombiner.CombineResults(ops, true, (_, n) => n.Func());
+            return await _resultsCombiner.CombineResults(ops, true, async (f, n) => (await n.Func()).Map(r => r && f));
         }
     }
 }
