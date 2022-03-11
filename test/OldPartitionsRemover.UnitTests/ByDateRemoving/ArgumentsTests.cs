@@ -31,7 +31,7 @@ public class ArgumentsTests
         threshold.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [TestCase("-1y", "400.00:00:00", "300.00:00:00")]
+    [TestCase("-2y", "800.00:00:00", "700.00:00:00")]
     [TestCase("-1m", "40.00:00:00", "20.00:00:00")]
     [TestCase("-1d", "1.01:00:00", "0.23:00:00")]
     [TestCase("-1h", "01:10:00", "00:50:00")]
