@@ -17,8 +17,6 @@ RUN dotnet publish --no-restore -c Release -r linux-musl-x64 -p:Version=${Versio
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build-dsa
 
-ARG Version="1.0.0.0"
-ARG InformationalVersion="1.0.0.0"
 ARG AppName=DiskStatusAnalyzer
 # Tool to ease csproj copy for dotnet restore
 ENV PATH="${PATH}:/root/.dotnet/tools"
