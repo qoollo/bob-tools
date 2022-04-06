@@ -69,7 +69,7 @@ namespace RemoteFileCopy.Ssh
 
             var (stdOutLines, stdErrLines) = await InvokeProcess(process, cancellationToken);
 
-            return new SshResult(address, stdOutLines.ToArray(), stdErrLines.ToArray());
+            return new SshResult(address, stdOutLines, stdErrLines);
         }
 
         private async Task<(string[] stdOut, string[] stdErr)> InvokeProcess(Process process, CancellationToken cancellationToken)
@@ -101,7 +101,8 @@ namespace RemoteFileCopy.Ssh
             return (_, a) =>
             {
                 if (a.Data != null)
-                    sink.Add(a.Data);
+                    lock (sink)
+                        sink.Add(a.Data);
             };
         }
     }

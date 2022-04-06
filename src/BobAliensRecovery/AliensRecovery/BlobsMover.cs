@@ -52,14 +52,15 @@ namespace BobAliensRecovery.AliensRecovery
         private async Task<List<BlobInfo>> CopyBlobsInParallel(IEnumerable<RecoveryTransaction> recoveryTransactions,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
-            var countByAddress = recoveryTransactions.SelectMany(t => new[] { t.From.Address, t.To.Address }).Distinct()
+            var remaining = recoveryTransactions.ToList();
+            var countByAddress = remaining.SelectMany(t => new[] { t.From.Address, t.To.Address }).Distinct()
                 .ToDictionary(a => a, _ => 0);
 
-            var remaining = recoveryTransactions.ToList();
             var notify = new AutoResetEvent(false);
             var tasks = new List<Task<List<BlobInfo>>>();
             var cts = new CancellationTokenSource();
-            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token;
+            using var lCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
+            cancellationToken = lCts.Token;
             while (remaining.Count > 0 && !cancellationToken.IsCancellationRequested)
             {
                 var completed = tasks.Count(t => t.IsCompleted);
@@ -67,7 +68,7 @@ namespace BobAliensRecovery.AliensRecovery
                 {
                     var transaction = TakeTransaction(remaining, countByAddress);
                     tasks.Add(InvokeTransaction(transaction, aliensRecoveryOptions, cts, cancellationToken)
-                        .ContinueWith(t => { CleanUp(transaction, countByAddress, notify); return t.Result; }));
+                        .ContinueWith(t => { CleanUp(transaction, countByAddress, notify); return t.GetAwaiter().GetResult(); }));
                 }
                 notify.WaitOne(500);
             }
@@ -81,8 +82,8 @@ namespace BobAliensRecovery.AliensRecovery
             {
                 transaction = remaining.OrderBy(t => countByAddress[t.From.Address]).ThenBy(t => countByAddress[t.To.Address]).First();
                 remaining.Remove(transaction);
-                countByAddress[transaction.From.Address]++;
-                countByAddress[transaction.To.Address]++;
+                countByAddress[transaction.From.Address] += 1;
+                countByAddress[transaction.To.Address] += 1;
             }
 
             return transaction;
@@ -92,8 +93,8 @@ namespace BobAliensRecovery.AliensRecovery
         {
             lock (countByAddress)
             {
-                countByAddress[transaction.From.Address]--;
-                countByAddress[transaction.To.Address]--;
+                countByAddress[transaction.From.Address] -= 1;
+                countByAddress[transaction.To.Address] -= 1;
             }
             notify.Set();
         }
