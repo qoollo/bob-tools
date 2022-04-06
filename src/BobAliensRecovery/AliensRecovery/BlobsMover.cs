@@ -56,23 +56,29 @@ namespace BobAliensRecovery.AliensRecovery
             var countByAddress = remaining.SelectMany(t => new[] { t.From.Address, t.To.Address }).Distinct()
                 .ToDictionary(a => a, _ => 0);
 
-            var notify = new AutoResetEvent(false);
-            var tasks = new List<Task<List<BlobInfo>>>();
             var cts = new CancellationTokenSource();
             using var lCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
             cancellationToken = lCts.Token;
-            while (remaining.Count > 0 && !cancellationToken.IsCancellationRequested)
-            {
-                var completed = tasks.Count(t => t.IsCompleted);
-                while (remaining.Count > 0 && tasks.Count - completed < aliensRecoveryOptions.CopyParallelDegree)
+            var results = new List<BlobInfo>[remaining.Count];
+            await Parallel.ForEachAsync(Enumerable.Range(0, remaining.Count),
+                new ParallelOptions
+                {
+                    CancellationToken = cancellationToken,
+                    MaxDegreeOfParallelism = aliensRecoveryOptions.CopyParallelDegree
+                },
+                async (ind, t) =>
                 {
                     var transaction = TakeTransaction(remaining, countByAddress);
-                    tasks.Add(InvokeTransaction(transaction, aliensRecoveryOptions, cts, cancellationToken)
-                        .ContinueWith(t => { CleanUp(transaction, countByAddress, notify); return t.GetAwaiter().GetResult(); }));
-                }
-                notify.WaitOne(500);
-            }
-            return (await Task.WhenAll(tasks)).SelectMany(_ => _).ToList();
+                    try
+                    {
+                        results[ind] = await InvokeTransaction(transaction, aliensRecoveryOptions, cts, t);
+                    }
+                    finally
+                    {
+                        CleanUp(transaction, countByAddress);
+                    }
+                });
+            return results.Where(r => r != null).SelectMany(l => l).ToList();
         }
 
         private static RecoveryTransaction TakeTransaction(List<RecoveryTransaction> remaining, Dictionary<IPAddress, int> countByAddress)
@@ -80,7 +86,7 @@ namespace BobAliensRecovery.AliensRecovery
             RecoveryTransaction transaction;
             lock (countByAddress)
             {
-                transaction = remaining.OrderBy(t => countByAddress[t.From.Address]).ThenBy(t => countByAddress[t.To.Address]).First();
+                transaction = remaining.OrderBy(t => countByAddress[t.From.Address] + countByAddress[t.To.Address]).First();
                 remaining.Remove(transaction);
                 countByAddress[transaction.From.Address] += 1;
                 countByAddress[transaction.To.Address] += 1;
@@ -89,14 +95,13 @@ namespace BobAliensRecovery.AliensRecovery
             return transaction;
         }
 
-        private static void CleanUp(RecoveryTransaction transaction, Dictionary<IPAddress, int> countByAddress, AutoResetEvent notify)
+        private static void CleanUp(RecoveryTransaction transaction, Dictionary<IPAddress, int> countByAddress)
         {
             lock (countByAddress)
             {
                 countByAddress[transaction.From.Address] -= 1;
                 countByAddress[transaction.To.Address] -= 1;
             }
-            notify.Set();
         }
 
         private async Task<List<BlobInfo>> InvokeTransaction(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions,
