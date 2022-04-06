@@ -16,35 +16,34 @@ namespace OldPartitionsRemover.ByDateRemoving
         [Option('t', "threshold", HelpText = "Removal threshold. Can be either date or in relative days count format, e.g. \"-3d\"", Required = true)]
         public string ThresholdString { get; set; }
 
-        public Result<DateTimeOffset> GetThreshold()
+        public Result<DateTime> GetThreshold()
         {
             if (string.IsNullOrWhiteSpace(ThresholdString))
-                return Result<DateTimeOffset>.Error("Removal threshold not set");
-            if (TryParseTimeSpan(ThresholdString, out var ts))
-                return Result<DateTimeOffset>.Ok(DateTime.Now + ts);
+                return Result<DateTime>.Error("Removal threshold not set");
+            if (TryParseThreshold(ThresholdString, DateTime.Now, out var threshold))
+                return Result<DateTime>.Ok(threshold);
             else if (DateTime.TryParse(ThresholdString, out var dateTimeThreshold))
-                return Result<DateTimeOffset>.Ok(dateTimeThreshold);
+                return Result<DateTime>.Ok(dateTimeThreshold);
 
-            return Result<DateTimeOffset>.Error("Failed to parse threshold");
+            return Result<DateTime>.Error("Failed to parse threshold");
         }
 
-        private static bool TryParseTimeSpan(string s, out TimeSpan ts)
+        private static bool TryParseThreshold(string s, DateTime now, out DateTime threshold)
         {
-            ts = TimeSpan.Zero;
+            threshold = now;
             var match = s_timeSpanRegex.Match(s);
             if (match.Success)
             {
-                var span = int.Parse(match.Groups["span"].Value);
+                var span = -int.Parse(match.Groups["span"].Value);
                 var unit = match.Groups["unit"].Value[0];
-                Func<double, TimeSpan> creator = unit switch
+                threshold = unit switch
                 {
-                    'd' => TimeSpan.FromDays,
-                    'h' => TimeSpan.FromHours,
-                    'm' => x => TimeSpan.FromDays(x * 30),
-                    'y' => x => TimeSpan.FromDays(365 * x),
+                    'd' => now.AddDays(span),
+                    'h' => now.AddHours(span),
+                    'm' => now.AddMonths(span),
+                    'y' => now.AddMonths(span * 12),
                     var c => throw new InvalidOperationException($"Unknown specifier, {c}")
                 };
-                ts = -creator(span);
                 return true;
             }
             return false;

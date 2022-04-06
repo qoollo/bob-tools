@@ -41,7 +41,7 @@ public class ArgumentsTests
 
         var threshold = arguments.GetThreshold();
 
-        var dt = DateTimeOffset.Now;
+        var dt = DateTime.Now;
         threshold.IsOk(out var d, out var _).Should().BeTrue();
         d.Should().BeBefore(dt - TimeSpan.Parse(maxBefore));
         d.Should().BeAfter(dt - TimeSpan.Parse(minBefore));
