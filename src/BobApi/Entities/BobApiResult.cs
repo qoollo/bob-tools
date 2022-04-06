@@ -57,7 +57,7 @@ namespace BobApi.Entities
         public static BobApiResult<T> Ok(T data) => new BobApiResult<T>(data, null);
 
         public static BobApiResult<T> Unavailable() => new BobApiResult<T>(default, BobApiError.NodeIsUnavailable());
-        public static async Task<BobApiResult<T>> Unsuccessful(HttpResponseMessage response)
-            => new BobApiResult<T>(default, await BobApiError.UnsuccessfulResponse(response));
+        public static BobApiResult<T> Unsuccessful(HttpMethod requestMethod, Uri requestUri, string content)
+            => new BobApiResult<T>(default, BobApiError.UnsuccessfulResponse(requestMethod, requestUri, content));
     }
 }

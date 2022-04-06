@@ -1,3 +1,4 @@
+using System;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -7,27 +8,29 @@ namespace BobApi.Entities
 {
     public class BobApiError
     {
-        private BobApiError(ErrorType type, HttpResponseMessage responseMessage = null, string content = null)
+        private BobApiError(ErrorType type, HttpStatusCode? httpStatusCode = null,
+            HttpMethod requestMethod = null, Uri requestUri = null, string content = null)
         {
             Type = type;
-            if (responseMessage != null)
-            {
-                StatusCode = responseMessage.StatusCode;
-                RequestInfo = $"{responseMessage.RequestMessage.Method}: {responseMessage.RequestMessage.RequestUri}";
-            }
+            StatusCode = httpStatusCode;
+            RequestMethod = requestMethod;
+            RequestUri1 = requestUri;
             Content = content;
         }
 
         public ErrorType Type { get; }
         public HttpStatusCode? StatusCode { get; }
-        public string RequestInfo { get; }
+        public HttpMethod RequestMethod { get; }
+        public Uri RequestUri1 { get; }
+        public string RequestUri { get; }
         public string Content { get; }
 
         internal static BobApiError NodeIsUnavailable() => new BobApiError(ErrorType.NodeIsUnavailable);
-        internal static async Task<BobApiError> UnsuccessfulResponse(HttpResponseMessage httpResponseMessage)
+        internal static BobApiError UnsuccessfulResponse(HttpMethod requestMethod, Uri requestUri, string content)
             => new BobApiError(ErrorType.UnsuccessfulResponse,
-                responseMessage: httpResponseMessage,
-                content: await httpResponseMessage.Content.ReadAsStringAsync());
+                requestMethod: requestMethod,
+                requestUri: requestUri,
+                content: content);
 
         public override string ToString()
         {
@@ -41,7 +44,7 @@ namespace BobApi.Entities
 
         private string GetUnsuccessfulResponseMessage()
         {
-            var result = new StringBuilder($"Request \"{RequestInfo}\", response [{StatusCode}]");
+            var result = new StringBuilder($"Request \"{RequestMethod}: {RequestUri}\", response [{StatusCode}]");
 
             if (Content == null || Content.Contains('\n'))
                 result.Append('.');

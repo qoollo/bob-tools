@@ -169,14 +169,15 @@ namespace BobApi
         {
             if (response.IsSuccessStatusCode)
                 return BobApiResult<T>.Ok(await parse(response));
-            return await BobApiResult<T>.Unsuccessful(response);
+            return BobApiResult<T>.Unsuccessful(
+                response.RequestMessage.Method,
+                response.RequestMessage.RequestUri,
+                await response.Content.ReadAsStringAsync());
         }
 
         private async Task<BobApiResult<T>> ParseResponse<T>(HttpResponseMessage response, Func<HttpResponseMessage, T> parse)
         {
-            if (response.IsSuccessStatusCode)
-                return BobApiResult<T>.Ok(parse(response));
-            return await BobApiResult<T>.Unsuccessful(response);
+            return await ParseResponse(response, r => Task.FromResult(parse(r)));
         }
 
         private async Task<BobApiResult<T>> InvokeRequest<T>(Func<HttpClient, Task<BobApiResult<T>>> f)
