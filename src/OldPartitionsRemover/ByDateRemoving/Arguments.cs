@@ -10,10 +10,9 @@ namespace OldPartitionsRemover.ByDateRemoving
     [Verb("by-date")]
     public class Arguments : CommonArguments
     {
-        private static readonly Regex s_daysOffsetRegex = new(@"^\-(\d+)d$");
         private static readonly Regex s_timeSpanRegex = new(@"^\-(?<span>\d+)(?<unit>[dhmy])");
 
-        [Option('t', "threshold", HelpText = "Removal threshold. Can be either date or in relative days count format, e.g. \"-3d\"", Required = true)]
+        [Option('t', "threshold", HelpText = "Removal threshold. Can be either date, timestamp or in relative days count format, e.g. \"-3d\"", Required = true)]
         public string ThresholdString { get; set; }
 
         public Result<DateTime> GetThreshold()
