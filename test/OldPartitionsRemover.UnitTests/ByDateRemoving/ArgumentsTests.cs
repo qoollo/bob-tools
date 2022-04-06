@@ -60,4 +60,18 @@ public class ArgumentsTests
         threshold.IsOk(out var d, out var _).Should().BeTrue();
         d.Should().Be(new DateTime(2020, 12, 01));
     }
+
+    [Test]
+    public void GetThreshold_UnitMillisecondsTimestamp_ReturnsExactThreshold()
+    {
+        var arguments = new Arguments
+        {
+            ThresholdString = "1649255075"
+        };
+
+        var threshold = arguments.GetThreshold();
+
+        threshold.IsOk(out var d, out var _).Should().BeTrue();
+        d.Should().Be(new DateTime(2022, 4, 06, 14, 24, 35));
+    }
 }

@@ -24,6 +24,8 @@ namespace OldPartitionsRemover.ByDateRemoving
                 return Result<DateTime>.Ok(threshold);
             else if (DateTime.TryParse(ThresholdString, out var dateTimeThreshold))
                 return Result<DateTime>.Ok(dateTimeThreshold);
+            else if (long.TryParse(ThresholdString, out var l))
+                return Result<DateTime>.Ok(DateTimeOffset.FromUnixTimeSeconds(l).DateTime);
 
             return Result<DateTime>.Error("Failed to parse threshold");
         }
