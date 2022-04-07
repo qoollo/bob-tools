@@ -42,7 +42,7 @@ namespace OldPartitionsRemover.ByDateRemoving
                     'd' => now.AddDays(span),
                     'h' => now.AddHours(span),
                     'm' => now.AddMonths(span),
-                    'y' => now.AddMonths(span * 12),
+                    'y' => now.AddYears(span),
                     var c => throw new InvalidOperationException($"Unknown specifier, {c}")
                 };
                 return true;
