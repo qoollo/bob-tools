@@ -74,4 +74,17 @@ public class ArgumentsTests
         threshold.IsOk(out var d, out var _).Should().BeTrue();
         d.Should().Be(new DateTime(2022, 4, 06, 14, 24, 35));
     }
+
+    [Test]
+    public void GetThreshold_TooLargeNumberOfYears_ReturnsError()
+    {
+        var arguments = new Arguments
+        {
+            ThresholdString = $"1{int.MaxValue}y"
+        };
+
+        var threshold = arguments.GetThreshold();
+
+        threshold.IsOk(out var _, out var _).Should().BeFalse();
+    }
 }

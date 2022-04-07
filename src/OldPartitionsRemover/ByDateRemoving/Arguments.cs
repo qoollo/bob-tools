@@ -33,9 +33,9 @@ namespace OldPartitionsRemover.ByDateRemoving
         {
             threshold = now;
             var match = s_timeSpanRegex.Match(s);
-            if (match.Success)
+            if (match.Success && int.TryParse(match.Groups["span"].Value, out var span))
             {
-                var span = -int.Parse(match.Groups["span"].Value);
+                span = -span;
                 var unit = match.Groups["unit"].Value[0];
                 threshold = unit switch
                 {
