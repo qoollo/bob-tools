@@ -56,9 +56,6 @@ namespace BobAliensRecovery.AliensRecovery
             var countByAddress = remaining.SelectMany(t => new[] { t.From.Address, t.To.Address }).Distinct()
                 .ToDictionary(a => a, _ => 0);
 
-            var cts = new CancellationTokenSource();
-            using var lCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
-            cancellationToken = lCts.Token;
             var results = new List<BlobInfo>[remaining.Count];
             await Parallel.ForEachAsync(Enumerable.Range(0, remaining.Count),
                 new ParallelOptions
@@ -71,7 +68,7 @@ namespace BobAliensRecovery.AliensRecovery
                     var transaction = TakeTransaction(remaining, countByAddress);
                     try
                     {
-                        results[ind] = await InvokeTransaction(transaction, aliensRecoveryOptions, cts, t);
+                        results[ind] = await InvokeTransaction(transaction, aliensRecoveryOptions, t);
                     }
                     finally
                     {
@@ -88,8 +85,8 @@ namespace BobAliensRecovery.AliensRecovery
             {
                 transaction = remaining.OrderBy(t => countByAddress[t.From.Address] + countByAddress[t.To.Address]).First();
                 remaining.Remove(transaction);
-                countByAddress[transaction.From.Address] += 1;
-                countByAddress[transaction.To.Address] += 1;
+                countByAddress[transaction.From.Address]++;
+                countByAddress[transaction.To.Address]++;
             }
 
             return transaction;
@@ -99,13 +96,13 @@ namespace BobAliensRecovery.AliensRecovery
         {
             lock (countByAddress)
             {
-                countByAddress[transaction.From.Address] -= 1;
-                countByAddress[transaction.To.Address] -= 1;
+                countByAddress[transaction.From.Address]--;
+                countByAddress[transaction.To.Address]--;
             }
         }
 
         private async Task<List<BlobInfo>> InvokeTransaction(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions,
-            CancellationTokenSource cts, CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             _logger.LogInformation("Starting {transaction}", transaction);
             var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
@@ -120,8 +117,6 @@ namespace BobAliensRecovery.AliensRecovery
             }
             else
             {
-                if (!aliensRecoveryOptions.ContinueOnError)
-                    cts.Cancel();
                 aliensRecoveryOptions.LogErrorWithPossibleException<OperationException>(_logger, "Recovery transaction {transaction} failed", transaction);
             }
             return blobsToRemove;
