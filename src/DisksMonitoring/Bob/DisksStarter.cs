@@ -38,8 +38,11 @@ namespace DisksMonitoring.Bob
             foreach (var i in disksToStart)
             {
                 var inactiveDisksResult = await bobApiClient.GetInactiveDisks();
-                if (!inactiveDisksResult.TryGetData(out var inactiveDisks))
+                if (!inactiveDisksResult.IsOk(out var inactiveDisks, out var err))
+                {
+                    logger.LogError("Failed to get inactive disks info from bob: {Error}", err);
                     return;
+                }
                 if (!inactiveDisks.Any(d => d.Name == i.DiskNameInBob))
                     continue;
 
