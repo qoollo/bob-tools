@@ -34,14 +34,13 @@ namespace OldPartitionsRemover.Infrastructure
 
         public async Task<Result<Y>> CombineResults<T, Y>(IEnumerable<T> elems, Y seed, Func<Y, T, Task<Result<Y>>> f)
         {
-            return await elems.Aggregate(
-                Task.FromResult(Result<Y>.Ok(seed)),
-                (task, next) => task.ContinueWith(async resultTask =>
-                {
-                    var result = await resultTask;
-                    var nextResult = await Combine(f, next, result);
-                    return SelectBestResult(result, nextResult);
-                }).Unwrap());
+            var result = Result<Y>.Ok(seed);
+            foreach (var elem in elems)
+            {
+                var nextResult = await Combine(f, elem, result);
+                result = SelectBestResult(result, nextResult);
+            }
+            return result;
         }
 
         private Result<Y> SelectBestResult<Y>(Result<Y> prevResult, Result<Y> nextResult)

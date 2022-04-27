@@ -33,13 +33,25 @@ namespace OldPartitionsRemover.BySpaceRemoving
             _logger = logger;
         }
 
-        public async Task<Result<bool>> RemovePartitionsBySpace(CancellationToken cancellationToken)
+        public async Task<Result<int>> RemovePartitionsBySpace(CancellationToken cancellationToken)
         {
             Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(cancellationToken);
-            return await configResult.Bind(async conf => await RemoveInCluster(conf, cancellationToken));
+            var nodeStats = await configResult.Bind(async conf => await RemoveInCluster(conf, cancellationToken));
+            return nodeStats.Map(l =>
+            {
+                var removed = 0;
+                foreach (var stat in l)
+                {
+                    _logger.LogInformation("Node: {Node}, removed: {Removed}, freed: {Freed}, left: {Left}",
+                        stat.Node.Name, stat.RemovedPartitions, stat.FreeSpace - stat.StartSpace, stat.FreeSpace);
+                    removed += stat.RemovedPartitions;
+                }
+                return removed;
+            });
         }
 
-        private async Task<Result<bool>> RemoveInCluster(ClusterConfiguration clusterConfiguration, CancellationToken cancellationToken)
+        private async Task<Result<List<NodeStat>>> RemoveInCluster(ClusterConfiguration clusterConfiguration,
+            CancellationToken cancellationToken)
         {
             var thresholdResult = _arguments.GetThreshold();
             return await thresholdResult.Bind(async bs =>
@@ -48,10 +60,10 @@ namespace OldPartitionsRemover.BySpaceRemoving
             });
         }
 
-        private async Task<Result<bool>> RemoveInClusterWithLessFreeSpace(ClusterConfiguration clusterConfiguration, ByteSize threshold,
-            CancellationToken cancellationToken)
+        private async Task<Result<List<NodeStat>>> RemoveInClusterWithLessFreeSpace(ClusterConfiguration clusterConfiguration,
+            ByteSize threshold, CancellationToken cancellationToken)
         {
-            return await _resultsCombiner.CombineResults(clusterConfiguration.Nodes, true, async (_, n) =>
+            return await _resultsCombiner.CollectResults(clusterConfiguration.Nodes, async n =>
             {
                 var spaceClient = _bobApiClientFactory.GetSpaceBobApiClient(n);
                 Result<ulong> spaceResult = await spaceClient.GetFreeSpaceBytes(cancellationToken);
@@ -59,30 +71,35 @@ namespace OldPartitionsRemover.BySpaceRemoving
                 {
                     _logger.LogInformation("Free space on {Node}: {FreeSpace}", n.Name, space);
                     if (space > threshold)
-                        return Result<bool>.Ok(true);
+                        return Result<NodeStat>.Ok(new NodeStat(n, space, true));
 
-                    _logger.LogInformation("Not enough space on node {Node} ({Actual} < {Threshold})",
+                    _logger.LogInformation("The remaining free space threshold on the node {Node} has been reached ({Actual} < {Threshold})",
                         n.Name, space, threshold);
-                    return await RemoveOnNode(clusterConfiguration, n, threshold, cancellationToken);
+                    var removeResult = await RemoveOnNode(clusterConfiguration, n, threshold, cancellationToken);
+                    return removeResult.Map(s => s.WithStartSpace(space));
                 });
             });
         }
 
-        private async Task<Result<bool>> RemoveOnNode(ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node, ByteSize threshold,
-            CancellationToken cancellationToken)
+        private async Task<Result<NodeStat>> RemoveOnNode(ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node,
+            ByteSize threshold, CancellationToken cancellationToken)
         {
             var removalFunctionsResult = await GetRemovalFunctions(clusterConfiguration, node, cancellationToken);
             return await removalFunctionsResult
-                .Bind(async removalFunctions => await _resultsCombiner.CombineResults(removalFunctions, false, async (enoughSpace, f) =>
+                .Bind(async removalFunctions => await _resultsCombiner.CombineResults(removalFunctions, new NodeStat(), async (n, f) =>
                 {
-                    if (enoughSpace)
-                        return Result<bool>.Ok(enoughSpace);
+                    if (n.IsEnoughSpace)
+                        return Result<NodeStat>.Ok(n);
                     var deleteResult = await f();
-                    return await deleteResult.Bind(async _ => await CheckIfEnoughSpace(node, threshold, cancellationToken));
+                    return await deleteResult.Bind(async removed =>
+                    {
+                        var checkResult = await CheckIfEnoughSpace(node, threshold, cancellationToken);
+                        return checkResult.Map(r => r.WithRemovedPartitions(n.RemovedPartitions + removed));
+                    });
                 }));
         }
 
-        private async Task<Result<IEnumerable<Func<Task<Result<bool>>>>>> GetRemovalFunctions(
+        private async Task<Result<IEnumerable<Func<Task<Result<int>>>>>> GetRemovalFunctions(
             ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node, CancellationToken cancellationToken)
         {
             var partitionsApi = _bobApiClientFactory.GetPartitionsBobApiClient(node);
@@ -99,18 +116,21 @@ namespace OldPartitionsRemover.BySpaceRemoving
             });
             return partitionsResult
                 .Map(partitions => partitions
-                    .OrderBy(p => p.Timestamp).ThenBy(p => p.VDiskId)
-                    .Select(p => CreateRemovalFunc(p.VDiskId, p.Timestamp)));
+                    .GroupBy(p => (p.Timestamp, p.VDiskId))
+                    .OrderBy(g => g.Key.Timestamp).ThenBy(g => g.Key.VDiskId)
+                    .Select(g => CreateRemovalFunc(g.Key.VDiskId, g.Key.Timestamp, g.Count())));
 
-            Func<Task<Result<bool>>> CreateRemovalFunc(long vdiskId, long timestamp)
+            Func<Task<Result<int>>> CreateRemovalFunc(long vdiskId, long timestamp, int partitionsCount)
                 => async () =>
                 {
                     _logger.LogTrace("Removing partitions by timestamp {Timestamp} on {Node}/{VDisk}", timestamp, node.Name, vdiskId);
-                    return await partitionsApi.DeletePartitionsByTimestamp(vdiskId, timestamp, cancellationToken);
+                    var result = await partitionsApi.DeletePartitionsByTimestamp(vdiskId, timestamp, cancellationToken);
+                    return result.Map(r => r ? partitionsCount : 0);
                 };
         }
 
-        private async Task<Result<bool>> CheckIfEnoughSpace(ClusterConfiguration.Node node, ByteSize threshold, CancellationToken cancellationToken)
+        private async Task<Result<NodeStat>> CheckIfEnoughSpace(ClusterConfiguration.Node node, ByteSize threshold,
+            CancellationToken cancellationToken)
         {
             await Task.Delay(_arguments.DelayMilliseconds, cancellationToken);
             var spaceApi = _bobApiClientFactory.GetSpaceBobApiClient(node);
@@ -119,8 +139,37 @@ namespace OldPartitionsRemover.BySpaceRemoving
             {
                 var freeSpace = ByteSize.FromBytes(d);
                 _logger.LogTrace("Current free space on {Node}: {Space}", node.Name, freeSpace);
-                return freeSpace > threshold;
+                return new NodeStat(node, freeSpace, freeSpace > threshold);
             });
+        }
+
+        private readonly struct NodeStat
+        {
+            public NodeStat(ClusterConfiguration.Node node, ByteSize freeSpace,
+                bool isEnoughSpace, ByteSize? startSpace = null, int removedPartitions = 0)
+            {
+                Node = node;
+                StartSpace = startSpace ?? freeSpace;
+                FreeSpace = freeSpace;
+                IsEnoughSpace = isEnoughSpace;
+                RemovedPartitions = removedPartitions;
+            }
+
+            public NodeStat WithStartSpace(ByteSize startSpace)
+            {
+                return new NodeStat(Node, FreeSpace, IsEnoughSpace, startSpace, RemovedPartitions);
+            }
+
+            public NodeStat WithRemovedPartitions(int count)
+            {
+                return new NodeStat(Node, FreeSpace, IsEnoughSpace, StartSpace, count);
+            }
+
+            public ClusterConfiguration.Node Node { get; }
+            public ByteSize StartSpace { get; }
+            public ByteSize FreeSpace { get; }
+            public bool IsEnoughSpace { get; }
+            public int RemovedPartitions { get; }
         }
     }
 }

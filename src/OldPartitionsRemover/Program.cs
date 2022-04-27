@@ -33,7 +33,7 @@ namespace OldPartitionsRemover
         private static async Task RemovePartitionsBySpace(BySpaceRemoving.Arguments args, IServiceCollection services, CancellationToken cancellationToken)
             => await RemovePartitions<BySpaceRemoving.Remover>(services, r => r.RemovePartitionsBySpace(cancellationToken));
 
-        private static async Task RemovePartitions<TRem>(IServiceCollection services, Func<TRem, Task<Entities.Result<bool>>> remove)
+        private static async Task RemovePartitions<TRem>(IServiceCollection services, Func<TRem, Task<Entities.Result<int>>> remove)
             where TRem : class
         {
             services.AddTransient<TRem>();
@@ -42,10 +42,9 @@ namespace OldPartitionsRemover
             var remover = provider.GetRequiredService<TRem>();
 
             var removeResult = await remove(remover);
-            if (removeResult.IsOk(out var success, out var error))
+            if (removeResult.IsOk(out var removed, out var error))
             {
-                if (!success)
-                    Console.WriteLine("Operation is unsuccessful");
+                Console.WriteLine($"Removed {removed} partitions");
             }
             else
             {

@@ -37,10 +37,8 @@ namespace BobToolsCli
         private static async Task WithToken(Func<CancellationToken, Task> f)
         {
             var cancellationTokenSource = new CancellationTokenSource();
-            Console.CancelKeyPress += (s, e) =>
-            {
-                cancellationTokenSource.Cancel();
-            };
+            var handler = GetCancelKeyPressHandler(cancellationTokenSource);
+            Console.CancelKeyPress += handler;
 
             try
             {
@@ -49,6 +47,10 @@ namespace BobToolsCli
             catch (OperationCanceledException)
             {
                 Console.WriteLine("Cancelled");
+            }
+            finally
+            {
+                Console.CancelKeyPress -= handler;
             }
         }
 
@@ -74,6 +76,15 @@ namespace BobToolsCli
             // This should be enabled only for debug purposes
             // Console.WriteLine($"Errors: {string.Join(", ", errs)}");
             return Task.CompletedTask;
+        }
+
+
+        private static ConsoleCancelEventHandler GetCancelKeyPressHandler(CancellationTokenSource cancellationTokenSource)
+        {
+            return (s, e) =>
+            {
+                cancellationTokenSource.Cancel();
+            };
         }
     }
 }

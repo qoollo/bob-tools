@@ -36,7 +36,7 @@ namespace OldPartitionsRemover.ByDateRemoving
             _resultsCombiner = resultsCombiner;
         }
 
-        public async Task<Result<bool>> RemoveOldPartitions(CancellationToken cancellationToken)
+        public async Task<Result<int>> RemoveOldPartitions(CancellationToken cancellationToken)
         {
             Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(cancellationToken);
             var removeOperations = await configResult.Bind(c => FindInCluster(c, cancellationToken));
@@ -50,7 +50,7 @@ namespace OldPartitionsRemover.ByDateRemoving
         private async Task<Result<List<RemoveOperation>>> FindOnNode(ClusterConfiguration clusterConfig,
             ClusterConfiguration.Node node, CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Removing partitions on node {Node}", node.Name);
+            _logger.LogInformation("Preparing partitions to remove from node {Node}", node.Name);
 
             var vdisksOnNode = clusterConfig.VDisks.Where(vd => vd.Replicas.Any(r => r.Node == node.Name));
             var nodeApi = new NodeApi(_bobApiClientFactory.GetPartitionsBobApiClient(node), cancellationToken);
@@ -60,7 +60,7 @@ namespace OldPartitionsRemover.ByDateRemoving
 
         private async Task<Result<List<RemoveOperation>>> FindOnVDisk(ClusterConfiguration.VDisk vdisk, NodeApi nodeApi)
         {
-            _logger.LogDebug("Removing partitions on vdisk {VDisk}", vdisk.Id);
+            _logger.LogDebug("Preparing partitions to remove from vdisk {VDisk}", vdisk.Id);
 
             var partitionFunctions = new PartitionFunctions(vdisk, nodeApi);
 
@@ -70,43 +70,48 @@ namespace OldPartitionsRemover.ByDateRemoving
 
         private async Task<Result<List<RemoveOperation>>> FindWithinPatitionIds(List<string> partitionIds, PartitionFunctions partitionFunctions)
         {
-            var partitionsResult = await GetPartitions(partitionIds, partitionFunctions.FindPartitionById);
-            return partitionsResult.Bind(partitions => FindWithinPartitions(partitions, partitionFunctions.RemovePartitionsByTimestamp));
+            var partitionsResult = await GetPartitions(partitionIds, partitionFunctions);
+            return partitionsResult.Bind(partitions => FindWithinPartitions(partitions, partitionFunctions));
         }
 
         private async Task<Result<List<Partition>>> GetPartitions(List<string> partitionIds,
-            PartitionFunctions.PartitionFinder find)
+            PartitionFunctions partitionFunctions)
         {
-            return await _resultsCombiner.CollectResults(partitionIds, async p => await find(p));
+            return await _resultsCombiner.CollectResults(partitionIds, async p => await partitionFunctions.FindPartitionById(p));
         }
 
         private Result<List<RemoveOperation>> FindWithinPartitions(List<Partition> partitionInfos,
-            PartitionFunctions.PartitionsRemover remove)
+            PartitionFunctions partitionFunctions)
         {
             var thresholdResult = _arguments.GetThreshold();
-            return thresholdResult.Bind(threshold => FindByTimestamp(partitionInfos, remove, threshold));
+            return thresholdResult.Bind(threshold => FindByTimestamp(partitionInfos, partitionFunctions, threshold));
         }
 
         private Result<List<RemoveOperation>> FindByTimestamp(List<Partition> partitionInfos,
-            PartitionFunctions.PartitionsRemover remove, DateTimeOffset threshold)
+            PartitionFunctions partitionFunctions, DateTimeOffset threshold)
         {
             var oldTimestamps = partitionInfos.Select(p => p.Timestamp)
                 .Where(p => DateTimeOffset.FromUnixTimeSeconds(p) < threshold)
                 .Distinct()
                 .ToArray();
+            var countByOldTimestamp = partitionInfos.Select(p => p.Timestamp)
+                .Where(p => DateTimeOffset.FromUnixTimeSeconds(p) < threshold)
+                .GroupBy(p => p)
+                .ToDictionary(g => g.Key, g => g.Count());
             if (oldTimestamps.Length > 0)
-                _logger.LogInformation("Removing partitions for {TimestampsCount} timestamps", oldTimestamps.Length);
+                _logger.LogInformation("Preparing partitions from {TimestampsCount} timestamps to remove", oldTimestamps.Length);
             else
                 _logger.LogInformation("No partitions to be removed");
 
-            var removeOperations = oldTimestamps.Select(ts => new RemoveOperation(() => remove(ts))).ToList();
+            var removeOperations = oldTimestamps.Select<long, RemoveOperation>(ts =>
+                async () => (await partitionFunctions.RemovePartitionsByTimestamp(ts)).Map(t => t ? countByOldTimestamp[ts] : 0)).ToList();
             return Result<List<RemoveOperation>>.Ok(removeOperations);
         }
 
-        private async Task<Result<bool>> InvokeOperations(List<RemoveOperation> ops)
+        private async Task<Result<int>> InvokeOperations(List<RemoveOperation> ops)
         {
             _logger.LogInformation("Invoking {RemoveOperationsCount} remove operations", ops.Count);
-            return await _resultsCombiner.CombineResults(ops, true, async (f, n) => (await n.Func()).Map(r => r && f));
+            return await _resultsCombiner.CombineResults(ops, 0, async (c, n) => (await n()).Map(r => c + r));
         }
     }
 }

@@ -6,25 +6,30 @@ using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.ByDateRemoving.Entities
 {
-    internal readonly struct PartitionFunctions
+    internal class PartitionFunctions
     {
-        public delegate Task<Result<Partition>> PartitionFinder(string id);
-        public delegate Task<Result<bool>> PartitionsRemover(long timestamp);
-        public delegate Task<Result<List<string>>> PartitionIdsFinder();
+        private readonly ClusterConfiguration.VDisk _vdisk;
+        private readonly NodeApi _nodeApi;
 
         public PartitionFunctions(ClusterConfiguration.VDisk vdisk, NodeApi nodeApi)
         {
-            FindPartitionById = async id => await nodeApi.Invoke((c, t) => c.GetPartition(vdisk.Id, id, t));
-            RemovePartitionsByTimestamp = async ts =>
-            {
-                Result<bool> result = await nodeApi.Invoke((c, t) => c.DeletePartitionsByTimestamp(vdisk.Id, ts, t));
-                return result.Bind(r => r ? Result<bool>.Ok(true) : Result<bool>.Error("Failed to remove partitions though the bob API"));
-            };
-            FindPartitionIds = async () => await nodeApi.Invoke((c, t) => c.GetPartitions(vdisk, t));
+            _vdisk = vdisk;
+            _nodeApi = nodeApi;
         }
 
-        public PartitionFinder FindPartitionById { get; }
-        public PartitionsRemover RemovePartitionsByTimestamp { get; }
-        public PartitionIdsFinder FindPartitionIds { get; }
+        public async Task<Result<Partition>> FindPartitionById(string id)
+        {
+            return await _nodeApi.Invoke((c, t) => c.GetPartition(_vdisk.Id, id, t));
+        }
+        public async Task<Result<bool>> RemovePartitionsByTimestamp(long timestamp)
+        {
+            Result<bool> result = await _nodeApi.Invoke((c, t) => c.DeletePartitionsByTimestamp(_vdisk.Id, timestamp, t));
+            return result.Bind(r => r ? Result<bool>.Ok(true) : Result<bool>.Error("Failed to remove partitions though the bob API"));
+        }
+
+        public async Task<Result<List<string>>> FindPartitionIds()
+        {
+            return await _nodeApi.Invoke((c, t) => c.GetPartitions(_vdisk, t));
+        }
     }
 }

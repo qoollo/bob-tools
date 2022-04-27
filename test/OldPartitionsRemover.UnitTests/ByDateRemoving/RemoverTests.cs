@@ -153,7 +153,7 @@ public class RemoverTests
         Remover sut)
     {
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-             .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
+            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
         A.CallTo(() => partitionsBobApiClient.GetPartition(A<long>.Ignored, A<string>.Ignored, A<CancellationToken>.Ignored))
             .Returns(BobApiResult<Partition>.Ok(new Partition() { Timestamp = DateTimeOffset.MinValue.ToUnixTimeSeconds() }));
         A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(A<long>.Ignored, A<long>.Ignored, A<CancellationToken>.Ignored))
@@ -162,7 +162,7 @@ public class RemoverTests
         var result = await sut.RemoveOldPartitions(CancellationToken.None);
 
         result.IsOk(out var f, out var _);
-        f.Should().BeTrue();
+        f.Should().Be(2);
     }
 
     private class ADAttribute : AutoDataAttribute
