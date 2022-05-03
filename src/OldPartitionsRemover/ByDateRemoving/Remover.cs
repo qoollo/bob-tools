@@ -39,39 +39,47 @@ namespace OldPartitionsRemover.ByDateRemoving
         public async Task<Result<int>> RemoveOldPartitions(CancellationToken cancellationToken)
         {
             Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(cancellationToken);
-            var removeOperations = await configResult.Bind(c => FindInCluster(c, cancellationToken));
+            var thresholdResult = _arguments.GetThreshold();
+            var removeOperations = await thresholdResult.Bind(t =>
+            {
+                _logger.LogInformation("Removing blos older than {Threshold}", t);
+                return configResult.Bind(c => FindInCluster(c, t, cancellationToken));
+            });
             return await removeOperations.Bind(InvokeOperations);
         }
 
         private async Task<Result<List<RemoveOperation>>> FindInCluster(ClusterConfiguration clusterConfig,
-            CancellationToken cancellationToken)
-            => await _resultsCombiner.CollectResults(clusterConfig.Nodes, async node => await FindOnNode(clusterConfig, node, cancellationToken));
+            DateTime threshold, CancellationToken cancellationToken)
+            => await _resultsCombiner.CollectResults(clusterConfig.Nodes,
+                async node => await FindOnNode(clusterConfig, node, threshold, cancellationToken));
 
         private async Task<Result<List<RemoveOperation>>> FindOnNode(ClusterConfiguration clusterConfig,
-            ClusterConfiguration.Node node, CancellationToken cancellationToken)
+            ClusterConfiguration.Node node, DateTime threshold, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Preparing partitions to remove from node {Node}", node.Name);
 
             var vdisksOnNode = clusterConfig.VDisks.Where(vd => vd.Replicas.Any(r => r.Node == node.Name));
             var nodeApi = new NodeApi(_bobApiClientFactory.GetPartitionsBobApiClient(node), cancellationToken);
 
-            return await _resultsCombiner.CollectResults(vdisksOnNode, async vdisk => await FindOnVDisk(vdisk, nodeApi));
+            return await _resultsCombiner.CollectResults(vdisksOnNode, async vdisk => await FindOnVDisk(vdisk, nodeApi, threshold));
         }
 
-        private async Task<Result<List<RemoveOperation>>> FindOnVDisk(ClusterConfiguration.VDisk vdisk, NodeApi nodeApi)
+        private async Task<Result<List<RemoveOperation>>> FindOnVDisk(ClusterConfiguration.VDisk vdisk, NodeApi nodeApi,
+            DateTime threshold)
         {
             _logger.LogDebug("Preparing partitions to remove from vdisk {VDisk}", vdisk.Id);
 
             var partitionFunctions = new PartitionFunctions(vdisk, nodeApi);
 
             var partitionIdsResult = await partitionFunctions.FindPartitionIds();
-            return await partitionIdsResult.Bind(partitionIds => FindWithinPatitionIds(partitionIds, partitionFunctions));
+            return await partitionIdsResult.Bind(partitionIds => FindWithinPatitionIds(partitionIds, partitionFunctions, threshold));
         }
 
-        private async Task<Result<List<RemoveOperation>>> FindWithinPatitionIds(List<string> partitionIds, PartitionFunctions partitionFunctions)
+        private async Task<Result<List<RemoveOperation>>> FindWithinPatitionIds(List<string> partitionIds,
+            PartitionFunctions partitionFunctions, DateTime threshold)
         {
             var partitionsResult = await GetPartitions(partitionIds, partitionFunctions);
-            return partitionsResult.Bind(partitions => FindWithinPartitions(partitions, partitionFunctions));
+            return partitionsResult.Bind(partitions => FindWithinPartitions(partitions, partitionFunctions, threshold));
         }
 
         private async Task<Result<List<Partition>>> GetPartitions(List<string> partitionIds,
@@ -81,10 +89,9 @@ namespace OldPartitionsRemover.ByDateRemoving
         }
 
         private Result<List<RemoveOperation>> FindWithinPartitions(List<Partition> partitionInfos,
-            PartitionFunctions partitionFunctions)
+            PartitionFunctions partitionFunctions, DateTime threshold)
         {
-            var thresholdResult = _arguments.GetThreshold();
-            return thresholdResult.Bind(threshold => FindByTimestamp(partitionInfos, partitionFunctions, threshold));
+            return FindByTimestamp(partitionInfos, partitionFunctions, threshold);
         }
 
         private Result<List<RemoveOperation>> FindByTimestamp(List<Partition> partitionInfos,
