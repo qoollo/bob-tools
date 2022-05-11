@@ -11,7 +11,7 @@ namespace DisksMonitoring.UnitTests.OS.DisksFinding.DirectoryStructureParsing
 {
     public class PhysicalIdFinderTests
     {
-        Test, AD]
+        [Test, AD]
         public void Find_WithEmptyDir_ReturnsEmptyDictionary(
             IFileSystemAccessor fileSystemAccessor,
             PhysicalIdFinder sut)
