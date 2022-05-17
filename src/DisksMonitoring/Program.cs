@@ -1,4 +1,7 @@
-﻿using BobApi;
+﻿using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
+using BobApi;
 using CommandLine;
 using CommandLine.Text;
 using DisksMonitoring.Bob;
@@ -6,6 +9,8 @@ using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
 using DisksMonitoring.OS;
 using DisksMonitoring.OS.DisksFinding;
+using DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing;
+using DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing.FileSystemAccessors;
 using DisksMonitoring.OS.DisksFinding.LshwParsing;
 using DisksMonitoring.OS.DisksProcessing;
 using DisksMonitoring.OS.DisksProcessing.FSTabAltering;
@@ -13,13 +18,6 @@ using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 namespace DisksMonitoring
 {
     class Program
@@ -46,6 +44,9 @@ namespace DisksMonitoring
             services.AddTransient<DisksStarter>();
             services.AddTransient<DisksCopier>();
             services.AddTransient<ExternalScriptsRunner>();
+            services.AddTransient<DevPathDataFinder>();
+            services.AddTransient<LogicalVolumesFinder>();
+            services.AddTransient<IFileSystemAccessor, LinuxFileSystemAccessor>();
 
             serviceProvider = services.BuildServiceProvider();
             logger = serviceProvider.GetRequiredService<ILogger<Program>>();

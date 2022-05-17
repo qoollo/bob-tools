@@ -4,7 +4,7 @@ using System.Text;
 
 namespace DisksMonitoring.OS.DisksFinding.Entities
 {
-    class LogicalVolume
+    public class LogicalVolume
     {
         public LogicalVolume(PhysicalId physicalId, DevPath devPath, UUID uUID)
         {
@@ -19,7 +19,7 @@ namespace DisksMonitoring.OS.DisksFinding.Entities
 
         public override string ToString()
         {
-            return $"[{PhysicalId}] {DevPath}";
+            return $"[{PhysicalId}] {DevPath}, {UUID}";
         }
     }
 }

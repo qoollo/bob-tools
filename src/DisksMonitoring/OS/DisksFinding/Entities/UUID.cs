@@ -4,7 +4,7 @@ using System.Text;
 
 namespace DisksMonitoring.OS.DisksFinding.Entities
 {
-    class UUID : IEquatable<UUID>
+    public class UUID : IEquatable<UUID>
     {
         private readonly string data;
 
