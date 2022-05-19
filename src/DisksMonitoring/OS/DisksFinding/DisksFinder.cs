@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing;
 using DisksMonitoring.OS.DisksFinding.Entities;
 using DisksMonitoring.OS.DisksFinding.LshwParsing;
 using DisksMonitoring.OS.DisksProcessing;
@@ -18,12 +19,15 @@ namespace DisksMonitoring.OS.DisksFinding
         private readonly LshwParser lshwParser;
         private readonly ProcessInvoker processInvoker;
         private readonly ILogger<DisksFinder> logger;
+        private readonly DevPathDataFinder _devPathDataFinder;
 
-        public DisksFinder(LshwParser lshwParser, ProcessInvoker processInvoker, ILogger<DisksFinder> logger)
+        public DisksFinder(LshwParser lshwParser, ProcessInvoker processInvoker, ILogger<DisksFinder> logger,
+            DevPathDataFinder devPathDataFinder)
         {
             this.lshwParser = lshwParser;
             this.processInvoker = processInvoker;
             this.logger = logger;
+            _devPathDataFinder = devPathDataFinder;
         }
 
         public async Task<List<PhysicalDisk>> FindDisks()
@@ -31,7 +35,8 @@ namespace DisksMonitoring.OS.DisksFinding
             var lshwOutput = await InvokeLshw();
             var parsedOutput = lshwParser.Parse(lshwOutput);
             var disks = parsedOutput.Where(n => n.Type == NodeType.Disk).ToList();
-            var physicalDisks = disks.Select(ParseDisk).Where(d => d != null).ToList();
+            var physicalIdByDevPath = _devPathDataFinder.FindPhysicalIdByDevPath();
+            var physicalDisks = disks.Select(d => ParseDisk(d, physicalIdByDevPath)).Where(d => d != null).ToList();
             logger.LogDisks(LogLevel.Debug, physicalDisks);
             return physicalDisks;
         }
@@ -51,21 +56,22 @@ namespace DisksMonitoring.OS.DisksFinding
             return res;
         }
 
-        private PhysicalDisk ParseDisk(LshwNode diskNode)
+        private PhysicalDisk ParseDisk(LshwNode diskNode, Dictionary<DevPath, PhysicalId> physicalIdByDevPath)
         {
             var product = diskNode.FindSingleValue(TokenType.Product);
             var devPath = GetDevPath(diskNode);
             if (product is null || devPath is null) // not a real disk
                 return null;
             var volumeNodes = diskNode.Children;
-            var physicalIdStr = diskNode.FindSingleValue(TokenType.PhysicalId);
-            var upperPhysicalId = diskNode.Parent.FindSingleValue(TokenType.PhysicalId);
             var physicalId = CollectPhysicalId(diskNode);
-            var volumes = volumeNodes.Select(v => ParseVolume(v, physicalId)).Where(v => v != null).ToList();
+            if (physicalIdByDevPath.TryGetValue(new DevPath(devPath), out var id))
+                physicalId = id;
+            var volumes = volumeNodes.Select(v => ParseVolume(v, physicalId, physicalIdByDevPath)).Where(v => v != null).ToList();
             return new PhysicalDisk(physicalId, new DevPath(devPath), volumes);
         }
 
-        private static Volume ParseVolume(LshwNode volumeNode, PhysicalId diskPhysicalId)
+        private static Volume ParseVolume(LshwNode volumeNode, PhysicalId diskPhysicalId,
+            Dictionary<DevPath, PhysicalId> physicalIdByDevPath)
         {
             var physicalIdStr = volumeNode.FindSingleValue(TokenType.PhysicalId);
             var devPath = GetDevPath(volumeNode);
@@ -77,8 +83,10 @@ namespace DisksMonitoring.OS.DisksFinding
                 ?? volumeNode.FindSingleValue(TokenType.LastMountPoint);
             var filesystem = volumeNode.FindSingleValue(TokenType.Filesystem);
             var physicalId = new PhysicalId(physicalIdStr, diskPhysicalId);
+            if (physicalIdByDevPath.TryGetValue(new DevPath(devPath), out var id))
+                physicalId = id;
             var logicalVolumeNodes = volumeNode.Children;
-            var logicalVolumes = logicalVolumeNodes.Select(lv => ParseLogicalVolume(lv, physicalId)).ToList();
+            var logicalVolumes = logicalVolumeNodes.Select(lv => ParseLogicalVolume(lv, physicalId, physicalIdByDevPath)).ToList();
             var mountOptions = volumeNode.FindSingleValue(TokenType.MountOptions);
             return new Volume(physicalId,
                               new DevPath(devPath),
@@ -90,13 +98,16 @@ namespace DisksMonitoring.OS.DisksFinding
                               mountOptions is null ? null : new MountOptions(mountOptions));
         }
 
-        private static LogicalVolume ParseLogicalVolume(LshwNode logicalVolumeNode, PhysicalId volumePhysicalId)
+        private static LogicalVolume ParseLogicalVolume(LshwNode logicalVolumeNode, PhysicalId volumePhysicalId,
+            Dictionary<DevPath, PhysicalId> physicalIdByDevPath)
         {
-            var physicalId = logicalVolumeNode.FindSingleValue(TokenType.PhysicalId);
             var devPath = GetDevPath(logicalVolumeNode);
+            var physicalId = new PhysicalId(logicalVolumeNode.FindSingleValue(TokenType.PhysicalId), volumePhysicalId);
+            if (physicalIdByDevPath.TryGetValue(new DevPath(devPath), out var id))
+                physicalId = id;
             var uuid = logicalVolumeNode.FindSingleValue(TokenType.Serial);
             return new LogicalVolume(
-                new PhysicalId(physicalId, volumePhysicalId),
+                physicalId,
                 new DevPath(devPath),
                 new UUID(uuid));
         }

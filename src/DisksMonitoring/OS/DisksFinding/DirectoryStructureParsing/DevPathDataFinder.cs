@@ -10,7 +10,6 @@ namespace DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing
     public class DevPathDataFinder
     {
         private const string ByPathDir = "/dev/disk/by-path";
-        private const string ByUuidDir = "/dev/disk/by-uuid";
         private readonly IFileSystemAccessor _fileSystemAccessor;
 
         public DevPathDataFinder(IFileSystemAccessor fileSystemAccessor)
@@ -18,7 +17,10 @@ namespace DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing
             _fileSystemAccessor = fileSystemAccessor;
         }
 
-        public Dictionary<DevPath, T> Find<T>(string dirname, Func<string, T> filenameProcessor)
+        public Dictionary<DevPath, PhysicalId> FindPhysicalIdByDevPath()
+            => Find(ByPathDir, PhysicalId.FromString);
+
+        private Dictionary<DevPath, T> Find<T>(string dirname, Func<string, T> filenameProcessor)
         {
             var result = new Dictionary<DevPath, T>();
             var filenames = _fileSystemAccessor.GetFilenames(dirname);

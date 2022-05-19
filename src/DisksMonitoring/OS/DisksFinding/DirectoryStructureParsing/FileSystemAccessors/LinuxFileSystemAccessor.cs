@@ -11,8 +11,6 @@ namespace DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing.FileSystemAc
             var info = new FileInfo(filename);
             try
             {
-                System.Console.WriteLine(filename);
-                System.Console.WriteLine(info.LinkTarget);
                 return Path.GetFullPath(info.LinkTarget, Path.GetDirectoryName(filename));
             }
             catch { }
