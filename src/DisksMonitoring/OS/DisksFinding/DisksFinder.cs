@@ -19,7 +19,7 @@ namespace DisksMonitoring.OS.DisksFinding
         private readonly LshwParser lshwParser;
         private readonly ProcessInvoker processInvoker;
         private readonly ILogger<DisksFinder> logger;
-        private readonly DevPathDataFinder _devPathDataFinder;
+        private readonly DevPathDataFinder devPathDataFinder;
 
         public DisksFinder(LshwParser lshwParser, ProcessInvoker processInvoker, ILogger<DisksFinder> logger,
             DevPathDataFinder devPathDataFinder)
@@ -27,7 +27,7 @@ namespace DisksMonitoring.OS.DisksFinding
             this.lshwParser = lshwParser;
             this.processInvoker = processInvoker;
             this.logger = logger;
-            _devPathDataFinder = devPathDataFinder;
+            this.devPathDataFinder = devPathDataFinder;
         }
 
         public async Task<List<PhysicalDisk>> FindDisks()
@@ -35,7 +35,7 @@ namespace DisksMonitoring.OS.DisksFinding
             var lshwOutput = await InvokeLshw();
             var parsedOutput = lshwParser.Parse(lshwOutput);
             var disks = parsedOutput.Where(n => n.Type == NodeType.Disk).ToList();
-            var physicalIdByDevPath = _devPathDataFinder.FindPhysicalIdByDevPath();
+            var physicalIdByDevPath = devPathDataFinder.FindPhysicalIdByDevPath();
             var physicalDisks = disks.Select(d => ParseDisk(d, physicalIdByDevPath)).Where(d => d != null).ToList();
             logger.LogDisks(LogLevel.Debug, physicalDisks);
             return physicalDisks;
