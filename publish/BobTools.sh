@@ -27,6 +27,7 @@ function printHelp {
 
 names=($1 Bob$1 ${1/Bob/})
 command=${@:2}
+# If the command is --help TOOL, invoke help for specified tool
 [[ $1 == --help ]] && [[ $# == 2 ]] && names=($2 Bob$2 ${2/Bob/}) && command=--help
 
 for item in ${names[*]}
@@ -34,4 +35,3 @@ do
     [[ -x "$(command -v $item)" ]] && $item $command && exit
     [[ -f "$item" ]] && ./$item $command && exit
 done
-# ./$1 ${@:2}
