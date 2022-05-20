@@ -7,7 +7,7 @@ function printHelp {
         DisksMonitoring
         RecordsCalculator)
     help_AliensRecovery="Recover aliens in bob cluster"
-    help_ClusterModifier="Expand bob cluster, moving data as needed"
+    help_ClusterModifier="Expand bob cluster"
     help_DisksMonitoring="Monitor and reconnect disks for single bob node"
     help_RecordsCalculator="Count records in bob cluster"
     echo "Available tools:"
