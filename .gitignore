@@ -5,6 +5,7 @@ riderModule.iml
 /_ReSharper.Caches/
 /.idea
 /publish
+!/publish/BobTools.sh
 DiskStatusAnalyzer.sln.DotSettings.user
 /src/DiskStatusAnalyzer/logs
 .vs/
