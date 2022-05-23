@@ -2,20 +2,23 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BobApi\BobApi.csproj" />
+    <ProjectReference Include="..\BobToolsCli\BobToolsCli.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ByteSize" Version="2.1.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
+    <!-- <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
     <PublishTrimmed>true</PublishTrimmed>
-    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishReadyToRun>true</PublishReadyToRun> -->
     <Configurations>Debug;Release</Configurations>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- <RuntimeIdentifier>linux-x64</RuntimeIdentifier> -->
   </PropertyGroup>
 </Project>
