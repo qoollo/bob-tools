@@ -42,7 +42,7 @@ namespace OldPartitionsRemover.ByDateRemoving
             var thresholdResult = _arguments.GetThreshold();
             var removeOperations = await thresholdResult.Bind(t =>
             {
-                _logger.LogInformation("Removing blos older than {Threshold}", t);
+                _logger.LogInformation("Removing blobs older than {Threshold}", t);
                 return configResult.Bind(c => FindInCluster(c, t, cancellationToken));
             });
             return await removeOperations.Bind(InvokeOperations);
