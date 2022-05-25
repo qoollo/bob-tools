@@ -6,10 +6,10 @@ namespace BobApi.BobEntities
     {
         public NodeConfiguration(string rootDir)
         {
-            RootDir = rootDir;
+            RootDir = rootDir ?? "bob";
         }
 
-        [JsonProperty("blob_file_name_prefix")]
+        [JsonProperty("root_dir_name")]
         public string RootDir { get; }
     }
 }

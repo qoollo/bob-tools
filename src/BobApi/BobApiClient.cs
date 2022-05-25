@@ -12,7 +12,8 @@ using Path = System.IO.Path;
 
 namespace BobApi
 {
-    public class BobApiClient : IDisposable
+
+    public class BobApiClient : IDisposable, IPartitionsBobApiClient, ISpaceBobApiClient
     {
         private readonly HttpClient _client;
         private readonly bool _throwOnNoConnection;
@@ -74,38 +75,27 @@ namespace BobApi
         public async Task<BobApiResult<List<VDisk>>> GetVDisks(CancellationToken cancellationToken = default)
             => await GetJson<List<VDisk>>("vdisks", cancellationToken);
 
-        public async Task<BobApiResult<List<string>>> GetPartitions(VDisk vDisk)
-        {
-            return await InvokeRequest<List<string>>(async client =>
-            {
-                using (var response = await client.GetAsync($"vdisks/{vDisk.Id}/partitions"))
-                {
-                    if (response.IsSuccessStatusCode)
-                    {
-                        return BobApiResult<List<string>>.Ok(await response.Content.ReadAsStringAsync()
-                            .ContinueWith(t => JsonConvert.DeserializeAnonymousType(t.Result, new
-                            {
-                                Partitions = new List<string>()
-                            }).Partitions));
-                    }
-                    return BobApiResult<List<string>>.Unsuccessful();
-                }
-            });
-        }
+        public async Task<BobApiResult<List<string>>> GetPartitions(VDisk vDisk, CancellationToken cancellationToken = default)
+            => await GetPartitions(vDisk.Id, cancellationToken);
 
-        public async Task DeletePartition(VDisk vDisk, long? timestamp)
-            => await _client.DeleteAsync($"vdisks/{vDisk.Id}/partitions/by_timestamp/{timestamp}");
+        public async Task<BobApiResult<List<string>>> GetPartitions(ClusterConfiguration.VDisk vDisk, CancellationToken cancellationToken = default)
+            => await GetPartitions(vDisk.Id, cancellationToken);
 
-        public async Task<BobApiResult<Partition>> GetPartition(VDisk vDisk, string partition,
+        public async Task<BobApiResult<bool>> DeletePartitionsByTimestamp(long vDiskId, long timestamp, CancellationToken cancellationToken = default)
+            => await DeleteIsOk($"vdisks/{vDiskId}/partitions/by_timestamp/{timestamp}", cancellationToken);
+
+        public async Task<BobApiResult<Partition>> GetPartition(long vdiskId, string partition,
             CancellationToken cancellationToken = default)
-            => await GetJson<Partition>($"vdisks/{vDisk.Id}/partitions/{partition}", cancellationToken: cancellationToken);
-
+            => await GetJson<Partition>($"vdisks/{vdiskId}/partitions/{partition}", cancellationToken: cancellationToken);
 
         public async Task<BobApiResult<long>> CountRecordsOnVDisk(long id, CancellationToken cancellationToken = default)
             => await GetJson<long>($"vdisks/{id}/records/count", cancellationToken: cancellationToken);
 
         public async Task<BobApiResult<NodeConfiguration>> GetNodeConfiguration(CancellationToken cancellationToken = default)
             => await GetJson<NodeConfiguration>("configuration", cancellationToken: cancellationToken);
+
+        public async Task<BobApiResult<ulong>> GetFreeSpaceBytes(CancellationToken cancellationToken = default)
+            => (await GetJson<SpaceInfo>("status/space", cancellationToken)).Map(i => i.FreeDiskSpaceBytes);
 
         public void Dispose()
         {
@@ -115,6 +105,25 @@ namespace BobApi
         public override string ToString()
         {
             return _client.BaseAddress.ToString();
+        }
+
+        private async Task<BobApiResult<List<string>>> GetPartitions(long id, CancellationToken cancellationToken)
+        {
+            return await InvokeRequest<List<string>>(async client =>
+            {
+                using (var response = await client.GetAsync($"vdisks/{id}/partitions", cancellationToken))
+                {
+                    return await ParseResponse(response, async resp =>
+                    {
+                        var content = await resp.Content.ReadAsStringAsync();
+                        var partitions = JsonConvert.DeserializeAnonymousType(content, new
+                        {
+                            Partitions = new List<string>()
+                        }).Partitions;
+                        return partitions;
+                    });
+                }
+            });
         }
 
         private async Task<BobApiResult<T>> GetJson<T>(string addr, CancellationToken cancellationToken = default)
@@ -127,9 +136,18 @@ namespace BobApi
             {
                 using (var response = await client.PostAsync(addr, new StringContent(""), cancellationToken: cancellationToken))
                 {
-                    if (response.IsSuccessStatusCode)
-                        return BobApiResult<bool>.Ok(true);
-                    return BobApiResult<bool>.Unsuccessful();
+                    return await ParseResponse(response, _ => true);
+                }
+            });
+        }
+
+        private async Task<BobApiResult<bool>> DeleteIsOk(string addr, CancellationToken cancellationToken = default)
+        {
+            return await InvokeRequest(async client =>
+            {
+                using (var response = await client.DeleteAsync(addr, cancellationToken: cancellationToken))
+                {
+                    return await ParseResponse(response, _ => true);
                 }
             });
         }
@@ -141,14 +159,25 @@ namespace BobApi
             {
                 using (var response = await client.GetAsync(addr, cancellationToken))
                 {
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var content = await response.Content.ReadAsStringAsync();
-                        return BobApiResult<T>.Ok(parse(content));
-                    }
-                    return BobApiResult<T>.Unsuccessful();
+                    return await ParseResponse(response, async resp => parse(await resp.Content.ReadAsStringAsync()));
                 }
             });
+        }
+
+        private async Task<BobApiResult<T>> ParseResponse<T>(HttpResponseMessage response,
+            Func<HttpResponseMessage, Task<T>> parse)
+        {
+            if (response.IsSuccessStatusCode)
+                return BobApiResult<T>.Ok(await parse(response));
+            return BobApiResult<T>.Unsuccessful(
+                response.RequestMessage.Method,
+                response.RequestMessage.RequestUri,
+                await response.Content.ReadAsStringAsync());
+        }
+
+        private async Task<BobApiResult<T>> ParseResponse<T>(HttpResponseMessage response, Func<HttpResponseMessage, T> parse)
+        {
+            return await ParseResponse(response, r => Task.FromResult(parse(r)));
         }
 
         private async Task<BobApiResult<T>> InvokeRequest<T>(Func<HttpClient, Task<BobApiResult<T>>> f)

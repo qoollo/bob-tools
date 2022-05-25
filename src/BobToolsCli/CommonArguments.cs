@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobApi;
 using BobApi.BobEntities;
+using BobToolsCli.ConfigurationFinding;
 using BobToolsCli.ConfigurationReading;
 using BobToolsCli.Helpers;
 using CommandLine;
@@ -14,7 +15,7 @@ using Microsoft.Extensions.Logging;
 
 namespace BobToolsCli
 {
-    public class CommonArguments
+    public class CommonArguments : IConfigurationFinder
     {
         private const string DefaultClusterConfigPath = "/etc/bob/cluster.yaml";
 

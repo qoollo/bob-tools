@@ -34,9 +34,9 @@ namespace DisksMonitoring.Bob
                 return;
             }
             var statusResult = await bobApiClient.GetStatus();
-            if (!statusResult.TryGetData(out var status))
+            if (!statusResult.IsOk(out var status, out var err))
             {
-                logger.LogError($"Failed to get status from {bobApiClient}");
+                logger.LogError($"Failed to get status from {bobApiClient}, {err}");
                 return;
             }
             var destName = status.Name;

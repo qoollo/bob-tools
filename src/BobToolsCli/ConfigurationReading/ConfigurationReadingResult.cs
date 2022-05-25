@@ -27,7 +27,7 @@ namespace BobToolsCli.ConfigurationReading
             return ConfigurationReadingResult<Y>.Ok(f(_data));
         }
 
-        internal static ConfigurationReadingResult<T> Ok(T data) => new(data, null);
-        internal static ConfigurationReadingResult<T> Error(string error) => new(default, error);
+        public static ConfigurationReadingResult<T> Ok(T data) => new(data, null);
+        public static ConfigurationReadingResult<T> Error(string error) => new(default, error);
     }
 }
