@@ -29,6 +29,11 @@ namespace ClusterModifier
 
         private static async Task ExpandCluster(ExpandClusterOptions options)
         {
+            if (!File.Exists(options.DiskStatusAnalyzer))
+            {
+                logger.LogError("DiskStatusAnalyzer not found (path from config: {Path})", options.DiskStatusAnalyzer);
+                return;
+            }
             logger.LogDebug($"Expanding cluster from {options.OldConfigPath} to {options.NewConfigPath}");
             var oldConfig = await ClusterConfiguration.FromYamlFile(options.OldConfigPath);
             var newConfig = await ClusterConfiguration.FromYamlFile(options.NewConfigPath);
