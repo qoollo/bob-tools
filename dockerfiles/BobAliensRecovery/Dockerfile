@@ -1,7 +1,5 @@
 FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build
 
-ARG Version="1.0.0.0"
-ARG InformationalVersion="1.0.0.0"
 ARG AppName=BobAliensRecovery
 # Tool to ease csproj copy for dotnet restore
 ENV PATH="${PATH}:/root/.dotnet/tools"
@@ -13,7 +11,7 @@ RUN dotnet references fix -ep /src/${AppName}.sln -wd /src -rupf
 RUN dotnet restore -r linux-musl-x64 /src/${AppName}
 # Actual build
 COPY ./src /src
-RUN dotnet publish --no-restore -c Release -r linux-musl-x64 -p:Version=${Version} -p:InformationalVersion=${InformationalVersion} -o publish /src/${AppName}
+RUN dotnet publish --no-restore -c Release -r linux-musl-x64 -o publish /src/${AppName}
 
 FROM alpine
 

@@ -1,11 +1,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build
 
-ARG Version="1.0.0.0"
-ARG InformationalVersion="1.0.0.0"
 # Build
 COPY ./src /src
 COPY ./buildscripts /buildscripts
-RUN /buildscripts/publish.sh ${Version} ${InformationalVersion} linux-musl-x64
+RUN /buildscripts/publish.sh linux-musl-x64
 
 FROM alpine
 
