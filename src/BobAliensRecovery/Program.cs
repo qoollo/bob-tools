@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery;
 using BobAliensRecovery.Exceptions;
 using BobApi.BobEntities;
+using BobToolsCli;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -18,21 +19,9 @@ namespace BobAliensRecovery
     {
         static async Task Main(string[] args)
         {
-            var cancellationTokenSource = new CancellationTokenSource();
-            Console.CancelKeyPress += (s, e) =>
-            {
-                cancellationTokenSource.Cancel();
-            };
-
-            var parsed = Parser.Default.ParseArguments<ProgramArguments>(args);
-
             try
             {
-                _ = await parsed.WithParsedAsync(a => RecoverAliens(a, cancellationTokenSource.Token));
-            }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine("Cancelled");
+                await CliHelper.RunWithParsed<ProgramArguments>(args, RecoverAliens);
             }
             catch (MissingDependencyException e)
             {
@@ -56,9 +45,9 @@ namespace BobAliensRecovery
             }
         }
 
-        private static async Task RecoverAliens(ProgramArguments arguments, CancellationToken cancellationToken)
+        private static async Task RecoverAliens(ProgramArguments arguments, IServiceCollection services, CancellationToken cancellationToken)
         {
-            var provider = CreateServiceProvider(arguments);
+            var provider = CreateServiceProvider(services, arguments);
             var recoverer = provider.GetRequiredService<AliensRecoverer>();
 
             var cluster = await GetClusterConfiguration(arguments!, cancellationToken);
@@ -77,12 +66,8 @@ namespace BobAliensRecovery
                 throw new ConfigurationException(err);
         }
 
-        private static IServiceProvider CreateServiceProvider(ProgramArguments args)
+        private static IServiceProvider CreateServiceProvider(IServiceCollection services, ProgramArguments args)
         {
-            var services = new ServiceCollection();
-
-            services.AddLogging(b => b.AddConsole().SetMinimumLevel(args.LoggerOptions.MinLevel));
-
             services
                 .AddScoped<AliensRecoverer>()
                 .AddScoped<AlienDirsFinder>()

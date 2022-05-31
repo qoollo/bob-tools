@@ -5,7 +5,7 @@ namespace BobApi
     public struct Partition
     {
         [JsonProperty("vdisk_id")]
-        public string VDiskId { get; set; }
+        public long VDiskId { get; set; }
 
         [JsonProperty("node_name")]
         public string NodeName { get; set; }

@@ -2,9 +2,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BobApi\BobApi.csproj" />
+    <ProjectReference Include="..\BobToolsCli\BobToolsCli.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ByteSize" Version="2.1.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
 
@@ -17,5 +19,6 @@
     <PublishReadyToRun>true</PublishReadyToRun>
     <Configurations>Debug;Release</Configurations>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
   </PropertyGroup>
 </Project>

@@ -5,21 +5,6 @@
     <ProjectReference Include="..\BobToolsCli\BobToolsCli.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-      <PackageReference Include="CommandLineParser" Version="2.8.0" />
-      <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.9" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.9" />
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="3.1.9" />
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="3.1.7" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.1.7" />
-      <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-      <PackageReference Include="Serilog" Version="2.10.0" />
-      <PackageReference Include="Serilog.Extensions.Logging" Version="3.0.1" />
-      <PackageReference Include="Serilog.Settings.Configuration" Version="3.1.0" />
-      <PackageReference Include="Serilog.Sinks.Console" Version="3.1.1" />
-      <PackageReference Include="Serilog.Sinks.File" Version="4.1.0" />
-  </ItemGroup>
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
