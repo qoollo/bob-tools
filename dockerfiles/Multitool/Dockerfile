@@ -8,7 +8,7 @@ RUN /buildscripts/publish.sh linux-musl-x64
 FROM alpine
 
 COPY --from=build /publish/* /root/
-RUN apk add krb5-libs libstdc++ libgcc openssh
+RUN apk add --no-cache krb5-libs libstdc++ libgcc openssh
 RUN echo -e\
     "#!/bin/sh\n\
     /root/\$1 \${@:2}" >> /root/start.sh\

@@ -32,6 +32,6 @@ FROM alpine
 
 COPY --from=build-cm /publish/ClusterModifier /root/ClusterModifier
 COPY --from=build-dsa /publish/* /
-RUN apk add krb5-libs libstdc++ libgcc openssh
+RUN apk add --no-cache krb5-libs libstdc++ libgcc openssh
 
 ENTRYPOINT ["/root/ClusterModifier"]
