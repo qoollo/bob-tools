@@ -6,7 +6,7 @@ ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet tool install -g dotnet-references
 # Separate restore stage so docker can cache it
 COPY ./src/${AppName}.sln /src/${AppName}.sln
-COPY ./src/*/*.csproj /src
+COPY ./src/*/*.csproj /src/
 RUN dotnet references fix -ep /src/${AppName}.sln -wd /src -rupf
 RUN dotnet restore -r linux-musl-x64 /src/${AppName}
 # Actual build
@@ -21,7 +21,7 @@ ENV PATH="${PATH}:/root/.dotnet/tools"
 RUN dotnet tool install -g dotnet-references
 # Separate restore stage so docker can cache it
 COPY ./src/${AppName}.sln /src/${AppName}.sln
-COPY ./src/*/*.csproj /src
+COPY ./src/*/*.csproj /src/
 RUN dotnet references fix -ep /src/${AppName}.sln -wd /src -rupf
 RUN dotnet restore -r linux-musl-x64 /src/${AppName}
 # Actual build
