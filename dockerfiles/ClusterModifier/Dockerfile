@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build-cm
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine as build-cm
 
 ARG AppName=ClusterModifier
 # Tool to ease csproj copy for dotnet restore
@@ -13,7 +13,7 @@ RUN dotnet restore -r linux-musl-x64 /src/${AppName}
 COPY ./src /src
 RUN dotnet publish --no-restore -c Release -r linux-musl-x64 -o publish /src/${AppName}
 
-FROM mcr.microsoft.com/dotnet/sdk:5.0-alpine as build-dsa
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine as build-dsa
 
 ARG AppName=DiskStatusAnalyzer
 # Tool to ease csproj copy for dotnet restore
