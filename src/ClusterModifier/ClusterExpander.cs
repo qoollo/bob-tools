@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -31,85 +32,93 @@ namespace ClusterModifier
             var oldConfigResult = await _args.GetClusterConfigurationFromFile(_args.OldConfigPath, cancellationToken);
             if (!oldConfigResult.IsOk(out var oldConfig, out var oldError))
                 throw new ConfigurationException($"Old config is not available: {oldError}");
-            var newConfigResult = await _args.FindClusterConfiguration(cancellationToken);
-            if (!newConfigResult.IsOk(out var newConfig, out var newError))
-                throw new ConfigurationException($"New config is not available: {newError}");
+            var configResult = await _args.FindClusterConfiguration(cancellationToken);
+            if (!configResult.IsOk(out var config, out var newError))
+                throw new ConfigurationException($"Current config is not available: {newError}");
 
-            _logger.LogDebug("Expanding cluster from {OldConfigPath} to {NewConfigPath}",
+            _logger.LogDebug("Expanding cluster from {OldConfigPath} to {CurrentConfigPath}",
                 _args.OldConfigPath, _args.ClusterConfigPath);
 
-            foreach (var vdisk in newConfig.VDisks)
-            {
-                using var vDiskScope = _logger.BeginScope("VDisk {vdiskId}", vdisk.Id);
-                _logger.LogDebug("Analyzing vdisk from new config");
-                var oldVdisk = oldConfig.VDisks.Find(vd => vd.Id == vdisk.Id);
-                if (oldVdisk != null && oldVdisk.Replicas.Count > 0)
-                {
-                    foreach (var replica in vdisk.Replicas)
-                    {
-                        using var replicaScope = _logger.BeginScope("Replica = {replicaNode}-{replicaDisk}", replica.Node, replica.Disk);
-                        _logger.LogDebug("Analyzing replica from new config");
-                        var node = newConfig.Nodes.Find(n => n.Name == replica.Node);
-                        var disk = node.Disks.Find(d => d.Name == replica.Disk);
-                        using var pathScope = _logger.BeginScope("Path = {replicaPath}", disk.Path);
-                        var oldReplica = oldVdisk.Replicas.Find(r => r.Node == replica.Node && r.Disk == replica.Disk);
-                        if (oldReplica != null)
-                            _logger.LogDebug("Found replica in old config");
-                        else
-                        {
-                            _logger.LogWarning("Replica not found in old config, restoring data...");
-                            foreach (var selectedReplica in oldVdisk.Replicas)
-                            {
-                                var oldNode = oldConfig.Nodes.Find(n => n.Name == selectedReplica.Node);
-                                var oldDisk = oldNode.Disks.Find(d => d.Name == selectedReplica.Disk);
-
-                                var oldRemoteDir = await GetRemoteDir(oldNode, oldDisk, vdisk, cancellationToken);
-                                var remoteDir = await GetRemoteDir(node, disk, vdisk, cancellationToken);
-                                _logger.LogInformation("Trying to copy data from {Old} to {Current}", oldRemoteDir, remoteDir);
-                                if (_args.DryRun)
-                                {
-                                    break;
-                                }
-                                else
-                                {
-                                    var copy = await _remoteFileCopier.CopyWithRsync(oldRemoteDir, remoteDir, cancellationToken);
-                                    if (!copy.IsError)
-                                    {
-                                        _logger.LogInformation("Successfully copied data from {Old} to {Current}", oldRemoteDir, remoteDir);
-                                        break;
-                                    }
-                                    else
-                                        _logger.LogWarning("Failed to copy data from {Old} to {Current}: {Error}", oldRemoteDir, remoteDir,
-                                            string.Join(Environment.NewLine, copy.ErrorLines));
-                                }
-                            }
-                        }
-                    }
-                }
-                else
-                    _logger.LogDebug("Vdisk's replicas not found in old config");
-            }
+            await CopyDataToNewReplicas(oldConfig, config, cancellationToken);
 
             if (_args.RemoveOldReplicas)
-                foreach (var vDisk in oldConfig.VDisks)
-                {
-                    using var vDiskScope = _logger.BeginScope("VDisk {vdiskId}", vDisk.Id);
-                    foreach (var replica in vDisk.Replicas.Where(r => !newConfig.VDisks.Any(vd => vd.Replicas.Any(r1 => r.Disk == r1.Disk && r.Node == r1.Node))))
+                await RemoveOldReplicas(oldConfig, config, cancellationToken);
+        }
+
+        private async Task CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
+            CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Copying data from old to current replicas");
+
+            var oldNodes = oldConfig.Nodes;
+            var nodes = config.Nodes;
+            var pairs = oldNodes.SelectMany(on => nodes.Select(n => (old: on, cur: n)))
+                .Where(t => t.old.Name == t.cur.Name);
+            var vDisksPairs = oldConfig.VDisks.SelectMany(ov => config.VDisks.Select(v => (old: ov, cur: v)))
+                .Where(t => t.old.Id == t.cur.Id).ToArray();
+            foreach (var (oldNode, node) in pairs)
+            {
+                var oldCreator = await GetCreator(oldNode, cancellationToken);
+                var creator = await GetCreator(node, cancellationToken);
+                foreach (var (oldVDisk, vDisk) in vDisksPairs)
+                    foreach (var replica in vDisk.Replicas.Where(r => r.Node == node.Name))
                     {
-                        using var replicaScope = _logger.BeginScope("Replica = {replicaNode}-{replicaDisk}", replica.Node, replica.Disk);
-                        var node = oldConfig.Nodes.Find(n => n.Name == replica.Node);
-                        var disk = node.Disks.Find(d => d.Name == replica.Disk);
-                        var remoteDir = await GetRemoteDir(node, disk, vDisk, cancellationToken);
-                        _logger.LogInformation("Removing {Directory}", remoteDir);
-                        if (!_args.DryRun)
-                        {
-                            if (await _remoteFileCopier.RemoveInDir(remoteDir, cancellationToken))
-                                _logger.LogDebug("Successfully removed {Directory}", remoteDir);
-                            else
-                                _logger.LogWarning("Failed to remove {Directory}", remoteDir);
-                        }
+                        var dir = creator(node.Disks.Find(d => d.Name == replica.Disk), vDisk);
+                        var oldDirs = oldVDisk.Replicas.Select(or => oldCreator(oldNode.Disks.Find(d => d.Name == or.Disk), oldVDisk));
+                        if (!await CopyDataFromAnyLocation(dir, oldDirs, cancellationToken))
+                            throw new OperationException($"Failed to copy data for replica of {vDisk.Id} on {replica.Disk}");
+                    }
+            }
+        }
+
+        private async Task<bool> CopyDataFromAnyLocation(RemoteDir target, IEnumerable<RemoteDir> sources, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Trying to copy data to {Directory}", target);
+            if (_args.DryRun || !sources.Any())
+            {
+                return true;
+            }
+            else
+            {
+                foreach (var source in sources)
+                {
+                    var copy = await _remoteFileCopier.CopyWithRsync(source, target, cancellationToken);
+                    if (!copy.IsError)
+                    {
+                        _logger.LogInformation("Successfully copied data from {Source} to {Directory}", source, target);
+                        return true;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Failed to copy data from {Source} to {Directory}: {Error}", source, target,
+                            string.Join(Environment.NewLine, copy.ErrorLines));
                     }
                 }
+                return false;
+            }
+        }
+
+        private async Task RemoveOldReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
+            CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Removing data from old replicas");
+            foreach (var vDisk in oldConfig.VDisks)
+            {
+                foreach (var replica in vDisk.Replicas.Where(r => !newConfig.VDisks.Any(vd => vd.Replicas.Any(r1 => r.Disk == r1.Disk && r.Node == r1.Node))))
+                {
+                    var node = oldConfig.Nodes.Find(n => n.Name == replica.Node);
+                    var disk = node.Disks.Find(d => d.Name == replica.Disk);
+                    var remoteDir = await GetRemoteDir(node, disk, vDisk, cancellationToken);
+                    _logger.LogInformation("Removing {Directory}", remoteDir);
+                    if (!_args.DryRun)
+                    {
+                        if (await _remoteFileCopier.RemoveInDir(remoteDir, cancellationToken))
+                            _logger.LogDebug("Successfully removed {Directory}", remoteDir);
+                        else
+                            _logger.LogWarning("Failed to remove {Directory}", remoteDir);
+                    }
+                }
+            }
         }
 
         private async ValueTask<RemoteDir> GetRemoteDir(ClusterConfiguration.Node node, ClusterConfiguration.Node.Disk disk,
@@ -120,8 +129,22 @@ namespace ClusterModifier
             var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
             if (nodeConfigResult.IsOk(out var conf, out var error))
             {
-                var dir = Path.Combine(disk.Path, conf.RootDir, vDisk.Id.ToString()); // TODO Use dir from bob config
+                var dir = Path.Combine(disk.Path, conf.RootDir, vDisk.Id.ToString());
                 return new RemoteDir(addr, dir);
+            }
+            else
+                throw new ClusterStateException($"Node {node.Name} configuration is unavailable: {error}");
+        }
+
+        private async Task<Func<ClusterConfiguration.Node.Disk, ClusterConfiguration.VDisk, RemoteDir>> GetCreator(
+            ClusterConfiguration.Node node, CancellationToken cancellationToken = default)
+        {
+            var addr = await node.FindIPAddress();
+            var apiAddr = _args.GetNodePortStorage().GetNodeApiUri(node);
+            var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
+            if (nodeConfigResult.IsOk(out var conf, out var error))
+            {
+                return (disk, vdisk) => new RemoteDir(addr, Path.Combine(disk.Path, conf.RootDir, vdisk.Id.ToString()));
             }
             else
                 throw new ClusterStateException($"Node {node.Name} configuration is unavailable: {error}");
