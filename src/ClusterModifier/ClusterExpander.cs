@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -6,16 +7,20 @@ using System.Threading.Tasks;
 using BobApi.BobEntities;
 using ClusterModifier.Exceptions;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy;
+using RemoteFileCopy.Entities;
 
 namespace ClusterModifier
 {
     public class ClusterExpander
     {
         private readonly ILogger<ClusterExpander> _logger;
+        private readonly RemoteFileCopier _remoteFileCopier;
 
-        public ClusterExpander(ILogger<ClusterExpander> logger)
+        public ClusterExpander(ILogger<ClusterExpander> logger, RemoteFileCopier remoteFileCopier)
         {
             _logger = logger;
+            _remoteFileCopier = remoteFileCopier;
         }
 
         public async Task ExpandCluster(ClusterExpandArguments args, CancellationToken cancellationToken)
@@ -54,10 +59,22 @@ namespace ClusterModifier
                             {
                                 var oldNode = oldConfig.Nodes.Find(n => n.Name == selectedReplica.Node);
                                 var oldDisk = oldNode.Disks.Find(d => d.Name == selectedReplica.Disk);
-                                if (CopyReplica(vdisk, replica, selectedReplica, oldDisk.Path, disk.Path, args))
+
+                                var oldAddr = await oldNode.FindIPAddress();
+                                var nodeAddr = await node.FindIPAddress();
+
+                                var oldDir = Path.Combine(oldDisk.Path, "bob", vdisk.Id.ToString()); // TODO Use dir from bob config
+                                var newDir = Path.Combine(disk.Path, "bob", vdisk.Id.ToString()); // TODO Use dir from bob config
+
+                                var oldRemoteDir = new RemoteDir(oldAddr, oldDir);
+                                var newRemoteDir = new RemoteDir(nodeAddr, newDir);
+
+                                var copy = await _remoteFileCopier.CopyWithRsync(oldRemoteDir, newRemoteDir, cancellationToken);
+                                if (!copy.IsError)
                                     break;
                                 else
-                                    _logger.LogWarning("Failed to copy from replica on node {Node}", selectedReplica.Node);
+                                    _logger.LogWarning("Failed to copy from replica on node {Node}: {Error}", selectedReplica.Node,
+                                        string.Join(Environment.NewLine, copy.ErrorLines));
                             }
                         }
                     }
@@ -106,40 +123,5 @@ namespace ClusterModifier
             _logger.LogInformation("Process returned code {ExitCode}", process.ExitCode);
             return process.ExitCode == 0;
         }
-
-        private bool CopyReplica(
-            ClusterConfiguration.VDisk vdisk,
-            ClusterConfiguration.VDisk.Replica replica,
-            ClusterConfiguration.VDisk.Replica oldReplica,
-            string oldPath,
-            string newPath,
-            ClusterExpandArguments args)
-        {
-            var dsaPath = Path.GetFullPath(args.DiskStatusAnalyzer);
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = dsaPath,
-                WorkingDirectory = Path.GetDirectoryName(dsaPath),
-            };
-            startInfo.ArgumentList.Add("copy-dir");
-            startInfo.ArgumentList.Add($"-s");
-            startInfo.ArgumentList.Add($"{oldReplica.Node}");
-            startInfo.ArgumentList.Add($"-d");
-            startInfo.ArgumentList.Add($"{replica.Node}");
-            startInfo.ArgumentList.Add($"--source-dir");
-            startInfo.ArgumentList.Add($"{oldPath}{Path.DirectorySeparatorChar}bob{Path.DirectorySeparatorChar}{vdisk.Id}");
-            startInfo.ArgumentList.Add($"--dest-dir");
-            startInfo.ArgumentList.Add($"{newPath}{Path.DirectorySeparatorChar}bob{Path.DirectorySeparatorChar}{vdisk.Id}");
-            var process = new Process { StartInfo = startInfo };
-            _logger.LogInformation("Starting process (pwd={WorkingDirectory}) {FileName} {ArgumentList}",
-                startInfo.WorkingDirectory, startInfo.FileName, string.Join(" ", process.StartInfo.ArgumentList));
-            if (args.DryRun)
-                return true;
-            process.Start();
-            process.WaitForExit();
-            _logger.LogInformation("Process returned code {ExitCode}", process.ExitCode);
-            return process.ExitCode == 0;
-        }
-
     }
 }

@@ -28,7 +28,7 @@ namespace ClusterModifier
             var provider = services.BuildServiceProvider();
 
             var expander = provider.GetRequiredService<ClusterExpander>();
-            await expander.ExpandCluster(arguments);
+            await expander.ExpandCluster(arguments, cancellationToken);
         }
     }
 }

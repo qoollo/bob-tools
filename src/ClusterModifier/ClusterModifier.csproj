@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BobApi\BobApi.csproj" />
     <ProjectReference Include="..\BobToolsCli\BobToolsCli.csproj" />
+    <ProjectReference Include="..\RemoteFileCopy\RemoteFileCopy.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="appsettings.json">
