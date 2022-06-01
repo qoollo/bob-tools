@@ -1,8 +1,10 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
+using ClusterModifier.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace ClusterModifier
@@ -16,12 +18,18 @@ namespace ClusterModifier
             _logger = logger;
         }
 
-        public async Task ExpandCluster(ClusterExpandArguments args)
+        public async Task ExpandCluster(ClusterExpandArguments args, CancellationToken cancellationToken)
         {
+            var oldConfigResult = await args.GetClusterConfigurationFromFile(args.OldConfigPath, cancellationToken);
+            if (!oldConfigResult.IsOk(out var oldConfig, out var oldError))
+                throw new ConfigurationException($"Old config is not available: {oldError}");
+            var newConfigResult = await args.FindClusterConfiguration(cancellationToken);
+            if (!newConfigResult.IsOk(out var newConfig, out var newError))
+                throw new ConfigurationException($"New config is not available: {newError}");
+
             _logger.LogDebug("Expanding cluster from {OldConfigPath} to {NewConfigPath}",
                 args.OldConfigPath, args.ClusterConfigPath);
-            var oldConfig = await ClusterConfiguration.FromYamlFile(args.OldConfigPath);
-            var newConfig = await ClusterConfiguration.FromYamlFile(args.ClusterConfigPath);
+
             foreach (var vdisk in newConfig.VDisks)
             {
                 using var vDiskScope = _logger.BeginScope("VDisk {vdiskId}", vdisk.Id);
