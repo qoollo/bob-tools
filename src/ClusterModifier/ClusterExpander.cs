@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
-using ClusterModifier.Exceptions;
+using BobToolsCli.Exceptions;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy;
 using RemoteFileCopy.Entities;
@@ -67,14 +67,24 @@ namespace ClusterModifier
                                 var newDir = Path.Combine(disk.Path, "bob", vdisk.Id.ToString()); // TODO Use dir from bob config
 
                                 var oldRemoteDir = new RemoteDir(oldAddr, oldDir);
-                                var newRemoteDir = new RemoteDir(nodeAddr, newDir);
-
-                                var copy = await _remoteFileCopier.CopyWithRsync(oldRemoteDir, newRemoteDir, cancellationToken);
-                                if (!copy.IsError)
+                                var remoteDir = new RemoteDir(nodeAddr, newDir);
+                                _logger.LogInformation("Trying to copy data from {Old} to {Current}", oldRemoteDir, remoteDir);
+                                if (args.DryRun)
+                                {
                                     break;
+                                }
                                 else
-                                    _logger.LogWarning("Failed to copy from replica on node {Node}: {Error}", selectedReplica.Node,
-                                        string.Join(Environment.NewLine, copy.ErrorLines));
+                                {
+                                    var copy = await _remoteFileCopier.CopyWithRsync(oldRemoteDir, remoteDir, cancellationToken);
+                                    if (!copy.IsError)
+                                    {
+                                        _logger.LogInformation("Successfully copied data from {Old} to {Current}", oldRemoteDir, remoteDir);
+                                        break;
+                                    }
+                                    else
+                                        _logger.LogWarning("Failed to copy data from {Old} to {Current}: {Error}", oldRemoteDir, remoteDir,
+                                            string.Join(Environment.NewLine, copy.ErrorLines));
+                                }
                             }
                         }
                     }
@@ -92,36 +102,33 @@ namespace ClusterModifier
                         using var replicaScope = _logger.BeginScope("Replica = {replicaNode}-{replicaDisk}", replica.Node, replica.Disk);
                         var node = oldConfig.Nodes.Find(n => n.Name == replica.Node);
                         var disk = node.Disks.Find(d => d.Name == replica.Disk);
-                        RemoveReplica(replica, vDisk, disk.Path, args);
+                        var addr = await node.FindIPAddress();
+                        var dir = Path.Combine(disk.Path, "bob", vDisk.Id.ToString()); // TODO Use dir from bob config
+                        var remoteDir = new RemoteDir(addr, dir);
+                        _logger.LogInformation("Removing data from {Directory}", remoteDir);
+                        if (!args.DryRun)
+                        {
+                            if (await _remoteFileCopier.RemoveInDir(remoteDir, cancellationToken))
+                                _logger.LogDebug("Successfully removed content of {Directory}", remoteDir);
+                            else
+                                _logger.LogWarning("Failed to remove content of {Directory}", remoteDir);
+                        }
                     }
                 }
         }
 
-        private bool RemoveReplica(ClusterConfiguration.VDisk.Replica replica,
-            ClusterConfiguration.VDisk vDisk,
-            string path,
-            ClusterExpandArguments args)
+        private async ValueTask<RemoteDir> GetRemoteDir(ClusterConfiguration.Node node, ClusterConfiguration.Node.Disk disk,
+            ClusterConfiguration.VDisk vDisk, ClusterExpandArguments args, CancellationToken cancellationToken = default)
         {
-            var dsaPath = Path.GetFullPath(args.DiskStatusAnalyzer);
-            var startInfo = new ProcessStartInfo
+            var addr = await node.FindIPAddress();
+            var apiAddr = args.GetNodePortStorage().GetNodeApiUri(node);
+            var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
+            if (nodeConfigResult.IsOk(out var conf, out var error))
             {
-                FileName = dsaPath,
-                WorkingDirectory = Path.GetDirectoryName(dsaPath),
-            };
-            startInfo.ArgumentList.Add("remove-dir");
-            startInfo.ArgumentList.Add($"--node");
-            startInfo.ArgumentList.Add($"{replica.Node}");
-            startInfo.ArgumentList.Add($"--dir");
-            startInfo.ArgumentList.Add($"{path}{Path.DirectorySeparatorChar}bob{Path.DirectorySeparatorChar}{vDisk.Id}");
-            var process = new Process { StartInfo = startInfo };
-            _logger.LogInformation("Starting process (pwd={WorkingDirectory}) {FileName} {ArgumentList}",
-                startInfo.WorkingDirectory, startInfo.FileName, string.Join(" ", process.StartInfo.ArgumentList));
-            if (args.DryRun)
-                return true;
-            process.Start();
-            process.WaitForExit();
-            _logger.LogInformation("Process returned code {ExitCode}", process.ExitCode);
-            return process.ExitCode == 0;
+                return null;
+            }
+            else
+                throw new ClusterStateException($"Node {node.Name} configuration is unavailable: {error}");
         }
     }
 }

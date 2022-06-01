@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
-using BobAliensRecovery.Exceptions;
+using BobToolsCli.Exceptions;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Entities;
 

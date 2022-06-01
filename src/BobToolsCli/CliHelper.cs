@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobToolsCli.BobApliClientFactories;
 using BobToolsCli.ConfigurationFinding;
+using BobToolsCli.Exceptions;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -47,6 +48,18 @@ namespace BobToolsCli
             catch (OperationCanceledException)
             {
                 Console.WriteLine("Cancelled");
+            }
+            catch (ClusterStateException e)
+            {
+                Console.WriteLine($"Cluster state is invalid: {e.Message}");
+            }
+            catch (ConfigurationException e)
+            {
+                Console.WriteLine($"Configuration is invalid: {e.Message}");
+            }
+            catch (OperationException e)
+            {
+                Console.WriteLine($"Execution failed: {e.Message}");
             }
             finally
             {

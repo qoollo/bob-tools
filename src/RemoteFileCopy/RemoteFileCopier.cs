@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Entities;
+using RemoteFileCopy.FilesFinding;
 using RemoteFileCopy.Rsync;
 using RemoteFileCopy.Rsync.Entities;
 using RemoteFileCopy.Ssh;
@@ -19,14 +20,17 @@ namespace RemoteFileCopy
         private readonly ILogger<RemoteFileCopier> _logger;
         private readonly RsyncWrapper _rsyncWrapper;
         private readonly SshWrapper _sshWrapper;
+        private readonly FilesFinder _filesFinder;
 
         public RemoteFileCopier(ILogger<RemoteFileCopier> logger,
             RsyncWrapper rsyncWrapper,
-            SshWrapper sshWrapper)
+            SshWrapper sshWrapper,
+            FilesFinder filesFinder)
         {
             _logger = logger;
             _rsyncWrapper = rsyncWrapper;
             _sshWrapper = sshWrapper;
+            _filesFinder = filesFinder;
         }
 
         public async Task<RsyncResult> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
@@ -37,6 +41,13 @@ namespace RemoteFileCopy
                 log = _logger.LogInformation;
             log("Copy from {from} to {to}: {result}", new object[] { from, to, result });
             return result;
+        }
+
+        public async Task<bool> RemoveInDir(RemoteDir dir, CancellationToken cancellationToken = default)
+        {
+            var files = await _filesFinder.FindFiles(dir, cancellationToken);
+            return await RemoveFiles(files, cancellationToken)
+                && await RemoveEmptySubdirs(dir, cancellationToken);
         }
 
         public async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)

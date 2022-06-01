@@ -4,9 +4,9 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery;
-using BobAliensRecovery.Exceptions;
 using BobApi.BobEntities;
 using BobToolsCli;
+using BobToolsCli.Exceptions;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -26,18 +26,6 @@ namespace BobAliensRecovery
             catch (MissingDependencyException e)
             {
                 Console.WriteLine($"Missing dependency: {e.Message}");
-            }
-            catch (ClusterStateException e)
-            {
-                Console.WriteLine($"Cluster state is invalid: {e.Message}");
-            }
-            catch (ConfigurationException e)
-            {
-                Console.WriteLine($"Configuration is invalid: {e.Message}");
-            }
-            catch (OperationException e)
-            {
-                Console.WriteLine($"Execution failed: {e.Message}");
             }
             catch (CommandLineFailureException e)
             {
