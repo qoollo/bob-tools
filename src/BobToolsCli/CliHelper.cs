@@ -9,6 +9,7 @@ using BobToolsCli.Exceptions;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.Exceptions;
 
 namespace BobToolsCli
 {
@@ -60,6 +61,15 @@ namespace BobToolsCli
             catch (OperationException e)
             {
                 Console.WriteLine($"Execution failed: {e.Message}");
+            }
+
+            catch (MissingDependencyException e)
+            {
+                Console.WriteLine($"Missing dependency: {e.Message}");
+            }
+            catch (CommandLineFailureException e)
+            {
+                Console.WriteLine($"Command line failure: {e.Message}");
             }
             finally
             {

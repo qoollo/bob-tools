@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BobApi\BobApi.csproj" />
+    <ProjectReference Include="..\RemoteFileCopy\RemoteFileCopy.csproj" />
   </ItemGroup>
 
 </Project>

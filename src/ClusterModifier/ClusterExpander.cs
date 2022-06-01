@@ -16,24 +16,27 @@ namespace ClusterModifier
     {
         private readonly ILogger<ClusterExpander> _logger;
         private readonly RemoteFileCopier _remoteFileCopier;
+        private readonly ClusterExpandArguments _args;
 
-        public ClusterExpander(ILogger<ClusterExpander> logger, RemoteFileCopier remoteFileCopier)
+        public ClusterExpander(ILogger<ClusterExpander> logger, RemoteFileCopier remoteFileCopier,
+            ClusterExpandArguments args)
         {
             _logger = logger;
             _remoteFileCopier = remoteFileCopier;
+            _args = args;
         }
 
-        public async Task ExpandCluster(ClusterExpandArguments args, CancellationToken cancellationToken)
+        public async Task ExpandCluster(CancellationToken cancellationToken)
         {
-            var oldConfigResult = await args.GetClusterConfigurationFromFile(args.OldConfigPath, cancellationToken);
+            var oldConfigResult = await _args.GetClusterConfigurationFromFile(_args.OldConfigPath, cancellationToken);
             if (!oldConfigResult.IsOk(out var oldConfig, out var oldError))
                 throw new ConfigurationException($"Old config is not available: {oldError}");
-            var newConfigResult = await args.FindClusterConfiguration(cancellationToken);
+            var newConfigResult = await _args.FindClusterConfiguration(cancellationToken);
             if (!newConfigResult.IsOk(out var newConfig, out var newError))
                 throw new ConfigurationException($"New config is not available: {newError}");
 
             _logger.LogDebug("Expanding cluster from {OldConfigPath} to {NewConfigPath}",
-                args.OldConfigPath, args.ClusterConfigPath);
+                _args.OldConfigPath, _args.ClusterConfigPath);
 
             foreach (var vdisk in newConfig.VDisks)
             {
@@ -60,16 +63,10 @@ namespace ClusterModifier
                                 var oldNode = oldConfig.Nodes.Find(n => n.Name == selectedReplica.Node);
                                 var oldDisk = oldNode.Disks.Find(d => d.Name == selectedReplica.Disk);
 
-                                var oldAddr = await oldNode.FindIPAddress();
-                                var nodeAddr = await node.FindIPAddress();
-
-                                var oldDir = Path.Combine(oldDisk.Path, "bob", vdisk.Id.ToString()); // TODO Use dir from bob config
-                                var newDir = Path.Combine(disk.Path, "bob", vdisk.Id.ToString()); // TODO Use dir from bob config
-
-                                var oldRemoteDir = new RemoteDir(oldAddr, oldDir);
-                                var remoteDir = new RemoteDir(nodeAddr, newDir);
+                                var oldRemoteDir = await GetRemoteDir(oldNode, oldDisk, vdisk, cancellationToken);
+                                var remoteDir = await GetRemoteDir(node, disk, vdisk, cancellationToken);
                                 _logger.LogInformation("Trying to copy data from {Old} to {Current}", oldRemoteDir, remoteDir);
-                                if (args.DryRun)
+                                if (_args.DryRun)
                                 {
                                     break;
                                 }
@@ -93,7 +90,7 @@ namespace ClusterModifier
                     _logger.LogDebug("Vdisk's replicas not found in old config");
             }
 
-            if (args.RemoveSourceFiles)
+            if (_args.RemoveOldReplicas)
                 foreach (var vDisk in oldConfig.VDisks)
                 {
                     using var vDiskScope = _logger.BeginScope("VDisk {vdiskId}", vDisk.Id);
@@ -102,30 +99,29 @@ namespace ClusterModifier
                         using var replicaScope = _logger.BeginScope("Replica = {replicaNode}-{replicaDisk}", replica.Node, replica.Disk);
                         var node = oldConfig.Nodes.Find(n => n.Name == replica.Node);
                         var disk = node.Disks.Find(d => d.Name == replica.Disk);
-                        var addr = await node.FindIPAddress();
-                        var dir = Path.Combine(disk.Path, "bob", vDisk.Id.ToString()); // TODO Use dir from bob config
-                        var remoteDir = new RemoteDir(addr, dir);
-                        _logger.LogInformation("Removing data from {Directory}", remoteDir);
-                        if (!args.DryRun)
+                        var remoteDir = await GetRemoteDir(node, disk, vDisk, cancellationToken);
+                        _logger.LogInformation("Removing {Directory}", remoteDir);
+                        if (!_args.DryRun)
                         {
                             if (await _remoteFileCopier.RemoveInDir(remoteDir, cancellationToken))
-                                _logger.LogDebug("Successfully removed content of {Directory}", remoteDir);
+                                _logger.LogDebug("Successfully removed {Directory}", remoteDir);
                             else
-                                _logger.LogWarning("Failed to remove content of {Directory}", remoteDir);
+                                _logger.LogWarning("Failed to remove {Directory}", remoteDir);
                         }
                     }
                 }
         }
 
         private async ValueTask<RemoteDir> GetRemoteDir(ClusterConfiguration.Node node, ClusterConfiguration.Node.Disk disk,
-            ClusterConfiguration.VDisk vDisk, ClusterExpandArguments args, CancellationToken cancellationToken = default)
+            ClusterConfiguration.VDisk vDisk, CancellationToken cancellationToken = default)
         {
             var addr = await node.FindIPAddress();
-            var apiAddr = args.GetNodePortStorage().GetNodeApiUri(node);
+            var apiAddr = _args.GetNodePortStorage().GetNodeApiUri(node);
             var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
             if (nodeConfigResult.IsOk(out var conf, out var error))
             {
-                return null;
+                var dir = Path.Combine(disk.Path, conf.RootDir, vDisk.Id.ToString()); // TODO Use dir from bob config
+                return new RemoteDir(addr, dir);
             }
             else
                 throw new ClusterStateException($"Node {node.Name} configuration is unavailable: {error}");

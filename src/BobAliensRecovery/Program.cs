@@ -19,18 +19,7 @@ namespace BobAliensRecovery
     {
         static async Task Main(string[] args)
         {
-            try
-            {
-                await CliHelper.RunWithParsed<ProgramArguments>(args, RecoverAliens);
-            }
-            catch (MissingDependencyException e)
-            {
-                Console.WriteLine($"Missing dependency: {e.Message}");
-            }
-            catch (CommandLineFailureException e)
-            {
-                Console.WriteLine($"Command line failure: {e.Message}");
-            }
+            await CliHelper.RunWithParsed<ProgramArguments>(args, RecoverAliens);
         }
 
         private static async Task RecoverAliens(ProgramArguments arguments, IServiceCollection services, CancellationToken cancellationToken)

@@ -4,7 +4,7 @@ using CommandLine;
 namespace ClusterModifier
 {
     [Verb("cluster-expand", HelpText = "Expand cluster from old config to current config")]
-    public class ClusterExpandArguments : CommonArguments
+    public class ClusterExpandArguments : CommonWithSshArguments
     {
         [Option("old-config", Required = true, HelpText = "Path to old config")]
         public string OldConfigPath { get; set; }
@@ -12,7 +12,7 @@ namespace ClusterModifier
         [Option("dry-run", Required = false, HelpText = "Do not copy anything")]
         public bool DryRun { get; set; } = false;
 
-        [Option("remove-source", Required = false, HelpText = "Remove source files after copy")]
-        public bool RemoveSourceFiles { get; set; } = false;
+        [Option("remove-old-replicas", Required = false, HelpText = "Remove files in old replicas")]
+        public bool RemoveOldReplicas { get; set; } = false;
     }
 }

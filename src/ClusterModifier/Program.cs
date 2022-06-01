@@ -11,6 +11,7 @@ using CommandLine;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.Extensions;
 
 namespace ClusterModifier
 {
@@ -25,6 +26,7 @@ namespace ClusterModifier
             CancellationToken cancellationToken)
         {
             services.AddTransient<ClusterExpander>();
+            services.AddRemoteFileCopy(arguments.SshConfiguration);
             var provider = services.BuildServiceProvider();
 
             var expander = provider.GetRequiredService<ClusterExpander>();

@@ -9,11 +9,11 @@ namespace BobToolsCli.Exceptions
         {
         }
 
-        public OperationException(string? message) : base(message)
+        public OperationException(string message) : base(message)
         {
         }
 
-        public OperationException(string? message, Exception? innerException) : base(message, innerException)
+        public OperationException(string message, Exception innerException) : base(message, innerException)
         {
         }
 
