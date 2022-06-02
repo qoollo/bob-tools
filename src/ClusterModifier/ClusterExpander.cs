@@ -41,8 +41,8 @@ namespace ClusterModifier
 
             await CopyDataToNewReplicas(oldConfig, config, cancellationToken);
 
-            if (_args.RemoveOldReplicas)
-                await RemoveOldReplicas(oldConfig, config, cancellationToken);
+            if (_args.RemoveUnusedReplicas)
+                await RemoveUnusedReplicas(oldConfig, config, cancellationToken);
         }
 
         private async Task CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
@@ -98,42 +98,39 @@ namespace ClusterModifier
             }
         }
 
-        private async Task RemoveOldReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
+        private async Task RemoveUnusedReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Removing data from old replicas");
-            foreach (var vDisk in oldConfig.VDisks)
-            {
-                foreach (var replica in vDisk.Replicas.Where(r => !newConfig.VDisks.Any(vd => vd.Replicas.Any(r1 => r.Disk == r1.Disk && r.Node == r1.Node))))
-                {
-                    var node = oldConfig.Nodes.Find(n => n.Name == replica.Node);
-                    var disk = node.Disks.Find(d => d.Name == replica.Disk);
-                    var remoteDir = await GetRemoteDir(node, disk, vDisk, cancellationToken);
-                    _logger.LogInformation("Removing {Directory}", remoteDir);
-                    if (!_args.DryRun)
-                    {
-                        if (await _remoteFileCopier.RemoveInDir(remoteDir, cancellationToken))
-                            _logger.LogDebug("Successfully removed {Directory}", remoteDir);
-                        else
-                            _logger.LogWarning("Failed to remove {Directory}", remoteDir);
-                    }
-                }
-            }
+            var newRemoteDirs = await GetAllRemoteDirs(newConfig, cancellationToken);
+            var oldRemoteDirs = await GetAllRemoteDirs(oldConfig, cancellationToken);
+            foreach (var remoteDir in oldRemoteDirs.Except(newRemoteDirs))
+                await RemoveDir(remoteDir, cancellationToken);
         }
 
-        private async ValueTask<RemoteDir> GetRemoteDir(ClusterConfiguration.Node node, ClusterConfiguration.Node.Disk disk,
-            ClusterConfiguration.VDisk vDisk, CancellationToken cancellationToken = default)
+        private async Task<HashSet<RemoteDir>> GetAllRemoteDirs(ClusterConfiguration config, CancellationToken cancellationToken)
         {
-            var addr = await node.FindIPAddress();
-            var apiAddr = _args.GetNodePortStorage().GetNodeApiUri(node);
-            var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
-            if (nodeConfigResult.IsOk(out var conf, out var error))
+            var result = new HashSet<RemoteDir>();
+            foreach (var node in config.Nodes)
             {
-                var dir = Path.Combine(disk.Path, conf.RootDir, vDisk.Id.ToString());
-                return new RemoteDir(addr, dir);
+                var creator = await GetCreator(node, cancellationToken);
+                foreach (var vDisk in config.VDisks)
+                    foreach (var replica in vDisk.Replicas.Where(r => r.Node == node.Name))
+                        result.Add(creator(node.Disks.Find(d => d.Name == replica.Disk), vDisk));
             }
-            else
-                throw new ClusterStateException($"Node {node.Name} configuration is unavailable: {error}");
+            return result;
+        }
+
+        private async Task RemoveDir(RemoteDir remoteDir, CancellationToken cancellationToken)
+        {
+            _logger.LogInformation("Removing {Directory}", remoteDir);
+            if (!_args.DryRun)
+            {
+                if (await _remoteFileCopier.RemoveInDir(remoteDir, cancellationToken))
+                    _logger.LogDebug("Successfully removed {Directory}", remoteDir);
+                else
+                    _logger.LogWarning("Failed to remove {Directory}", remoteDir);
+            }
         }
 
         private async Task<Func<ClusterConfiguration.Node.Disk, ClusterConfiguration.VDisk, RemoteDir>> GetCreator(

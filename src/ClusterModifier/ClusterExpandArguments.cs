@@ -12,7 +12,7 @@ namespace ClusterModifier
         [Option("dry-run", Required = false, HelpText = "Do not copy anything")]
         public bool DryRun { get; set; } = false;
 
-        [Option("remove-old-replicas", Required = false, HelpText = "Remove files in old replicas")]
-        public bool RemoveOldReplicas { get; set; } = false;
+        [Option("remove-unused-replicas", Required = false, HelpText = "Remove files in unused replicas")]
+        public bool RemoveUnusedReplicas { get; set; } = false;
     }
 }
