@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine as build
 # Build
 COPY ./src /src
 COPY ./buildscripts /buildscripts
+COPY ./*.props /
 RUN /buildscripts/publish.sh linux-musl-x64
 
 FROM alpine
