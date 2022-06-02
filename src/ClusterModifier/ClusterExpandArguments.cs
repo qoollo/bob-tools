@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using System.Linq;
 using BobToolsCli;
+using BobToolsCli.Exceptions;
 using CommandLine;
 
 namespace ClusterModifier
@@ -14,5 +17,25 @@ namespace ClusterModifier
 
         [Option("remove-unused-replicas", Required = false, HelpText = "Remove files in unused replicas")]
         public bool RemoveUnusedReplicas { get; set; } = false;
+
+        [Option("bob-root-dir", HelpText = "Root dirs for bob nodes. E.g. node1:bob,node2:rootdir. Wildcard char (*) can be used to set root dir for all nodes.", Separator = ',')]
+        public IEnumerable<string> BobRootDirOverrides { get; set; } = Enumerable.Empty<string>();
+
+        public string FindRootDir(string node)
+        {
+            if (BobRootDirOverrides.Any())
+            {
+                foreach (var rootDir in BobRootDirOverrides)
+                {
+                    var split = rootDir.Split(':');
+                    if (split.Length != 2)
+                        throw new ConfigurationException("Malformed overrides argument");
+
+                    if (split[0] == node || split[0] == "*")
+                        return split[1];
+                }
+            }
+            return null;
+        }
     }
 }

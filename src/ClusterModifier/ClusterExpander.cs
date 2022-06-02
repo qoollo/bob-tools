@@ -133,18 +133,28 @@ namespace ClusterModifier
             }
         }
 
-        private async Task<Func<ClusterConfiguration.Node.Disk, ClusterConfiguration.VDisk, RemoteDir>> GetCreator(
+        private async ValueTask<Func<ClusterConfiguration.Node.Disk, ClusterConfiguration.VDisk, RemoteDir>> GetCreator(
             ClusterConfiguration.Node node, CancellationToken cancellationToken = default)
         {
             var addr = await node.FindIPAddress();
-            var apiAddr = _args.GetNodePortStorage().GetNodeApiUri(node);
-            var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
-            if (nodeConfigResult.IsOk(out var conf, out var error))
+            var rootDir = await GetRootDir(node, cancellationToken);
+            return (disk, vdisk) => new RemoteDir(addr, Path.Combine(disk.Path, rootDir, vdisk.Id.ToString()));
+        }
+
+        private async ValueTask<string> GetRootDir(ClusterConfiguration.Node node, CancellationToken cancellationToken = default)
+        {
+            var rootDir = _args.FindRootDir(node.Name);
+            if (rootDir == null)
             {
-                return (disk, vdisk) => new RemoteDir(addr, Path.Combine(disk.Path, conf.RootDir, vdisk.Id.ToString()));
+                var apiAddr = _args.GetNodePortStorage().GetNodeApiUri(node);
+                var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
+                if (nodeConfigResult.IsOk(out var conf, out var error))
+                    rootDir = conf.RootDir;
+                else
+                    throw new ClusterStateException($"Node {node.Name} configuration is unavailable: {error}, " +
+                        "and bob-root-dir does not contain enough information");
             }
-            else
-                throw new ClusterStateException($"Node {node.Name} configuration is unavailable: {error}");
+            return rootDir;
         }
     }
 }
