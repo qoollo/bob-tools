@@ -52,61 +52,21 @@ namespace BobAliensRecovery.AliensRecovery
         private async Task<List<BlobInfo>> CopyBlobsInParallel(IEnumerable<RecoveryTransaction> recoveryTransactions,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
-            var remaining = recoveryTransactions.ToList();
-            var countByAddress = remaining.SelectMany(t => new[] { t.From.Address, t.To.Address }).Distinct()
-                .ToDictionary(a => a, _ => 0);
-
-            var results = new List<BlobInfo>[remaining.Count];
-            await Parallel.ForEachAsync(Enumerable.Range(0, remaining.Count),
-                new ParallelOptions
-                {
-                    CancellationToken = cancellationToken,
-                    MaxDegreeOfParallelism = aliensRecoveryOptions.CopyParallelDegree
-                },
-                async (ind, t) =>
-                {
-                    var transaction = TakeTransaction(remaining, countByAddress);
-                    try
-                    {
-                        results[ind] = await InvokeTransaction(transaction, aliensRecoveryOptions, t);
-                    }
-                    finally
-                    {
-                        CleanUp(transaction, countByAddress);
-                    }
-                });
-            return results.Where(r => r != null).SelectMany(l => l).ToList();
+            var transactionsByKey = recoveryTransactions
+                .GroupBy(t => (t.From, t.To))
+                .ToDictionary(g => g.Key);
+            var copyResults = await _remoteFileCopier.CopyWithRsyncParallel(
+                transactionsByKey.Keys,
+                aliensRecoveryOptions.CopyParallelDegree,
+                cancellationToken);
+            return copyResults
+                .SelectMany(t => transactionsByKey[(t.from, t.to)].SelectMany(tr => ProcessCopyResult(tr, aliensRecoveryOptions, t.res)))
+                .Where(l => l != null)
+                .ToList();
         }
 
-        private static RecoveryTransaction TakeTransaction(List<RecoveryTransaction> remaining, Dictionary<IPAddress, int> countByAddress)
+        private List<BlobInfo> ProcessCopyResult(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions, RemoteFileCopy.Rsync.Entities.RsyncResult rsyncResult)
         {
-            RecoveryTransaction transaction;
-            lock (countByAddress)
-            {
-                transaction = remaining.OrderBy(t => countByAddress[t.From.Address] + countByAddress[t.To.Address]).First();
-                remaining.Remove(transaction);
-                countByAddress[transaction.From.Address]++;
-                countByAddress[transaction.To.Address]++;
-            }
-
-            return transaction;
-        }
-
-        private static void CleanUp(RecoveryTransaction transaction, Dictionary<IPAddress, int> countByAddress)
-        {
-            lock (countByAddress)
-            {
-                countByAddress[transaction.From.Address]--;
-                countByAddress[transaction.To.Address]--;
-            }
-        }
-
-        private async Task<List<BlobInfo>> InvokeTransaction(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions,
-            CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Starting {transaction}", transaction);
-            var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
-
             var blobsToRemove = new List<BlobInfo>();
             if (!rsyncResult.IsError)
             {
