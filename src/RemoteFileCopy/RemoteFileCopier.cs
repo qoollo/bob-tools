@@ -43,14 +43,6 @@ namespace RemoteFileCopy
             return result;
         }
 
-        public async Task<(RemoteDir from, RemoteDir to, RsyncResult res)[]> CopyWithRsyncParallel(
-            IEnumerable<(RemoteDir from, RemoteDir to)> transactions,
-            int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
-        {
-            var copier = new ParallelRemoteFileCopier(maxDegreeOfParallelism, transactions, CopyWithRsync);
-            return await copier.Copy(cancellationToken);
-        }
-
         public async Task<bool> RemoveInDir(RemoteDir dir, CancellationToken cancellationToken = default)
         {
             var files = await _filesFinder.FindFiles(dir, cancellationToken);
@@ -81,7 +73,7 @@ namespace RemoteFileCopy
             var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address,
                 $"[ -d {dir.Path} ] && find {dir.Path} -type d -empty -delete", cancellationToken);
             foreach (var line in sshResult.StdErr)
-                _logger.LogInformation("{Line}", line);
+                _logger.LogInformation(line);
             return !sshResult.IsError;
         }
     }
