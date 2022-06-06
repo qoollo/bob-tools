@@ -50,25 +50,32 @@ namespace ClusterModifier
         {
             _logger.LogInformation("Copying data from old to current replicas");
 
-            var oldNodes = oldConfig.Nodes;
-            var nodes = config.Nodes;
-            var pairs = oldNodes.SelectMany(on => nodes.Select(n => (old: on, cur: n)))
-                .Where(t => t.old.Name == t.cur.Name);
-            var vDisksPairs = oldConfig.VDisks.SelectMany(ov => config.VDisks.Select(v => (old: ov, cur: v)))
-                .Where(t => t.old.Id == t.cur.Id).ToArray();
-            foreach (var (oldNode, node) in pairs)
+            var vDiskPairs = oldConfig.VDisks.SelectMany(ovd => config.VDisks.Select(vd => (ovd, vd)))
+                .Where(t => t.ovd.Id == t.vd.Id);
+            var oldNodeInfoByName = await GetNodeInfoByName(oldConfig, cancellationToken);
+            var nodeInfoByName = await GetNodeInfoByName(config, cancellationToken);
+            foreach (var (oldVDisk, vDisk) in vDiskPairs)
             {
-                var oldCreator = await GetCreator(oldNode, cancellationToken);
-                var creator = await GetCreator(node, cancellationToken);
-                foreach (var (oldVDisk, vDisk) in vDisksPairs)
-                    foreach (var replica in vDisk.Replicas.Where(r => r.Node == node.Name))
-                    {
-                        var dir = creator(node.Disks.Find(d => d.Name == replica.Disk), vDisk);
-                        var oldDirs = oldVDisk.Replicas.Select(or => oldCreator(oldNode.Disks.Find(d => d.Name == or.Disk), oldVDisk));
-                        if (!await CopyDataFromAnyLocation(dir, oldDirs, cancellationToken))
-                            throw new OperationException($"Failed to copy data for replica of {vDisk.Id} on {replica.Disk}");
-                    }
+                var oldDirs = oldVDisk.Replicas.Select(r => oldNodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, oldVDisk));
+                var newDirs = vDisk.Replicas.Select(r => nodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, vDisk));
+                var missing = newDirs.Except(oldDirs);
+                foreach (var newDir in missing)
+                    if (!await CopyDataFromAnyLocation(newDir, oldDirs, cancellationToken))
+                        throw new OperationException($"Failed to copy data for replica of {vDisk.Id}");
             }
+        }
+
+        private async Task<Dictionary<string, NodeInfo>> GetNodeInfoByName(ClusterConfiguration config, CancellationToken cancellationToken)
+        {
+            var nodeInfoByName = new Dictionary<string, NodeInfo>();
+            foreach (var node in config.Nodes)
+            {
+                var cr = await GetCreator(node, cancellationToken);
+                var disks = node.Disks.ToDictionary(d => d.Name);
+                nodeInfoByName.Add(node.Name, new NodeInfo(node, cr, disks));
+            }
+
+            return nodeInfoByName;
         }
 
         private async Task<bool> CopyDataFromAnyLocation(RemoteDir target, IEnumerable<RemoteDir> sources, CancellationToken cancellationToken)
@@ -133,7 +140,8 @@ namespace ClusterModifier
             }
         }
 
-        private async ValueTask<Func<ClusterConfiguration.Node.Disk, ClusterConfiguration.VDisk, RemoteDir>> GetCreator(
+        private delegate RemoteDir GetRemoteDir(ClusterConfiguration.Node.Disk disk, ClusterConfiguration.VDisk vDisk);
+        private async ValueTask<GetRemoteDir> GetCreator(
             ClusterConfiguration.Node node, CancellationToken cancellationToken = default)
         {
             var addr = await node.FindIPAddress();
@@ -155,6 +163,26 @@ namespace ClusterModifier
                         "and bob-root-dir does not contain enough information");
             }
             return rootDir;
+        }
+
+        private readonly struct NodeInfo
+        {
+            private readonly GetRemoteDir _getRemoteDir;
+            private readonly Dictionary<string, ClusterConfiguration.Node.Disk> _diskByName;
+            private readonly ClusterConfiguration.Node _node;
+
+            public NodeInfo(ClusterConfiguration.Node node,
+                GetRemoteDir getRemoteDir, Dictionary<string, ClusterConfiguration.Node.Disk> diskByName)
+            {
+                _node = node;
+                _getRemoteDir = getRemoteDir;
+                _diskByName = diskByName;
+            }
+
+            public RemoteDir GetRemoteDirForDisk(string diskName, ClusterConfiguration.VDisk vDisk)
+                => _diskByName.TryGetValue(diskName, out var disk)
+                    ? _getRemoteDir(disk, vDisk)
+                    : throw new ClusterStateException($"Disk {diskName} not found on node {_node.Name}");
         }
     }
 }
