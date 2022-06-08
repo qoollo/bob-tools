@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
@@ -49,20 +50,53 @@ namespace ClusterModifier
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Copying data from old to current replicas");
+            var sourceDirsByDest = await GetSourceDirsByDestination(oldConfig, config, cancellationToken);
+            var operations = CollectOperations(sourceDirsByDest);
+            if (!_args.DryRun)
+                foreach (var (src, dst) in operations)
+                    await _remoteFileCopier.CopyWithRsync(src, dst, cancellationToken);
+        }
 
+        private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
+            ClusterConfiguration config, CancellationToken cancellationToken)
+        {
             var vDiskPairs = oldConfig.VDisks.SelectMany(ovd => config.VDisks.Select(vd => (ovd, vd)))
                 .Where(t => t.ovd.Id == t.vd.Id);
             var oldNodeInfoByName = await GetNodeInfoByName(oldConfig, cancellationToken);
             var nodeInfoByName = await GetNodeInfoByName(config, cancellationToken);
+            var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
             foreach (var (oldVDisk, vDisk) in vDiskPairs)
             {
                 var oldDirs = oldVDisk.Replicas.Select(r => oldNodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, oldVDisk));
                 var newDirs = vDisk.Replicas.Select(r => nodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, vDisk));
                 var missing = newDirs.Except(oldDirs);
                 foreach (var newDir in missing)
-                    if (!await CopyDataFromAnyLocation(newDir, oldDirs, cancellationToken))
-                        throw new OperationException($"Failed to copy data for replica of {vDisk.Id}");
+                    if (sourceDirsByDest.TryGetValue(newDir, out var dirs))
+                        dirs.UnionWith(oldDirs);
+                    else
+                        sourceDirsByDest.Add(newDir, oldDirs.ToHashSet());
             }
+
+            return sourceDirsByDest;
+        }
+
+        private static List<(RemoteDir, RemoteDir)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest)
+        {
+            var sourceCount = new Dictionary<IPAddress, int>();
+            foreach (var sources in sourceDirsByDest.Values)
+                foreach (var src in sources)
+                    sourceCount[src.Address] = 0;
+            var operations = new List<(RemoteDir, RemoteDir)>();
+            foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address).ThenBy(kv => kv.Key.Path))
+            {
+                var bestSource = sources
+                    .OrderBy(rd => sourceCount[dest.Address])
+                    .ThenBy(rd => rd.Address).ThenBy(rd => rd.Path).First();
+                sourceCount[bestSource.Address]++;
+                operations.Add((bestSource, dest));
+            }
+
+            return operations;
         }
 
         private async Task<Dictionary<string, NodeInfo>> GetNodeInfoByName(ClusterConfiguration config, CancellationToken cancellationToken)
@@ -76,33 +110,6 @@ namespace ClusterModifier
             }
 
             return nodeInfoByName;
-        }
-
-        private async Task<bool> CopyDataFromAnyLocation(RemoteDir target, IEnumerable<RemoteDir> sources, CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Trying to copy data to {Directory}", target);
-            if (_args.DryRun || !sources.Any())
-            {
-                return true;
-            }
-            else
-            {
-                foreach (var source in sources)
-                {
-                    var copy = await _remoteFileCopier.CopyWithRsync(source, target, cancellationToken);
-                    if (!copy.IsError)
-                    {
-                        _logger.LogInformation("Successfully copied data from {Source} to {Directory}", source, target);
-                        return true;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Failed to copy data from {Source} to {Directory}: {Error}", source, target,
-                            string.Join(Environment.NewLine, copy.ErrorLines));
-                    }
-                }
-                return false;
-            }
         }
 
         private async Task RemoveUnusedReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
