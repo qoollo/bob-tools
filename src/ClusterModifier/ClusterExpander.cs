@@ -82,6 +82,7 @@ namespace ClusterModifier
 
         private static List<(RemoteDir, RemoteDir)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest)
         {
+            // TODO From may be to too, so we need to check sum
             var sourceCount = new Dictionary<IPAddress, int>();
             foreach (var sources in sourceDirsByDest.Values)
                 foreach (var src in sources)
