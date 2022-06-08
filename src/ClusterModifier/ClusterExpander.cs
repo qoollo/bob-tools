@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
 using BobToolsCli.Exceptions;
+using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy;
 using RemoteFileCopy.Entities;
@@ -53,8 +54,13 @@ namespace ClusterModifier
             var sourceDirsByDest = await GetSourceDirsByDestination(oldConfig, config, cancellationToken);
             var operations = CollectOperations(sourceDirsByDest);
             if (!_args.DryRun)
-                foreach (var (src, dst) in operations)
-                    await _remoteFileCopier.CopyWithRsync(src, dst, cancellationToken);
+            {
+                var parallelOperations = operations
+                    .Select(op => new ParallelP2PProcessor<bool>.Operation(op.from.Address, op.to.Address,
+                        () => Copy(op.from, op.to, cancellationToken)))
+                    .ToArray();
+                await new ParallelP2PProcessor<bool>(_args.CopyParallelDegree, parallelOperations).Invoke(cancellationToken);
+            }
         }
 
         private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
@@ -80,7 +86,7 @@ namespace ClusterModifier
             return sourceDirsByDest;
         }
 
-        private static List<(RemoteDir, RemoteDir)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest)
+        private static List<(RemoteDir from, RemoteDir to)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest)
         {
             var loadCount = new Dictionary<IPAddress, int>();
             foreach (var sources in sourceDirsByDest.Values)
@@ -120,6 +126,14 @@ namespace ClusterModifier
             var oldRemoteDirs = await GetAllRemoteDirs(oldConfig, cancellationToken);
             foreach (var remoteDir in oldRemoteDirs.Except(newRemoteDirs))
                 await RemoveDir(remoteDir, cancellationToken);
+        }
+
+        private async Task<bool> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
+        {
+            var result = await _remoteFileCopier.CopyWithRsync(from, to, cancellationToken);
+            if (result.IsError)
+                throw new OperationException($"Failed to copy data from {from} to {to}");
+            return true;
         }
 
         private async Task<HashSet<RemoteDir>> GetAllRemoteDirs(ClusterConfiguration config, CancellationToken cancellationToken)

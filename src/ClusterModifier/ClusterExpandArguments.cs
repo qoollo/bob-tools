@@ -21,6 +21,9 @@ namespace ClusterModifier
         [Option("bob-root-dir", HelpText = "Root dirs for bob nodes. E.g. node1:bob,node2:rootdir. Wildcard char (*) can be used to set root dir for all nodes.", Separator = ',')]
         public IEnumerable<string> BobRootDirOverrides { get; set; } = Enumerable.Empty<string>();
 
+        [Option("copy-parallel-degree", HelpText = "Number of simultaneous copy processes", Default = 1)]
+        public int CopyParallelDegree { get; set; }
+
         public string FindRootDir(string node)
         {
             if (BobRootDirOverrides.Any())
