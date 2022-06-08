@@ -82,18 +82,17 @@ namespace ClusterModifier
 
         private static List<(RemoteDir, RemoteDir)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest)
         {
-            // TODO From may be to too, so we need to check sum
-            var sourceCount = new Dictionary<IPAddress, int>();
+            var loadCount = new Dictionary<IPAddress, int>();
             foreach (var sources in sourceDirsByDest.Values)
                 foreach (var src in sources)
-                    sourceCount[src.Address] = 0;
+                    loadCount[src.Address] = 0;
             var operations = new List<(RemoteDir, RemoteDir)>();
             foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address).ThenBy(kv => kv.Key.Path))
             {
                 var bestSource = sources
-                    .OrderBy(rd => sourceCount[dest.Address])
+                    .OrderBy(rd => loadCount[rd.Address])
                     .ThenBy(rd => rd.Address).ThenBy(rd => rd.Path).First();
-                sourceCount[bestSource.Address]++;
+                loadCount[bestSource.Address]++;
                 operations.Add((bestSource, dest));
             }
 
