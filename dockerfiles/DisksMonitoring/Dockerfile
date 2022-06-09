@@ -17,6 +17,6 @@ RUN dotnet publish --no-restore -c Release -r linux-musl-x64 -o publish /src/${A
 FROM alpine
 
 COPY --from=build /publish/${AppName} /root/${AppName}
-RUN apk add --no-cache krb5-libs libstdc++ libgcc
+RUN apk add --no-cache krb5-libs libstdc++ libgcc sudo
 
 ENTRYPOINT ["/root/DisksMonitoring"]

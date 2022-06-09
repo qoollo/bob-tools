@@ -45,7 +45,6 @@ namespace DisksMonitoring
             services.AddTransient<DisksCopier>();
             services.AddTransient<ExternalScriptsRunner>();
             services.AddTransient<DevPathDataFinder>();
-            services.AddTransient<LogicalVolumesFinder>();
             services.AddTransient<IFileSystemAccessor, LinuxFileSystemAccessor>();
 
             serviceProvider = services.BuildServiceProvider();
