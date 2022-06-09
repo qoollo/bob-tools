@@ -22,9 +22,17 @@ Tool for discovery, formatting and mounting of new disks
 
 Tool for recovering aliens from nodes.
 
+### Dockerized
+
+Requires ssh key to be available to run.
+
 ### Requirements
 
-+ rsync (with xxh128 support)
-+ sshd
-+ find
-+ xxhash
+- rsync (with xxh128 support)
+- sshd
+- find
+- xxhash
+
+### Building dockers
+
+To build docker images simply pass appropriate dockerfile from `dockerfiles` dir, using root folder as context. E.g. `docker build -f dockerfiles/RecordsCalculatorDockerfile .`.
