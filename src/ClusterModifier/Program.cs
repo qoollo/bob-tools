@@ -29,6 +29,11 @@ namespace ClusterModifier
 
         private static async Task ExpandCluster(ExpandClusterOptions options)
         {
+            if (!File.Exists(options.DiskStatusAnalyzer))
+            {
+                logger.LogError("DiskStatusAnalyzer not found (path from config: {Path})", options.DiskStatusAnalyzer);
+                return;
+            }
             logger.LogDebug($"Expanding cluster from {options.OldConfigPath} to {options.NewConfigPath}");
             var oldConfig = await ClusterConfiguration.FromYamlFile(options.OldConfigPath);
             var newConfig = await ClusterConfiguration.FromYamlFile(options.NewConfigPath);
@@ -176,8 +181,8 @@ namespace ClusterModifier
             [Option("remove-source", Required = false, HelpText = "Remove source files after copy")]
             public bool RemoveSourceFiles { get; set; } = false;
 
-            [Option("dsa", Required = true, HelpText = "Path to disk status analyzer")]
-            public string DiskStatusAnalyzer { get; set; }
+            [Option("dsa", HelpText = "Path to disk status analyzer")]
+            public string DiskStatusAnalyzer { get; set; } = "./DiskStatusAnalyzer";
         }
     }
 }
