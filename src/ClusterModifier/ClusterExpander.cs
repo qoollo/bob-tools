@@ -93,11 +93,11 @@ namespace ClusterModifier
                 foreach (var src in sources)
                     loadCount[src.Address] = 0;
             var operations = new List<(RemoteDir, RemoteDir)>();
-            foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address).ThenBy(kv => kv.Key.Path))
+            foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address.ToString()).ThenBy(kv => kv.Key.Path))
             {
                 var bestSource = sources
                     .OrderBy(rd => loadCount[rd.Address])
-                    .ThenBy(rd => rd.Address).ThenBy(rd => rd.Path).First();
+                    .ThenBy(rd => rd.Address.ToString()).ThenBy(rd => rd.Path).First();
                 loadCount[bestSource.Address]++;
                 operations.Add((bestSource, dest));
             }
@@ -125,7 +125,12 @@ namespace ClusterModifier
             var newRemoteDirs = await GetAllRemoteDirs(newConfig, cancellationToken);
             var oldRemoteDirs = await GetAllRemoteDirs(oldConfig, cancellationToken);
             foreach (var remoteDir in oldRemoteDirs.Except(newRemoteDirs))
-                await RemoveDir(remoteDir, cancellationToken);
+            {
+                if (await _remoteFileCopier.RemoveDirectory(remoteDir, cancellationToken))
+                    _logger.LogInformation("Removed {Directory}", remoteDir);
+                else
+                    _logger.LogWarning("Failed to remove {Directory}", remoteDir);
+            }
         }
 
         private async Task<bool> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
@@ -147,18 +152,6 @@ namespace ClusterModifier
                         result.Add(creator(node.Disks.Find(d => d.Name == replica.Disk), vDisk));
             }
             return result;
-        }
-
-        private async Task RemoveDir(RemoteDir remoteDir, CancellationToken cancellationToken)
-        {
-            _logger.LogInformation("Removing {Directory}", remoteDir);
-            if (!_args.DryRun)
-            {
-                if (await _remoteFileCopier.RemoveInDir(remoteDir, cancellationToken))
-                    _logger.LogDebug("Successfully removed {Directory}", remoteDir);
-                else
-                    _logger.LogWarning("Failed to remove {Directory}", remoteDir);
-            }
         }
 
         private delegate RemoteDir GetRemoteDir(ClusterConfiguration.Node.Disk disk, ClusterConfiguration.VDisk vDisk);

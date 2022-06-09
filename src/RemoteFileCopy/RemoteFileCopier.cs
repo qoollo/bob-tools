@@ -68,6 +68,12 @@ namespace RemoteFileCopy
             return !error;
         }
 
+        public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
+        {
+            var result = await _sshWrapper.InvokeSshProcess(dir.Address, $"rm -rf {dir.Path}", cancellationToken);
+            return !result.IsError;
+        }
+
         public async Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default)
         {
             var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address,
