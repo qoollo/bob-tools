@@ -5,11 +5,19 @@ function printHelp {
         AliensRecovery
         ClusterModifier
         DisksMonitoring
-        RecordsCalculator)
+        RecordsCalculator
+        OldPartitionsRemover
+        brt
+        bobp
+        ccg)
     help_AliensRecovery="Recover aliens in bob cluster"
     help_ClusterModifier="Expand bob cluster"
     help_DisksMonitoring="Monitor and reconnect disks for single bob node"
     help_RecordsCalculator="Count records in bob cluster"
+    help_OldPartitionsRemover="Remove partitions based on various filters"
+    help_brt=""
+    help_bobp="Read and write records to cluster"
+    help_ccg="Create cluster configuration"
     echo "Available tools:"
     for item in ${tools[*]}
     do
@@ -25,13 +33,26 @@ function printHelp {
 [[ $# == 0 ]] && echo "At least one argument is required, use --help to get available tools" && exit
 [[ $1 == --help ]] && [[ $# == 1 ]] && printHelp && exit
 
-names=($1 Bob$1 ${1/Bob/})
-command=${@:2}
-# If the command is --help TOOL, invoke help for specified tool
-[[ $1 == --help ]] && [[ $# == 2 ]] && names=($2 Bob$2 ${2/Bob/}) && command=--help
+ar=(BobAliensRecovery BobAliensRecovery AliensRecovery)
+cm=(ClusterModifier BobClusterModifier ClusterModifier)
+dm=(DisksMonitoring BobDisksMonitoring DisksMonitoring)
+rc=(RecordsCalculator BobRecordsCalculator RecordsCalculator)
+opr=(OldPartitionsRemover BobOldPartitionsRemover OldPartitionsRemover)
+brt=(brt brt)
+bobp=(bobp bobp)
+ccg=(ccg ccg)
+possible_names=('ar[@]' 'cm[@]' 'dm[@]' 'rc[@]' 'opr[@]' 'brt[@]' 'bobp[@]' 'ccg[@]')
 
-for item in ${names[*]}
+declare name
+for arr in ${possible_names[*]}
 do
-    [[ -x "$(command -v $item)" ]] && $item $command && exit
-    [[ -f "$item" ]] && ./$item $command && exit
+    loc=${!arr:0:1}
+    for item in ${!arr:1}
+    do
+        [[ $1 == $item ]] && name="${loc}"
+    done
 done
+command=${@:2}
+
+[[ -x "$(command -v $name)" ]] && $name $command && exit
+[[ -f "$name" ]] && ./$name $command && exit
