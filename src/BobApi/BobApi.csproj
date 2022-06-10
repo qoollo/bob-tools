@@ -3,6 +3,8 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     <Configurations>Debug;Release</Configurations>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
 
   <ItemGroup>
