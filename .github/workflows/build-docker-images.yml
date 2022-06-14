@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  build_bob-alien-recovery:
+  build_bob-aliens-recovery:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -28,7 +28,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: qoollo/bob-alien-recovery
+          images: qoollo/bob-aliens-recovery
           tags: |
             ${{ env.VERSION }}
             latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
@@ -36,7 +36,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: dockerfiles/BobAlienRecovery/Dockerfile
+          file: dockerfiles/BobAliensRecovery/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -134,7 +134,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  build_bob-old-partition-remover:
+  build_bob-old-partitions-remover:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -152,7 +152,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v3
         with:
-          images: qoollo/bob-old-partition-remover
+          images: qoollo/bob-old-partitions-remover
           tags: |
             ${{ env.VERSION }}
             latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
@@ -160,7 +160,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: dockerfiles/OldPartitionRemover/Dockerfile
+          file: dockerfiles/OldPartitionsRemover/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
