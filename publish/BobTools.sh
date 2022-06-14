@@ -15,7 +15,7 @@ function printHelp {
     help_DisksMonitoring="Monitor and reconnect disks for single bob node"
     help_RecordsCalculator="Count records in bob cluster"
     help_OldPartitionsRemover="Remove partitions based on various filters"
-    help_brt=""
+    help_brt="Check and restore corrupted blobs"
     help_bobp="Read and write records to cluster"
     help_ccg="Create cluster configuration"
     echo "Available tools:"
