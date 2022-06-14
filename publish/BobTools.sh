@@ -33,6 +33,7 @@ function printHelp {
 [[ $# == 0 ]] && echo "At least one argument is required, use --help to get available tools" && exit
 [[ $1 == --help ]] && [[ $# == 1 ]] && printHelp && exit
 
+# First is executable name, others are aliases
 ar=(BobAliensRecovery BobAliensRecovery AliensRecovery)
 cm=(ClusterModifier BobClusterModifier ClusterModifier)
 dm=(DisksMonitoring BobDisksMonitoring DisksMonitoring)
