@@ -17,3 +17,75 @@ jobs:
           fetch-depth: 0
       - name: Build release
         run: ./buildscripts/publish.sh
+
+  build_bob-aliens-recovery:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/BobAliensRecovery/Dockerfile
+
+  build_bob-cluster-modifier:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/ClusterModifier/Dockerfile
+
+  build_bob-disks-monitoring:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/DisksMonitoring/Dockerfile
+
+  build_bob-multitool:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/Multitool/Dockerfile
+
+  build_bob-old-partitions-remover:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/OldPartitionsRemover/Dockerfile
+
+  build_bob-records-calculator:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/RecordsCalculator/Dockerfile
