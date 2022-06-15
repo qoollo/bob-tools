@@ -44,7 +44,7 @@ bobp=(bobp bobp)
 ccg=(ccg ccg)
 possible_names=('ar[@]' 'cm[@]' 'dm[@]' 'rc[@]' 'opr[@]' 'brt[@]' 'bobp[@]' 'ccg[@]')
 
-declare name
+name=$1
 for arr in ${possible_names[*]}
 do
     loc=${!arr:0:1}
