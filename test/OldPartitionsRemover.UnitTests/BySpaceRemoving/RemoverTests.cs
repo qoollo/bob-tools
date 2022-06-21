@@ -51,11 +51,11 @@ public class RemoverTests
 
     [Test, AD]
     public async Task RemovePartitionsBySpace_WithConnectionError_ReturnsError(
-        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Unavailable());
+        A.CallTo(() => partitionsBobApiClient.GetPartitions(null, default))
+            .WithAnyArguments().Returns(BobApiResult<List<string>>.Unavailable());
 
         var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
 
