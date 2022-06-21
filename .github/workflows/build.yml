@@ -54,7 +54,7 @@ jobs:
           context: .
           file: dockerfiles/DisksMonitoring/Dockerfile
 
-  build_bob-multitool:
+  build_bob-tools:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -64,7 +64,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: dockerfiles/Multitool/Dockerfile
+          file: dockerfiles/bob-tools/Dockerfile
 
   build_bob-old-partitions-remover:
     runs-on: ubuntu-latest
