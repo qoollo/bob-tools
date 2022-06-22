@@ -54,7 +54,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
             var thresholdResult = _arguments.GetThreshold();
             return await thresholdResult.Bind(async bs =>
             {
-                var spec = new ConditionSpecification(bs);
+                var spec = new ConditionSpecification(bs, _arguments.ThresholdType);
                 return await RemoveInClusterWithLessFreeSpace(clusterConfiguration, spec, cancellationToken);
             });
         }
@@ -68,8 +68,8 @@ namespace OldPartitionsRemover.BySpaceRemoving
                 var removeResult = await RemoveOnNode(clusterConfiguration, nodeSpec, cancellationToken);
                 return removeResult.Map(removed =>
                 {
-                    _logger.LogInformation("Node {Node}, removed partitions: {Removed}, freed: {Freed}",
-                        n.Name, removed, nodeSpec.GetSpaceStat());
+                    _logger.LogInformation("Node {Node}, removed partitions: {Removed}, {Changed}",
+                        n.Name, removed, nodeSpec.GetChangeString());
                     return removed;
                 });
             });
