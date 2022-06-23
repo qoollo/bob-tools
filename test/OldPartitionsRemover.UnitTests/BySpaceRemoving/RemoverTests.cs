@@ -257,6 +257,7 @@ public class RemoverTests
                 args.DelayMilliseconds = 0;
                 args.ThresholdString = "1000B";
                 args.ContinueOnError = false;
+                args.ThresholdType = "free";
             }));
 
             return fixture;
