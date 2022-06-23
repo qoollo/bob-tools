@@ -76,6 +76,11 @@ namespace OldPartitionsRemover.BySpaceRemoving
             });
         }
 
-        public string GetChangeString() => $"Freed: {ByteSize.FromBytes(_maxSpace - _minSpace)}";
+        public string GetChangeString()
+        {
+            if (_minSpace == ulong.MaxValue && _maxSpace == ulong.MinValue)
+                return "nothing freed";
+            return $"freed: {ByteSize.FromBytes(_maxSpace - _minSpace)}";
+        }
     }
 }
