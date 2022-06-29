@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  build-release:
+  build-binaries:
     runs-on: ubuntu-latest
     steps:
       - name: Checks-out repository 

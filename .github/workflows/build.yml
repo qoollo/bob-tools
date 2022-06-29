@@ -8,7 +8,7 @@ on:
     
 jobs:
 
-  build-release:
+  build-binaries:
     runs-on: ubuntu-latest
     steps:
       - name: Checks-out repository 
@@ -18,7 +18,7 @@ jobs:
       - name: Build release
         run: ./buildscripts/publish.sh
 
-  build_bob-aliens-recovery:
+  build-bob-aliens-recovery-docker-image:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -30,7 +30,7 @@ jobs:
           context: .
           file: dockerfiles/BobAliensRecovery/Dockerfile
 
-  build_bob-cluster-modifier:
+  build-bob-cluster-modifier-docker-image:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -42,7 +42,7 @@ jobs:
           context: .
           file: dockerfiles/ClusterModifier/Dockerfile
 
-  build_bob-disks-monitoring:
+  build-bob-disks-monitoring-docker-image:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -54,7 +54,7 @@ jobs:
           context: .
           file: dockerfiles/DisksMonitoring/Dockerfile
 
-  build_bob-tools:
+  build-bob-tools-docker-image:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -66,7 +66,7 @@ jobs:
           context: .
           file: dockerfiles/bob-tools/Dockerfile
 
-  build_bob-old-partitions-remover:
+  build-bob-old-partitions-remover-docker-image:
     runs-on: ubuntu-latest
     environment: prod
     steps:
@@ -78,7 +78,7 @@ jobs:
           context: .
           file: dockerfiles/OldPartitionsRemover/Dockerfile
 
-  build_bob-records-calculator:
+  build-bob-records-calculator-docker-image:
     runs-on: ubuntu-latest
     environment: prod
     steps:
