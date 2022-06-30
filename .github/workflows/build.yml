@@ -20,7 +20,6 @@ jobs:
 
   build-bob-aliens-recovery-docker-image:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -32,7 +31,6 @@ jobs:
 
   build-bob-cluster-modifier-docker-image:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -44,7 +42,6 @@ jobs:
 
   build-bob-disks-monitoring-docker-image:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -56,7 +53,6 @@ jobs:
 
   build-bob-tools-docker-image:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -68,7 +64,6 @@ jobs:
 
   build-bob-old-partitions-remover-docker-image:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
@@ -80,7 +75,6 @@ jobs:
 
   build-bob-records-calculator-docker-image:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
