@@ -4,15 +4,12 @@ FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine as build
 COPY ./src /src
 COPY ./buildscripts /buildscripts
 COPY ./*.props /
+COPY ./publish /publish
 RUN /buildscripts/publish.sh linux-musl-x64
 
 FROM alpine
 
-COPY --from=build /publish/* /root/
-RUN apk add --no-cache krb5-libs libstdc++ libgcc openssh
-RUN echo -e\
-    "#!/bin/sh\n\
-    /root/\$1 \${@:2}" >> /root/start.sh\
-    && chmod +x /root/start.sh
+COPY --from=build /publish/* /
+RUN apk add --no-cache krb5-libs libstdc++ libgcc openssh bash
 
-ENTRYPOINT ["/root/start.sh"]
+ENTRYPOINT ["/BobTools.sh"]
