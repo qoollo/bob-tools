@@ -20,16 +20,19 @@ namespace BobAliensRecovery.AliensRecovery
         private readonly RemoteFileCopier _remoteFileCopier;
         private readonly PartitionInfoAggregator _partitionInfoAggregator;
         private readonly FilesFinder _filesFinder;
+        private readonly ParallelP2PProcessor _parallelP2PProcessor;
         private readonly ILogger<BlobsMover> _logger;
 
         public BlobsMover(RemoteFileCopier remoteFileCopier,
-            PartitionInfoAggregator partitionInfoAggregator,
-            FilesFinder filesFinder,
-            ILogger<BlobsMover> logger)
+			  PartitionInfoAggregator partitionInfoAggregator,
+			  FilesFinder filesFinder,
+			  ParallelP2PProcessor parallelP2PProcessor,
+			  ILogger<BlobsMover> logger)
         {
             _remoteFileCopier = remoteFileCopier;
             _partitionInfoAggregator = partitionInfoAggregator;
             _filesFinder = filesFinder;
+            _parallelP2PProcessor = parallelP2PProcessor;
             _logger = logger;
         }
 
@@ -53,11 +56,10 @@ namespace BobAliensRecovery.AliensRecovery
         private async Task<List<BlobInfo>> CopyBlobsInParallel(IEnumerable<RecoveryTransaction> recoveryTransactions,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
-            var operations = recoveryTransactions.Select(t => new ParallelP2PProcessor<List<BlobInfo>>.Operation(
+            var operations = recoveryTransactions.Select(t => ParallelP2PProcessor.CreateOperation(
                 t.From.Address, t.To.Address, () => InvokeTransaction(t, aliensRecoveryOptions, cancellationToken)
             ));
-            var results = await new ParallelP2PProcessor<List<BlobInfo>>(aliensRecoveryOptions.CopyParallelDegree, operations)
-                .Invoke(cancellationToken);
+            var results = await _parallelP2PProcessor.Invoke(aliensRecoveryOptions.CopyParallelDegree, operations, cancellationToken);
             return results.Where(r => r.Data != null).SelectMany(r => r.Data).ToList();
         }
 

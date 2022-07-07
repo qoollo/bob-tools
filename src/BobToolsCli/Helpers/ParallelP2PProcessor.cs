@@ -4,71 +4,65 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using RemoteFileCopy.Entities;
 
 namespace BobToolsCli.Helpers
 {
-    public class ParallelP2PProcessor<T>
+    public class ParallelP2PProcessor
     {
-        private readonly int _maxDegreeOfParallelism;
-        private readonly List<Operation> _remaining;
-        private readonly Dictionary<IPAddress, int> _countByAddress;
-
-        public ParallelP2PProcessor(int maxDegreeOfParallelism, IEnumerable<Operation> operations)
+        public async Task<Result<T>[]> Invoke<T>(int maxDegreeOfParallelism,
+					   IEnumerable<Operation<T>> operations,
+					   CancellationToken cancellationToken = default)
         {
-            _maxDegreeOfParallelism = maxDegreeOfParallelism;
-            _remaining = operations?.ToList() ?? throw new ArgumentNullException(nameof(operations));
-            _countByAddress = operations.SelectMany(o => new[] { o.From, o.To }).Distinct().ToDictionary(a => a, _ => 0);
-        }
-
-        public async Task<Result[]> Invoke(CancellationToken cancellationToken = default)
-        {
-            var results = new Result[_remaining.Count];
-            await Parallel.ForEachAsync(Enumerable.Range(0, _remaining.Count),
+            var remaining = operations?.ToList() ?? throw new ArgumentNullException(nameof(operations));
+            var countByAddress = operations.SelectMany(o => new[] { o.From, o.To }).Distinct().ToDictionary(a => a, _ => 0);
+            var results = new Result<T>[remaining.Count];
+            await Parallel.ForEachAsync(Enumerable.Range(0, remaining.Count),
                 new ParallelOptions
                 {
                     CancellationToken = cancellationToken,
-                    MaxDegreeOfParallelism = _maxDegreeOfParallelism
+                    MaxDegreeOfParallelism = maxDegreeOfParallelism
                 },
                 async (ind, t) =>
                 {
-                    var operation = TakeOperation();
+                    var operation = TakeOperation(countByAddress, remaining);
                     try
                     {
                         results[ind] = await operation.Invoke();
                     }
                     finally
                     {
-                        CleanUp(operation);
+                        CleanUp(countByAddress, operation);
                     }
                 });
             return results;
         }
 
-        private Operation TakeOperation()
+        public static Operation<T> CreateOperation<T>(IPAddress from, IPAddress to, Func<Task<T>> func) => new(from, to, func);
+
+        private Operation<T> TakeOperation<T>(Dictionary<IPAddress, int> countByAddress, List<Operation<T>> remaining)
         {
-            Operation operation;
-            lock (_countByAddress)
+            Operation<T> operation;
+            lock (countByAddress)
             {
-                operation = _remaining.OrderBy(t => _countByAddress[t.From] + _countByAddress[t.To]).First();
-                _remaining.Remove(operation);
-                _countByAddress[operation.From]++;
-                _countByAddress[operation.To]++;
+                operation = remaining.OrderBy(t => countByAddress[t.From] + countByAddress[t.To]).First();
+                remaining.Remove(operation);
+                countByAddress[operation.From]++;
+                countByAddress[operation.To]++;
             }
 
             return operation;
         }
 
-        private void CleanUp(Operation operation)
+        private void CleanUp<T>(Dictionary<IPAddress, int> countByAddress, Operation<T> operation)
         {
-            lock (_countByAddress)
+            lock (countByAddress)
             {
-                _countByAddress[operation.From]--;
-                _countByAddress[operation.To]--;
+                countByAddress[operation.From]--;
+                countByAddress[operation.To]--;
             }
         }
 
-        public struct Operation
+        public struct Operation<T>
         {
             public Operation(IPAddress from, IPAddress to, Func<Task<T>> func)
             {
@@ -81,10 +75,10 @@ namespace BobToolsCli.Helpers
             public IPAddress To { get; }
             public Func<Task<T>> Func { get; }
 
-            internal async Task<Result> Invoke() => new(From, To, await Func());
+            internal async Task<Result<T>> Invoke() => new(From, To, await Func());
         }
 
-        public struct Result
+        public struct Result<T>
         {
             public Result(IPAddress from, IPAddress to, T data)
             {

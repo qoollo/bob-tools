@@ -19,13 +19,17 @@ namespace ClusterModifier
     {
         private readonly ILogger<ClusterExpander> _logger;
         private readonly RemoteFileCopier _remoteFileCopier;
+        private readonly ParallelP2PProcessor _parallelP2PProcessor;
         private readonly ClusterExpandArguments _args;
 
-        public ClusterExpander(ILogger<ClusterExpander> logger, RemoteFileCopier remoteFileCopier,
-            ClusterExpandArguments args)
+        public ClusterExpander(ILogger<ClusterExpander> logger,
+			       RemoteFileCopier remoteFileCopier,
+			       ParallelP2PProcessor parallelP2PProcessor,
+			       ClusterExpandArguments args)
         {
             _logger = logger;
             _remoteFileCopier = remoteFileCopier;
+            _parallelP2PProcessor = parallelP2PProcessor;
             _args = args;
         }
 
@@ -56,10 +60,10 @@ namespace ClusterModifier
             if (!_args.DryRun)
             {
                 var parallelOperations = operations
-                    .Select(op => new ParallelP2PProcessor<bool>.Operation(op.from.Address, op.to.Address,
+                    .Select(op => ParallelP2PProcessor.CreateOperation(op.from.Address, op.to.Address,
                         () => Copy(op.from, op.to, cancellationToken)))
                     .ToArray();
-                await new ParallelP2PProcessor<bool>(_args.CopyParallelDegree, parallelOperations).Invoke(cancellationToken);
+                await _parallelP2PProcessor.Invoke(_args.CopyParallelDegree, parallelOperations, cancellationToken);
             }
         }
 
