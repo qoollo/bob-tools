@@ -135,10 +135,15 @@ namespace ClusterModifier
             var oldRemoteDirs = await GetAllRemoteDirs(oldConfig, cancellationToken);
             foreach (var remoteDir in oldRemoteDirs.Except(newRemoteDirs))
             {
-                if (await _remoteFileCopier.RemoveDirectory(remoteDir, cancellationToken))
-                    _logger.LogInformation("Removed {Directory}", remoteDir);
+		if (_args.DryRun)
+                    _logger.LogInformation("Remove {Directory}", remoteDir);
                 else
-                    _logger.LogWarning("Failed to remove {Directory}", remoteDir);
+                {
+                    if (await _remoteFileCopier.RemoveDirectory(remoteDir, cancellationToken))
+                        _logger.LogInformation("Removed {Directory}", remoteDir);
+                    else
+                        _logger.LogWarning("Failed to remove {Directory}", remoteDir);
+                }
             }
         }
 
