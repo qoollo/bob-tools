@@ -63,6 +63,11 @@ namespace ClusterModifier
                     .ToArray();
                 await _parallelP2PProcessor.Invoke(_args.CopyParallelDegree, parallelOperations, cancellationToken);
             }
+	    else
+	    {
+		foreach(var (from, to) in operations)
+                    _logger.LogInformation("Copy from {From} to {To}", from, to);
+            }
         }
 
         private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
