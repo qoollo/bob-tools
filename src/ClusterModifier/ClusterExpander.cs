@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -70,8 +68,10 @@ namespace ClusterModifier
         private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
             ClusterConfiguration config, CancellationToken cancellationToken)
         {
-            var vDiskPairs = oldConfig.VDisks.SelectMany(ovd => config.VDisks.Select(vd => (ovd, vd)))
-                .Where(t => t.ovd.Id == t.vd.Id);
+            var vDiskPairs = oldConfig.VDisks.Join(config.VDisks,
+						   vd => vd.Id,
+						   vd => vd.Id,
+						   (ovd, vd) => (ovd, vd)); 
             var oldNodeInfoByName = await GetNodeInfoByName(oldConfig, cancellationToken);
             var nodeInfoByName = await GetNodeInfoByName(config, cancellationToken);
             var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
