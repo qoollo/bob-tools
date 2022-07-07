@@ -163,7 +163,13 @@ namespace ClusterModifier
                 var creator = await GetCreator(node, cancellationToken);
                 foreach (var vDisk in config.VDisks)
                     foreach (var replica in vDisk.Replicas.Where(r => r.Node == node.Name))
-                        result.Add(creator(node.Disks.Find(d => d.Name == replica.Disk), vDisk));
+                    {
+                        var disk = node.Disks.Find(d => d.Name == replica.Disk);
+			if (disk == null)
+                            throw new ClusterStateException($"Replica {replica} not found");
+
+                        result.Add(creator(disk, vDisk));
+                    }
             }
             return result;
         }
