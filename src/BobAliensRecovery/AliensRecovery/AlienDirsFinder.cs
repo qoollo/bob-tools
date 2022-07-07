@@ -6,6 +6,7 @@ using BobAliensRecovery.AliensRecovery.Entities;
 using BobAliensRecovery.Exceptions;
 using BobApi;
 using BobApi.BobEntities;
+using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
 
 namespace BobAliensRecovery.AliensRecovery
@@ -20,13 +21,13 @@ namespace BobAliensRecovery.AliensRecovery
         }
 
         internal async Task<IEnumerable<AlienDir>> FindAlienDirs(ClusterConfiguration clusterConfiguration,
-            ClusterOptions clusterOptions, AliensRecoveryOptions aliensRecoveryOptions,
+            BobApiClientProvider bobApiClientProvider, AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken)
         {
             var result = new HashSet<AlienDir>();
             foreach (var node in clusterConfiguration.Nodes)
             {
-                using var bobApi = new BobApiClient(clusterOptions.GetNodeApiUri(node));
+                using var bobApi = bobApiClientProvider.GetClient(node);
 
                 var syncResult = await bobApi.SyncAlienData(cancellationToken);
                 if (!syncResult.TryGetData(out var isSynced) || !isSynced)

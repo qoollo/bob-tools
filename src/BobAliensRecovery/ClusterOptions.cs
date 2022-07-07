@@ -8,16 +8,16 @@ namespace BobAliensRecovery
 {
     class ClusterOptions
     {
-        private readonly NodePortStorage _nodePortStorage;
+        private readonly BobApiClientProvider _bobApiClientProvider;
 
-        public ClusterOptions(NodePortStorage nodePortStorage)
+        public ClusterOptions(BobApiClientProvider bobApiClientProvider)
         {
-            _nodePortStorage = nodePortStorage;
+            _bobApiClientProvider = bobApiClientProvider;
         }
 
         public Uri GetNodeApiUri(ClusterConfiguration.Node node)
         {
-            return _nodePortStorage.GetNodeApiUri(node);
+            return _bobApiClientProvider.GetNodeApiUri(node);
         }
     }
 }

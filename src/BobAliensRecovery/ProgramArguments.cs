@@ -36,7 +36,7 @@ namespace BobAliensRecovery
 
         public LoggerOptions LoggerOptions => new(GetMinLogLevel());
 
-        public ClusterOptions ClusterOptions => new(GetNodePortStorage());
+        public ClusterOptions ClusterOptions => new(GetBobApiClientProvider());
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 

@@ -10,6 +10,7 @@ using BobAliensRecovery.AliensRecovery.Entities;
 using BobAliensRecovery.Exceptions;
 using BobApi;
 using BobApi.BobEntities;
+using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Entities;
 
@@ -25,13 +26,13 @@ namespace BobAliensRecovery.AliensRecovery
         }
 
         internal async Task<IReadOnlyDictionary<long, Replicas>> FindReplicasByVdiskId(ClusterConfiguration clusterConfiguration,
-            ClusterOptions clusterOptions, AliensRecoveryOptions aliensRecoveryOptions,
+            BobApiClientProvider bobApiClientProvider, AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken = default)
         {
             var result = new Dictionary<long, Replicas>();
             foreach (var vdisk in clusterConfiguration.VDisks)
             {
-                var remoteDirByNodeName = await GetRemoteDirByNodeName(clusterConfiguration, clusterOptions,
+                var remoteDirByNodeName = await GetRemoteDirByNodeName(clusterConfiguration, bobApiClientProvider,
                     aliensRecoveryOptions, vdisk, cancellationToken);
                 result.Add(vdisk.Id, new Replicas(vdisk.Id, remoteDirByNodeName));
             }
@@ -40,7 +41,7 @@ namespace BobAliensRecovery.AliensRecovery
 
         private async Task<Dictionary<string, RemoteDir>> GetRemoteDirByNodeName(
             ClusterConfiguration clusterConfiguration,
-            ClusterOptions clusterOptions,
+	    BobApiClientProvider bobApiClientProvider,
             AliensRecoveryOptions aliensRecoveryOptions,
             ClusterConfiguration.VDisk vdisk,
             CancellationToken cancellationToken = default)
@@ -54,7 +55,7 @@ namespace BobAliensRecovery.AliensRecovery
                     var disk = node.Disks.SingleOrDefault(d => d.Name == diskName);
                     if (disk != null)
                     {
-                        using var bobApi = new BobApiClient(clusterOptions.GetNodeApiUri(node));
+                        using var bobApi = bobApiClientProvider.GetClient(node);
                         var nodeConfigurationResult = await bobApi.GetNodeConfiguration(cancellationToken);
                         if (nodeConfigurationResult.TryGetData(out var nodeConfiguration) && nodeConfiguration?.RootDir != null)
                         {

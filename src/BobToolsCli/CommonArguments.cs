@@ -39,7 +39,7 @@ namespace BobToolsCli
             if (BootstrapNode != null)
             {
                 if (TryParseHostPort(BootstrapNode, out var host, out var port))
-                    return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(host, port, cancellationToken);
+                    return await new NodeClusterConfigurationFetcher(GetBobApiClientProvider()).GetConfigurationFromNode(host, port, cancellationToken);
                 else
                     return ConfigurationReadingResult<ClusterConfiguration>.Error($"Failed to parse bootstrap node address from \"{BootstrapNode}\"");
             }
@@ -59,9 +59,9 @@ namespace BobToolsCli
             };
         }
 
-        public NodePortStorage GetNodePortStorage()
+        public BobApiClientProvider GetBobApiClientProvider()
         {
-            return new NodePortStorage(ApiPortOverrides);
+            return new BobApiClientProvider(ApiPortOverrides);
         }
 
         private static bool TryParseHostPort(string s, out string host, out int port)

@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BobApi;
 using BobApi.BobEntities;
 using BobApi.Entities;
 
 namespace BobToolsCli.Helpers
 {
-    public class NodePortStorage
+    public class BobApiClientProvider
     {
         private const char NamePortSeparator = ':';
         private const int DefaultPort = 8000;
@@ -14,7 +15,7 @@ namespace BobToolsCli.Helpers
         private readonly Dictionary<string, int> _portByNodeName;
         private readonly int _defaultPort;
 
-        internal NodePortStorage(IEnumerable<string> portOverrides)
+        internal BobApiClientProvider(IEnumerable<string> portOverrides)
         {
             _portByNodeName = portOverrides.ToDictionary(s => s.Split(NamePortSeparator)[0], s => int.Parse(s.Split(NamePortSeparator)[1]));
             if (!_portByNodeName.TryGetValue("*", out _defaultPort))
@@ -27,6 +28,11 @@ namespace BobToolsCli.Helpers
 
         public Uri GetNodeApiUri(Node node)
             => GetNodeApiUriWithPortOverride(node.GetUri(), node.Name);
+
+	public BobApiClient GetClient(Node node) => throw new NotImplementedException();
+	public BobApiClient GetClient(ClusterConfiguration.Node node) => throw new NotImplementedException();
+
+        public BobApiClient GetClient(string host, int port) => throw new NotImplementedException();
 
         private Uri GetNodeApiUriWithPortOverride(Uri nodeUri, string nodeName)
         {

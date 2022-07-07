@@ -64,7 +64,7 @@ namespace BobToolsCli
                     .AddSingleton(args)
                     .AddSingleton<CommonArguments>(args)
                     .AddSingleton<IConfigurationFinder>(args)
-                    .AddSingleton(args.GetNodePortStorage())
+                    .AddSingleton(args.GetBobApiClientProvider())
                     .AddSingleton<IBobApiClientFactory, PortBasedBobApiClientFactory>();
 
                 return f(args, services);

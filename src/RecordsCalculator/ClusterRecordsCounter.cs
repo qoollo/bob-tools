@@ -16,10 +16,10 @@ namespace RecordsCalculator
     {
         private readonly ILogger<ClusterRecordsCounter> _logger;
         private readonly ProgramArguments _programArguments;
-        private readonly NodePortStorage _nodePortStorage;
+        private readonly BobApiClientProvider _nodePortStorage;
 
         public ClusterRecordsCounter(ILogger<ClusterRecordsCounter> logger,
-            ProgramArguments programArguments, NodePortStorage nodePortStorage)
+            ProgramArguments programArguments, BobApiClientProvider nodePortStorage)
         {
             _logger = logger;
             _programArguments = programArguments;
