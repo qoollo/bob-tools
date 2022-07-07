@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -70,7 +68,7 @@ namespace RemoteFileCopy
 
         public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
         {
-            var result = await _sshWrapper.InvokeSshProcess(dir.Address, $"rm -rf {dir.Path}", cancellationToken);
+            var result = await _sshWrapper.InvokeSshProcess(dir.Address, $"rm -rf \"{dir.Path}\"", cancellationToken);
             return !result.IsError;
         }
 
