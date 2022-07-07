@@ -100,7 +100,7 @@ namespace ClusterModifier
             foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address.ToString()).ThenBy(kv => kv.Key.Path))
             {
                 var bestSource = sources
-                    .OrderBy(rd => loadCount[rd.Address])
+                    .OrderBy(rd => loadCount[rd.Address] - (rd.Address == dest.Address ? 1 : 0))
                     .ThenBy(rd => rd.Address.ToString()).ThenBy(rd => rd.Path).First();
                 loadCount[bestSource.Address]++;
                 operations.Add((bestSource, dest));
