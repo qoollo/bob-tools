@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +7,6 @@ using BobApi.BobEntities;
 using BobApi.Entities;
 using BobApi.Exceptions;
 using Newtonsoft.Json;
-using Path = System.IO.Path;
 
 namespace BobApi
 {
@@ -28,6 +26,8 @@ namespace BobApi
                 BaseAddress = address,
                 Timeout = TimeSpan.FromSeconds(30),
             };
+            _client.DefaultRequestHeaders.Add("username", username);
+            _client.DefaultRequestHeaders.Add("password", password);
             _throwOnNoConnection = throwOnNoConnection;
         }
 
