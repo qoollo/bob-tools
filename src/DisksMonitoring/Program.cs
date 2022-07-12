@@ -3,10 +3,8 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using BobApi;
 using CommandLine;
-using CommandLine.Text;
 using DisksMonitoring.Bob;
 using DisksMonitoring.Config;
-using DisksMonitoring.Entities;
 using DisksMonitoring.OS;
 using DisksMonitoring.OS.DisksFinding;
 using DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing;
@@ -17,7 +15,6 @@ using DisksMonitoring.OS.DisksProcessing.FSTabAltering;
 using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 namespace DisksMonitoring
 {
     class Program
@@ -66,7 +63,7 @@ namespace DisksMonitoring
             var externalScriptsRunner = serviceProvider.GetRequiredService<ExternalScriptsRunner>();
             var disksStarter = serviceProvider.GetRequiredService<DisksStarter>();
             var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
-            var client = GetBobApiClient(options.Port);
+            var client = GetBobApiClient(options);
             logger.LogInformation("Start monitor");
             while (true)
             {
@@ -92,12 +89,12 @@ namespace DisksMonitoring
         private static async Task<Configuration> GenerateConfiguration(MonitorOptions options)
         {
             Initialize(options.LogLevel);
-            return await GetConfiguration(GetBobApiClient(options.Port));
+            return await GetConfiguration(GetBobApiClient(options));
         }
 
-        private static BobApiClient GetBobApiClient(int port)
+        private static BobApiClient GetBobApiClient(MonitorOptions options)
         {
-            return new BobApiClient(new Uri($"http://127.0.0.1:{port}"));
+            return new BobApiClient(new Uri($"http://127.0.0.1:{options.Port}"), options.Username, options.Password);
         }
 
         private static async Task<Configuration> GetConfiguration(BobApiClient bobApiClient)
@@ -130,6 +127,12 @@ namespace DisksMonitoring
 
             [Option("port", Required = false, HelpText = "Local bob http api port", Default = 8000)]
             public int Port { get; set; }
+
+	    [Option("username", Required = true, HelpText = "Local bob username")]
+	    public string Username { get; set; }
+
+	    [Option("password", Required = true, HelpText = "Local bob password")]
+	    public string Password { get; set; }
         }
 
         [Verb("generate-only", HelpText = "Perform only config generation")]
