@@ -150,7 +150,7 @@ jobs:
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
           cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}/usr/bin/
-          cp publish/BobTools.sh bob-tools_${{ env.VERSION }}_amd64/usr/bin/bobtools
+          cp publish/BobTools.sh bob-tools_${{ env.VERSION }}/usr/bin/bobtools
           chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,bobtools}
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/lib/systemd/system/
