@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -46,7 +47,8 @@ namespace DiskStatusAnalyzer
         {
             var result = new List<RestartInfo?>();
 
-            var client = new BobApiClient(node.Uri);
+            throw new Exception("DiskStatusAnalzer should not be used");
+            var client = new BobApiClient(node.Uri, null, null);
             var disksResult = await client.GetDisks();
             if (!disksResult.TryGetData(out var disks))
                 throw new NodeException(node.Uri.ToString());

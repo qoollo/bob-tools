@@ -1,15 +1,11 @@
 ﻿using System;
-using System.IO;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery;
 using BobAliensRecovery.Exceptions;
 using BobApi.BobEntities;
 using BobToolsCli;
-using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Extensions;
 
