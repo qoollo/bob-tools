@@ -43,7 +43,7 @@ namespace BobAliensRecovery.AliensRecovery
 
         internal async Task RecoverAliens(
             ClusterConfiguration clusterConfiguration,
-	    BobApiClientProvider bobApiClientProvider,
+            BobApiClientProvider bobApiClientProvider,
             AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken = default)
         {

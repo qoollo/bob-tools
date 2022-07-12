@@ -25,18 +25,18 @@ namespace BobToolsCli.Helpers
                 _defaultPort = DefaultPort;
 
             _credsByNodeName = new Dictionary<string, Credentials>();
-	    foreach(var cred in credentials)
-	    {
+            foreach(var cred in credentials)
+            {
                 var nameSplit = cred.Split(NameSeparator);
-		if (nameSplit.Length != 2)
+                if (nameSplit.Length != 2)
                     throw new ArgumentException("Wrong credentials format");
 
-		if (!Credentials.TryParse(nameSplit[1], out var creds))
+                if (!Credentials.TryParse(nameSplit[1], out var creds))
                     throw new ArgumentException("Wrong credentials format");
 
-		if (nameSplit[0] == "*")
+                if (nameSplit[0] == "*")
                     _defaultCreds = creds;
-		else
+                else
                     _credsByNodeName.Add(nameSplit[0], creds);
             }
         }
@@ -45,21 +45,21 @@ namespace BobToolsCli.Helpers
         public BobApiClient GetClient(Node node)
         {
             var uri = node.GetUri();
-	    if (!_credsByNodeName.TryGetValue(node.Name, out var creds))
+            if (!_credsByNodeName.TryGetValue(node.Name, out var creds))
                 creds = _defaultCreds;
             return new BobApiClient(GetNodeApiUriWithPortOverride(uri, node.Name), creds.Username, creds.Password);
         }
 
         public BobApiClient GetClient(ClusterConfiguration.Node node)
-	{
+        {
             var uri = node.GetUri();
-	    if (!_credsByNodeName.TryGetValue(node.Name, out var creds))
+            if (!_credsByNodeName.TryGetValue(node.Name, out var creds))
                 creds = _defaultCreds;
             return new BobApiClient(GetNodeApiUriWithPortOverride(uri, node.Name), creds.Username, creds.Password);
         }
 
         public BobApiClient GetClient(string host, int port)
-	{
+        {
             return new BobApiClient(new Uri($"http://{host}:{port}"), _defaultCreds.Username, _defaultCreds.Password);
         }
 
@@ -79,25 +79,25 @@ namespace BobToolsCli.Helpers
             return _defaultPort;
         }
 
-	private struct Credentials
-	{
-	    public Credentials(string username, string password)
-	    {
+        private struct Credentials
+        {
+            public Credentials(string username, string password)
+            {
                 Username = username;
                 Password = password;
             }
-	    
-	    public string Username { get; }
-	    public string Password { get; }
+            
+            public string Username { get; }
+            public string Password { get; }
 
-	    public static bool TryParse(string s, out Credentials result)
-	    {
+            public static bool TryParse(string s, out Credentials result)
+            {
                 result = default;
-		if (!string.IsNullOrWhiteSpace(s))
-		{
+                if (!string.IsNullOrWhiteSpace(s))
+                {
                     var split = s.Split('=');
-		    if (split.Length == 2)
-		    {
+                    if (split.Length == 2)
+                    {
                         result = new Credentials(split[0], split[1]);
                         return true;
                     }

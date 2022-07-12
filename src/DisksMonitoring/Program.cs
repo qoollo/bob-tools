@@ -128,11 +128,11 @@ namespace DisksMonitoring
             [Option("port", Required = false, HelpText = "Local bob http api port", Default = 8000)]
             public int Port { get; set; }
 
-	    [Option("username", Required = true, HelpText = "Local bob username")]
-	    public string Username { get; set; }
+            [Option("username", Required = true, HelpText = "Local bob username")]
+            public string Username { get; set; }
 
-	    [Option("password", Required = true, HelpText = "Local bob password")]
-	    public string Password { get; set; }
+            [Option("password", Required = true, HelpText = "Local bob password")]
+            public string Password { get; set; }
         }
 
         [Verb("generate-only", HelpText = "Perform only config generation")]

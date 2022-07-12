@@ -41,7 +41,7 @@ namespace BobAliensRecovery.AliensRecovery
 
         private async Task<Dictionary<string, RemoteDir>> GetRemoteDirByNodeName(
             ClusterConfiguration clusterConfiguration,
-	    BobApiClientProvider bobApiClientProvider,
+            BobApiClientProvider bobApiClientProvider,
             AliensRecoveryOptions aliensRecoveryOptions,
             ClusterConfiguration.VDisk vdisk,
             CancellationToken cancellationToken = default)

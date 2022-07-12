@@ -17,9 +17,9 @@ namespace BobApi
         private readonly bool _throwOnNoConnection;
 
         public BobApiClient(Uri address,
-			    string username,
-			    string password,
-			    bool throwOnNoConnection = false)
+                            string username,
+                            string password,
+                            bool throwOnNoConnection = false)
         {
             _client = new HttpClient
             {

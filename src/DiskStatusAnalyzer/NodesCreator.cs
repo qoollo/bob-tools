@@ -55,7 +55,7 @@ namespace DiskStatusAnalyzer
 
         private async Task<NodeWithDirs> CreateNode(ConnectionInfo info)
         {
-	    throw new Exception("DiskStatusAnalzer should not be used");
+            throw new Exception("DiskStatusAnalzer should not be used");
             var api = new BobApiClient(info.Uri, null, null);
             var statusResult = await api.GetStatus();
             if (!statusResult.TryGetData(out var status) || status.Name is null)
