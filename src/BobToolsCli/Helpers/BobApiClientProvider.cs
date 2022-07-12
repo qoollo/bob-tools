@@ -9,30 +9,59 @@ namespace BobToolsCli.Helpers
 {
     public class BobApiClientProvider
     {
-        private const char NamePortSeparator = ':';
+        private const char NameSeparator = ':';
+        private const char UsernamePasswordSeparator = '=';
         private const int DefaultPort = 8000;
 
         private readonly Dictionary<string, int> _portByNodeName;
+        private readonly Dictionary<string, Credentials> _credsByNodeName;
         private readonly int _defaultPort;
+        private readonly Credentials _defaultCreds;
 
-        internal BobApiClientProvider(IEnumerable<string> portOverrides)
+        internal BobApiClientProvider(IEnumerable<string> portOverrides, IEnumerable<string> credentials)
         {
-            _portByNodeName = portOverrides.ToDictionary(s => s.Split(NamePortSeparator)[0], s => int.Parse(s.Split(NamePortSeparator)[1]));
+            _portByNodeName = portOverrides.ToDictionary(s => s.Split(NameSeparator)[0], s => int.Parse(s.Split(NameSeparator)[1]));
             if (!_portByNodeName.TryGetValue("*", out _defaultPort))
                 _defaultPort = DefaultPort;
+
+            _credsByNodeName = new Dictionary<string, Credentials>();
+	    foreach(var cred in credentials)
+	    {
+                var nameSplit = cred.Split(NameSeparator);
+		if (nameSplit.Length != 2)
+                    throw new ArgumentException("Wrong credentials format");
+
+		if (!Credentials.TryParse(nameSplit[1], out var creds))
+                    throw new ArgumentException("Wrong credentials format");
+
+		if (nameSplit[0] == "*")
+                    _defaultCreds = creds;
+		else
+                    _credsByNodeName.Add(nameSplit[0], creds);
+            }
         }
 
-        public Uri GetNodeApiUri(ClusterConfiguration.Node node)
-            => GetNodeApiUriWithPortOverride(node.GetUri(), node.Name);
 
+        public BobApiClient GetClient(Node node)
+        {
+            var uri = node.GetUri();
+	    if (!_credsByNodeName.TryGetValue(node.Name, out var creds))
+                creds = _defaultCreds;
+            return new BobApiClient(GetNodeApiUriWithPortOverride(uri, node.Name), creds.Username, creds.Password);
+        }
 
-        public Uri GetNodeApiUri(Node node)
-            => GetNodeApiUriWithPortOverride(node.GetUri(), node.Name);
+        public BobApiClient GetClient(ClusterConfiguration.Node node)
+	{
+            var uri = node.GetUri();
+	    if (!_credsByNodeName.TryGetValue(node.Name, out var creds))
+                creds = _defaultCreds;
+            return new BobApiClient(GetNodeApiUriWithPortOverride(uri, node.Name), creds.Username, creds.Password);
+        }
 
-	public BobApiClient GetClient(Node node) => throw new NotImplementedException();
-	public BobApiClient GetClient(ClusterConfiguration.Node node) => throw new NotImplementedException();
-
-        public BobApiClient GetClient(string host, int port) => throw new NotImplementedException();
+        public BobApiClient GetClient(string host, int port)
+	{
+            return new BobApiClient(new Uri($"http://{host}:{port}"), _defaultCreds.Username, _defaultCreds.Password);
+        }
 
         private Uri GetNodeApiUriWithPortOverride(Uri nodeUri, string nodeName)
         {
@@ -48,6 +77,33 @@ namespace BobToolsCli.Helpers
             if (_portByNodeName.TryGetValue(nodeName, out var port))
                 return port;
             return _defaultPort;
+        }
+
+	private struct Credentials
+	{
+	    public Credentials(string username, string password)
+	    {
+                Username = username;
+                Password = password;
+            }
+	    
+	    public string Username { get; }
+	    public string Password { get; }
+
+	    public static bool TryParse(string s, out Credentials result)
+	    {
+                result = default;
+		if (!string.IsNullOrWhiteSpace(s))
+		{
+                    var split = s.Split('=');
+		    if (split.Length == 2)
+		    {
+                        result = new Credentials(split[0], split[1]);
+                        return true;
+                    }
+                }
+                return false;
+            }
         }
     }
 }
