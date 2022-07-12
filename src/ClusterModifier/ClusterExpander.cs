@@ -21,9 +21,9 @@ namespace ClusterModifier
         private readonly ClusterExpandArguments _args;
 
         public ClusterExpander(ILogger<ClusterExpander> logger,
-			       RemoteFileCopier remoteFileCopier,
-			       ParallelP2PProcessor parallelP2PProcessor,
-			       ClusterExpandArguments args)
+                               RemoteFileCopier remoteFileCopier,
+                               ParallelP2PProcessor parallelP2PProcessor,
+                               ClusterExpandArguments args)
         {
             _logger = logger;
             _remoteFileCopier = remoteFileCopier;
@@ -63,10 +63,10 @@ namespace ClusterModifier
                     .ToArray();
                 await _parallelP2PProcessor.Invoke(_args.CopyParallelDegree, parallelOperations, cancellationToken);
             }
-	    else
-	    {
-		foreach(var (from, to) in operations)
-                    _logger.LogInformation("Copy from {From} to {To}", from, to);
+            else
+            {
+                foreach(var (from, to) in operations)
+                    _logger.LogInformation("Expected copying from {From} to {To}", from, to);
             }
         }
 
@@ -74,9 +74,9 @@ namespace ClusterModifier
             ClusterConfiguration config, CancellationToken cancellationToken)
         {
             var vDiskPairs = oldConfig.VDisks.Join(config.VDisks,
-						   vd => vd.Id,
-						   vd => vd.Id,
-						   (ovd, vd) => (ovd, vd)); 
+                                                   vd => vd.Id,
+                                                   vd => vd.Id,
+                                                   (ovd, vd) => (ovd, vd)); 
             var oldNodeInfoByName = await GetNodeInfoByName(oldConfig, cancellationToken);
             var nodeInfoByName = await GetNodeInfoByName(config, cancellationToken);
             var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
@@ -135,8 +135,8 @@ namespace ClusterModifier
             var oldRemoteDirs = await GetAllRemoteDirs(oldConfig, cancellationToken);
             foreach (var remoteDir in oldRemoteDirs.Except(newRemoteDirs))
             {
-		if (_args.DryRun)
-                    _logger.LogInformation("Remove {Directory}", remoteDir);
+                if (_args.DryRun)
+                    _logger.LogInformation("Expected removing {Directory}", remoteDir);
                 else
                 {
                     if (await _remoteFileCopier.RemoveDirectory(remoteDir, cancellationToken))
@@ -165,7 +165,7 @@ namespace ClusterModifier
                     foreach (var replica in vDisk.Replicas.Where(r => r.Node == node.Name))
                     {
                         var disk = node.Disks.Find(d => d.Name == replica.Disk);
-			if (disk == null)
+                        if (disk == null)
                             throw new ClusterStateException($"Replica {replica} not found");
 
                         result.Add(creator(disk, vDisk));

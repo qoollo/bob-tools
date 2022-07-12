@@ -90,7 +90,7 @@ namespace BobToolsCli
                     .AddSingleton<IConfigurationFinder>(args)
                     .AddSingleton(args.GetNodePortStorage())
                     .AddSingleton<IBobApiClientFactory, PortBasedBobApiClientFactory>()
-		    .AddTransient<ParallelP2PProcessor>();
+                    .AddTransient<ParallelP2PProcessor>();
 
                 return f(args, services);
             };
