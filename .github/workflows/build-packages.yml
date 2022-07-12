@@ -38,7 +38,7 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/')" >> $GITHUB_ENV
+        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/') | sed s/'\s'//g" >> $GITHUB_ENV
       - name: build rpm
         run: |
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools.spec
@@ -67,7 +67,7 @@ jobs:
         with:
           name: bob-tools-rpm
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/')" >> $GITHUB_ENV
+        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/') | sed s/'\s'//g" >> $GITHUB_ENV
 #      - name: Upload rpm to release
 #        uses: svenstaro/upload-release-action@v2
 #        with:
@@ -90,7 +90,7 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/')" >> $GITHUB_ENV
+        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/') | sed s/'\s'//g" >> $GITHUB_ENV
       - name: build deb
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
@@ -122,7 +122,7 @@ jobs:
         with:
           name: bob-tools-deb
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/')" >> $GITHUB_ENV
+        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/') | sed s/'\s'//g" >> $GITHUB_ENV
 #      - name: Upload deb to release
 #        uses: svenstaro/upload-release-action@v2
 #        with:
@@ -145,7 +145,7 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/')" >> $GITHUB_ENV
+        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/') | sed s/'\s'//g" >> $GITHUB_ENV
       - name: Create file structure 
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
@@ -175,7 +175,7 @@ jobs:
         with:
           name: bob-tools-zip
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/')" >> $GITHUB_ENV
+        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/') | sed s/'\s'//g" >> $GITHUB_ENV
 #      - name: Upload zip file to release
 #        uses: svenstaro/upload-release-action@v2
 #        with:
