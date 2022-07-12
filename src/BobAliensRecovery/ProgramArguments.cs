@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using BobApi.BobEntities;
 using BobToolsCli;
 using CommandLine;
 using RemoteFileCopy.Ssh;
@@ -33,10 +26,6 @@ namespace BobAliensRecovery
 
         [Option("copy-parallel-degree", HelpText = "Number of simultaneous copy processes", Default = 1)]
         public int CopyParallelDegree { get; set; }
-
-        public LoggerOptions LoggerOptions => new(GetMinLogLevel());
-
-        public ClusterOptions ClusterOptions => new(GetBobApiClientProvider());
 
         public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 
