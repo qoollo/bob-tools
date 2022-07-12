@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -16,20 +15,20 @@ namespace RecordsCalculator
     {
         private readonly ILogger<ClusterRecordsCounter> _logger;
         private readonly ProgramArguments _programArguments;
-        private readonly BobApiClientProvider _nodePortStorage;
+        private readonly BobApiClientProvider _bobApiClientProvider;
 
         public ClusterRecordsCounter(ILogger<ClusterRecordsCounter> logger,
-            ProgramArguments programArguments, BobApiClientProvider nodePortStorage)
+            ProgramArguments programArguments, BobApiClientProvider bobApiClientProvider)
         {
             _logger = logger;
             _programArguments = programArguments;
-            _nodePortStorage = nodePortStorage;
+            _bobApiClientProvider = bobApiClientProvider;
         }
 
         public async Task<RecordsCount> CountRecordsInCluster(ClusterConfiguration clusterConfiguration, CancellationToken cancellationToken = default)
         {
             var nodeByName = clusterConfiguration.Nodes
-                .ToDictionary(n => n.Name, n => new BobApiClient(_nodePortStorage.GetNodeApiUri(n)));
+                .ToDictionary(n => n.Name, n => _bobApiClientProvider.GetClient(n));
 
             long unique = 0, withReplicas = 0;
             foreach (var vDisk in clusterConfiguration.VDisks)
