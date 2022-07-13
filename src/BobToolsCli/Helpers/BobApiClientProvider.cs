@@ -38,6 +38,8 @@ namespace BobToolsCli.Helpers
                 else
                     _credsByNodeName.Add(nameSplit[0], creds);
             }
+            if (_defaultCreds.Username is null)
+                throw new ArgumentException("Default credentials must be specified");
         }
 
 
