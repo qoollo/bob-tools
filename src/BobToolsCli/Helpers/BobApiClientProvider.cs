@@ -10,7 +10,6 @@ namespace BobToolsCli.Helpers
     public class BobApiClientProvider
     {
         private const char NameSeparator = ':';
-        private const char UsernamePasswordSeparator = '=';
         private const int DefaultPort = 8000;
 
         private readonly Dictionary<string, int> _portByNodeName;
@@ -28,13 +27,13 @@ namespace BobToolsCli.Helpers
             foreach(var cred in credentials)
             {
                 var nameSplit = cred.Split(NameSeparator);
-                if (nameSplit.Length != 2)
+                if (nameSplit.Length > 2)
                     throw new ArgumentException("Wrong credentials format");
 
-                if (!Credentials.TryParse(nameSplit[1], out var creds))
+                if (!Credentials.TryParse(nameSplit.Last(), out var creds))
                     throw new ArgumentException("Wrong credentials format");
 
-                if (nameSplit[0] == "*")
+                if (nameSplit.Length == 1)
                     _defaultCreds = creds;
                 else
                     _credsByNodeName.Add(nameSplit[0], creds);

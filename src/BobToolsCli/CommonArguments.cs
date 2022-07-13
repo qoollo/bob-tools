@@ -25,7 +25,7 @@ namespace BobToolsCli
         [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000. Wildcard char (*) can be used to set port for all nodes.", Separator = ',')]
         public IEnumerable<string> ApiPortOverrides { get; set; } = Enumerable.Empty<string>();
 
-        [Option("credentials", HelpText = "Credentials for the nodes, in the form 'dest':'username'='password'. E.g. node1:user=pass,node2:admin=pass. Wildcard char (*) can be used to set credentials for all nodes.", Separator = ',')]
+        [Option("credentials", HelpText = "Credentials for the nodes, in the form ['dest':]'username'='password'. E.g. node1:user=pass,node2:admin=pass. Omit 'dest' to set credentials for all nodes.", Separator = ',')]
         public IEnumerable<string> Credentials { get; set; } = Enumerable.Empty<string>();
 
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
