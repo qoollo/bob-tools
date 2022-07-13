@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace BobAliensRecovery.Exceptions
+namespace BobToolsCli.Exceptions
 {
     public class ConfigurationException : Exception
     {
@@ -9,11 +9,11 @@ namespace BobAliensRecovery.Exceptions
         {
         }
 
-        public ConfigurationException(string? message) : base(message)
+        public ConfigurationException(string message) : base(message)
         {
         }
 
-        public ConfigurationException(string? message, Exception? innerException) : base(message, innerException)
+        public ConfigurationException(string message, Exception innerException) : base(message, innerException)
         {
         }
 
