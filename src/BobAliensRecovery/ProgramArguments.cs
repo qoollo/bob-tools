@@ -1,6 +1,5 @@
 using BobToolsCli;
 using CommandLine;
-using RemoteFileCopy.Ssh;
 
 namespace BobAliensRecovery
 {
@@ -14,8 +13,6 @@ namespace BobAliensRecovery
 
         [Option("copy-parallel-degree", HelpText = "Number of simultaneous copy processes", Default = 1)]
         public int CopyParallelDegree { get; set; }
-
-        public SshConfiguration SshConfiguration => new(SshCmd!, SshPort, SshUser!, SshKeyPath!);
 
         public AliensRecoveryOptions AliensRecoveryOptions
             => new(RemoveCopied, ContinueOnError, RestartNodes, CopyParallelDegree);
