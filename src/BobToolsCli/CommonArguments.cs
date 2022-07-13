@@ -44,7 +44,13 @@ namespace BobToolsCli
                     return ConfigurationReadingResult<ClusterConfiguration>.Error($"Failed to parse bootstrap node address from \"{BootstrapNode}\"");
             }
 
-            return await new ClusterConfigurationReader().ReadConfigurationFromFile(ClusterConfigPath, cancellationToken);
+            return await GetClusterConfigurationFromFile(ClusterConfigPath, cancellationToken);
+        }
+
+        public async Task<ConfigurationReadingResult<ClusterConfiguration>> GetClusterConfigurationFromFile(string path,
+            CancellationToken cancellationToken = default)
+        {
+            return await new ClusterConfigurationReader().ReadConfigurationFromFile(path, cancellationToken);
         }
 
         public LogLevel GetMinLogLevel()

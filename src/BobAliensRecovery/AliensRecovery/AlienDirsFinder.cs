@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
-using BobAliensRecovery.Exceptions;
 using BobApi;
 using BobApi.BobEntities;
 using BobToolsCli.Helpers;
+using BobToolsCli.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace BobAliensRecovery.AliensRecovery

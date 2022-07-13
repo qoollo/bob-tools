@@ -5,9 +5,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobToolsCli.BobApliClientFactories;
 using BobToolsCli.ConfigurationFinding;
+using BobToolsCli.Exceptions;
+using BobToolsCli.Helpers;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy.Exceptions;
 
 namespace BobToolsCli
 {
@@ -48,6 +51,27 @@ namespace BobToolsCli
             {
                 Console.WriteLine("Cancelled");
             }
+            catch (ClusterStateException e)
+            {
+                Console.WriteLine($"Cluster state is invalid: {e.Message}");
+            }
+            catch (ConfigurationException e)
+            {
+                Console.WriteLine($"Configuration is invalid: {e.Message}");
+            }
+            catch (OperationException e)
+            {
+                Console.WriteLine($"Execution failed: {e.Message}");
+            }
+
+            catch (MissingDependencyException e)
+            {
+                Console.WriteLine($"Missing dependency: {e.Message}");
+            }
+            catch (CommandLineFailureException e)
+            {
+                Console.WriteLine($"Command line failure: {e.Message}");
+            }
             finally
             {
                 Console.CancelKeyPress -= handler;
@@ -65,7 +89,8 @@ namespace BobToolsCli
                     .AddSingleton<CommonArguments>(args)
                     .AddSingleton<IConfigurationFinder>(args)
                     .AddSingleton(args.GetBobApiClientProvider())
-                    .AddSingleton<IBobApiClientFactory, PortBasedBobApiClientFactory>();
+                    .AddSingleton<IBobApiClientFactory, PortBasedBobApiClientFactory>()
+                    .AddTransient<ParallelP2PProcessor>();
 
                 return f(args, services);
             };
