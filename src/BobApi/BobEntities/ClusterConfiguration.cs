@@ -68,6 +68,8 @@ namespace BobApi.BobEntities
 
                 [YamlMember(Alias = "disk")]
                 public string Disk { get; set; }
+
+                public override string ToString() => $"{Disk}@{Node}";
             }
         }
 

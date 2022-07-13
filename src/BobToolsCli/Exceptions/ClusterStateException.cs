@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 
-namespace BobAliensRecovery.Exceptions
+namespace BobToolsCli.Exceptions
 {
     public class ClusterStateException : Exception
     {
@@ -9,11 +9,11 @@ namespace BobAliensRecovery.Exceptions
         {
         }
 
-        public ClusterStateException(string? message) : base(message)
+        public ClusterStateException(string message) : base(message)
         {
         }
 
-        public ClusterStateException(string? message, Exception? innerException) : base(message, innerException)
+        public ClusterStateException(string message, Exception innerException) : base(message, innerException)
         {
         }
 

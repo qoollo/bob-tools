@@ -6,7 +6,8 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
-using BobAliensRecovery.Exceptions;
+using BobToolsCli.Exceptions;
+using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy;
 using RemoteFileCopy.Entities;
@@ -19,16 +20,19 @@ namespace BobAliensRecovery.AliensRecovery
         private readonly RemoteFileCopier _remoteFileCopier;
         private readonly PartitionInfoAggregator _partitionInfoAggregator;
         private readonly FilesFinder _filesFinder;
+        private readonly ParallelP2PProcessor _parallelP2PProcessor;
         private readonly ILogger<BlobsMover> _logger;
 
         public BlobsMover(RemoteFileCopier remoteFileCopier,
-            PartitionInfoAggregator partitionInfoAggregator,
-            FilesFinder filesFinder,
-            ILogger<BlobsMover> logger)
+			  PartitionInfoAggregator partitionInfoAggregator,
+			  FilesFinder filesFinder,
+			  ParallelP2PProcessor parallelP2PProcessor,
+			  ILogger<BlobsMover> logger)
         {
             _remoteFileCopier = remoteFileCopier;
             _partitionInfoAggregator = partitionInfoAggregator;
             _filesFinder = filesFinder;
+            _parallelP2PProcessor = parallelP2PProcessor;
             _logger = logger;
         }
 
@@ -52,53 +56,11 @@ namespace BobAliensRecovery.AliensRecovery
         private async Task<List<BlobInfo>> CopyBlobsInParallel(IEnumerable<RecoveryTransaction> recoveryTransactions,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
-            var remaining = recoveryTransactions.ToList();
-            var countByAddress = remaining.SelectMany(t => new[] { t.From.Address, t.To.Address }).Distinct()
-                .ToDictionary(a => a, _ => 0);
-
-            var results = new List<BlobInfo>[remaining.Count];
-            await Parallel.ForEachAsync(Enumerable.Range(0, remaining.Count),
-                new ParallelOptions
-                {
-                    CancellationToken = cancellationToken,
-                    MaxDegreeOfParallelism = aliensRecoveryOptions.CopyParallelDegree
-                },
-                async (ind, t) =>
-                {
-                    var transaction = TakeTransaction(remaining, countByAddress);
-                    try
-                    {
-                        results[ind] = await InvokeTransaction(transaction, aliensRecoveryOptions, t);
-                    }
-                    finally
-                    {
-                        CleanUp(transaction, countByAddress);
-                    }
-                });
-            return results.Where(r => r != null).SelectMany(l => l).ToList();
-        }
-
-        private static RecoveryTransaction TakeTransaction(List<RecoveryTransaction> remaining, Dictionary<IPAddress, int> countByAddress)
-        {
-            RecoveryTransaction transaction;
-            lock (countByAddress)
-            {
-                transaction = remaining.OrderBy(t => countByAddress[t.From.Address] + countByAddress[t.To.Address]).First();
-                remaining.Remove(transaction);
-                countByAddress[transaction.From.Address]++;
-                countByAddress[transaction.To.Address]++;
-            }
-
-            return transaction;
-        }
-
-        private static void CleanUp(RecoveryTransaction transaction, Dictionary<IPAddress, int> countByAddress)
-        {
-            lock (countByAddress)
-            {
-                countByAddress[transaction.From.Address]--;
-                countByAddress[transaction.To.Address]--;
-            }
+            var operations = recoveryTransactions.Select(t => ParallelP2PProcessor.CreateOperation(
+                t.From.Address, t.To.Address, () => InvokeTransaction(t, aliensRecoveryOptions, cancellationToken)
+            ));
+            var results = await _parallelP2PProcessor.Invoke(aliensRecoveryOptions.CopyParallelDegree, operations, cancellationToken);
+            return results.Where(r => r.Data != null).SelectMany(r => r.Data).ToList();
         }
 
         private async Task<List<BlobInfo>> InvokeTransaction(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions,
