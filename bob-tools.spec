@@ -34,7 +34,6 @@ mkdir -p %{buildroot}/lib/systemd/system/
 
 cp ClusterModifier %{buildroot}/usr/bin/
 cp DisksMonitoring %{buildroot}/usr/bin/
-cp DiskStatusAnalyzer %{buildroot}/usr/bin/
 cp BobAliensRecovery %{buildroot}/usr/bin/
 cp OldPartitionsRemover %{buildroot}/usr/bin/
 cp RecordsCalculator %{buildroot}/usr/bin/
@@ -47,7 +46,6 @@ rm -rf %{buildroot}
 %files
 %attr(0755, root, root) /usr/bin/ClusterModifier
 %attr(0755, root, root) /usr/bin/DisksMonitoring
-%attr(0755, root, root) /usr/bin/DiskStatusAnalyzer
 %attr(0755, root, root) /usr/bin/BobAliensRecovery
 %attr(0755, root, root) /usr/bin/OldPartitionsRemover
 %attr(0755, root, root) /usr/bin/RecordsCalculator
