@@ -41,12 +41,12 @@ jobs:
         run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: build rpm
         run: |
-          sed -i "s/current_version/${{ env.VERSION }}/" packages/bob-tools.spec
-          sed -i "s/release_number/${{ github.run_id }}/" packages/bob-tools.spec
+          sed -i "s/current_version/${{ env.VERSION }}/" linux-packages/bob-tools.spec
+          sed -i "s/release_number/${{ github.run_id }}/" linux-packages/bob-tools.spec
           mkdir -p ./rpmbuild/{SOURCES,BUILD,RPMS,SPECS,SRPMS}
           cur_dir_name=${PWD##*/}
-          tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,packages/DisksMonitoring.service,publish/BobTools.sh} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
-          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" packages/bob-tools.spec
+          tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,linux-packages/DisksMonitoring.service,publish/BobTools.sh} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
+          rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" linux-packages/bob-tools.spec
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
@@ -94,12 +94,12 @@ jobs:
       - name: build deb
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
-          cp packages/control bob-tools_${{ env.VERSION }}_amd64/DEBIAN/
+          cp linux-packages/control bob-tools_${{ env.VERSION }}_amd64/DEBIAN/
           cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}_amd64/usr/bin/
           cp publish/BobTools.sh bob-tools_${{ env.VERSION }}_amd64/usr/bin/bobtools
           chmod +x bob-tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,bobtools}
-          cp packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/etc/systemd/system/
-          cp packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
+          cp linux-packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/etc/systemd/system/
+          cp linux-packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
           dpkg-deb --build ./bob-tools_${{ env.VERSION }}_amd64
       - name: Upload artifact
@@ -152,8 +152,8 @@ jobs:
           cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}/usr/bin/
           cp publish/BobTools.sh bob-tools_${{ env.VERSION }}/usr/bin/bobtools
           chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,bobtools}
-          cp packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}/etc/systemd/system/
-          cp packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}/lib/systemd/system/
+          cp linux-packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}/etc/systemd/system/
+          cp linux-packages/DisksMonitoring.service bob-tools_${{ env.VERSION }}/lib/systemd/system/
           zip -r bob-tools_${{ env.VERSION }}.zip bob-tools_${{ env.VERSION }}
       - name: Upload artifact
         uses: actions/upload-artifact@v2

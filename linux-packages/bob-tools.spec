@@ -39,8 +39,8 @@ cp BobAliensRecovery %{buildroot}/usr/bin/
 cp OldPartitionsRemover %{buildroot}/usr/bin/
 cp RecordsCalculator %{buildroot}/usr/bin/
 cp publish/BobTools.sh %{buildroot}/usr/bin/bobtools
-cp packages/DisksMonitoring.service %{buildroot}/etc/systemd/system/
-cp packages/DisksMonitoring.service %{buildroot}/lib/systemd/system/
+cp linux-packages/DisksMonitoring.service %{buildroot}/etc/systemd/system/
+cp linux-packages/DisksMonitoring.service %{buildroot}/lib/systemd/system/
 
 %clean
 rm -rf %{buildroot}
