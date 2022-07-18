@@ -1,0 +1,194 @@
+name: build-docker-images
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+      - 'v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+'
+
+jobs:
+
+  build-bob-aliens-recovery-docker-image:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Set env
+        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: qoollo/bob-aliens-recovery
+          tags: |
+            ${{ env.VERSION }}
+            latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/BobAliensRecovery/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  build-bob-cluster-modifier-docker-image:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Set env
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: qoollo/bob-cluster-modifier
+          tags: |
+            ${{ env.VERSION }}
+            latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/ClusterModifier/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  build-bob-disks-monitoring-docker-image:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Set env
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: qoollo/bob-disks-monitoring
+          tags: |
+            ${{ env.VERSION }}
+            latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/DisksMonitoring/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  build-bob-tools-docker-image:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Set env
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: qoollo/bob-tools
+          tags: |
+            ${{ env.VERSION }}
+            latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/bob-tools/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  build-bob-old-partitions-remover-docker-image:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Set env
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: qoollo/bob-old-partitions-remover
+          tags: |
+            ${{ env.VERSION }}
+            latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/OldPartitionsRemover/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  build-bob-records-calculator-docker-image:
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Set env
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: qoollo/bob-records-calculator
+          tags: |
+            ${{ env.VERSION }}
+            latest,enable=${{ ! contains(env.VERSION, 'alpha') }}
+      - name: Build and push image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/RecordsCalculator/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

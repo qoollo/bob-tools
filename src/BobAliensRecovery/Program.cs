@@ -4,9 +4,9 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery;
-using BobAliensRecovery.Exceptions;
 using BobApi.BobEntities;
 using BobToolsCli;
+using BobToolsCli.Exceptions;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,30 +19,7 @@ namespace BobAliensRecovery
     {
         static async Task Main(string[] args)
         {
-            try
-            {
-                await CliHelper.RunWithParsed<ProgramArguments>(args, RecoverAliens);
-            }
-            catch (MissingDependencyException e)
-            {
-                Console.WriteLine($"Missing dependency: {e.Message}");
-            }
-            catch (ClusterStateException e)
-            {
-                Console.WriteLine($"Cluster state is invalid: {e.Message}");
-            }
-            catch (ConfigurationException e)
-            {
-                Console.WriteLine($"Configuration is invalid: {e.Message}");
-            }
-            catch (OperationException e)
-            {
-                Console.WriteLine($"Execution failed: {e.Message}");
-            }
-            catch (CommandLineFailureException e)
-            {
-                Console.WriteLine($"Command line failure: {e.Message}");
-            }
+            await CliHelper.RunWithParsed<ProgramArguments>(args, RecoverAliens);
         }
 
         private static async Task RecoverAliens(ProgramArguments arguments, IServiceCollection services, CancellationToken cancellationToken)

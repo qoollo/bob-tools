@@ -8,7 +8,7 @@ on:
     
 jobs:
 
-  build-release:
+  build-binaries:
     runs-on: ubuntu-latest
     steps:
       - name: Checks-out repository 
@@ -17,3 +17,69 @@ jobs:
           fetch-depth: 0
       - name: Build release
         run: ./buildscripts/publish.sh
+
+  build-bob-aliens-recovery-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/BobAliensRecovery/Dockerfile
+
+  build-bob-cluster-modifier-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/ClusterModifier/Dockerfile
+
+  build-bob-disks-monitoring-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/DisksMonitoring/Dockerfile
+
+  build-bob-tools-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/bob-tools/Dockerfile
+
+  build-bob-old-partitions-remover-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/OldPartitionsRemover/Dockerfile
+
+  build-bob-records-calculator-docker-image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: dockerfiles/RecordsCalculator/Dockerfile
