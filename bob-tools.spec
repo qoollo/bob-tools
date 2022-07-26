@@ -37,6 +37,7 @@ cp DisksMonitoring %{buildroot}/usr/bin/
 cp BobAliensRecovery %{buildroot}/usr/bin/
 cp OldPartitionsRemover %{buildroot}/usr/bin/
 cp RecordsCalculator %{buildroot}/usr/bin/
+cp publish/BobTools.sh %{buildroot}/usr/bin/bobtools
 cp DisksMonitoring.service %{buildroot}/etc/systemd/system/
 cp DisksMonitoring.service %{buildroot}/lib/systemd/system/
 
@@ -49,6 +50,7 @@ rm -rf %{buildroot}
 %attr(0755, root, root) /usr/bin/BobAliensRecovery
 %attr(0755, root, root) /usr/bin/OldPartitionsRemover
 %attr(0755, root, root) /usr/bin/RecordsCalculator
+%attr(0755, root, root) /usr/bin/bobtools
 /etc/systemd/system/DisksMonitoring.service
 /lib/systemd/system/DisksMonitoring.service
 %dir /etc/DisksMonitoring/
