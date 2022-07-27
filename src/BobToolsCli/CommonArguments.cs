@@ -25,8 +25,14 @@ namespace BobToolsCli
         [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000. Wildcard char (*) can be used to set port for all nodes.", Separator = ',')]
         public IEnumerable<string> ApiPortOverrides { get; set; } = Enumerable.Empty<string>();
 
-        [Option("credentials", HelpText = "Credentials for the nodes. Form is [dest:]username=password, separated by ','. E.g. user=pass,node1:user=pass,node2:user=pass. Default credentials, without 'dest', must be specified.", Required = true, Separator = ',')]
+        [Option("credentials", HelpText = "Override credentials for the nodes. Form is dest:user=password, separated by ','. E.g. node1:user1=pass1,node2:user2=pass2.", Separator = ',')]
         public IEnumerable<string> Credentials { get; set; } = Enumerable.Empty<string>();
+
+        [Option("user", HelpText = "User for node authentication")]
+        public string Username { get; set; }
+
+        [Option("password", HelpText = "Password for node authentication")]
+        public string Password { get; set; }
 
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
@@ -67,7 +73,7 @@ namespace BobToolsCli
 
         public BobApiClientProvider GetBobApiClientProvider()
         {
-            return new BobApiClientProvider(ApiPortOverrides, Credentials);
+            return new BobApiClientProvider(ApiPortOverrides, Credentials, Username, Password);
         }
 
         private static bool TryParseHostPort(string s, out string host, out int port)

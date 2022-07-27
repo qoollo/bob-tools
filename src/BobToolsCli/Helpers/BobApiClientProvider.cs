@@ -17,7 +17,7 @@ namespace BobToolsCli.Helpers
         private readonly int _defaultPort;
         private readonly Credentials _defaultCreds;
 
-        internal BobApiClientProvider(IEnumerable<string> portOverrides, IEnumerable<string> credentials)
+        internal BobApiClientProvider(IEnumerable<string> portOverrides, IEnumerable<string> credentials, string username, string password)
         {
             _portByNodeName = portOverrides.ToDictionary(s => s.Split(NameSeparator)[0], s => int.Parse(s.Split(NameSeparator)[1]));
             if (!_portByNodeName.TryGetValue("*", out _defaultPort))
@@ -27,17 +27,15 @@ namespace BobToolsCli.Helpers
             foreach(var cred in credentials)
             {
                 var nameSplit = cred.Split(NameSeparator);
-                if (nameSplit.Length > 2)
+                if (nameSplit.Length != 2)
                     throw new ArgumentException("Wrong credentials format");
 
-                if (!Credentials.TryParse(nameSplit[nameSplit.Length - 1], out var creds))
+                if (!Credentials.TryParse(nameSplit[1], out var creds))
                     throw new ArgumentException("Wrong credentials format");
 
-                if (nameSplit.Length == 1)
-                    _defaultCreds = creds;
-                else
-                    _credsByNodeName.Add(nameSplit[0], creds);
+                _credsByNodeName.Add(nameSplit[0], creds);
             }
+            _defaultCreds = new Credentials(username, password);
         }
 
 
