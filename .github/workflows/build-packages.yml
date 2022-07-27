@@ -43,7 +43,7 @@ jobs:
           sed -i "s/release_number/${{ github.run_id }}/" bob-tools.spec
           mkdir -p ./rpmbuild/{SOURCES,BUILD,RPMS,SPECS,SRPMS}
           cur_dir_name=${PWD##*/}
-          tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service,publish/BobTools.sh} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
+          tar czf ./rpmbuild/SOURCES/bob-tools-${{ env.VERSION }}.tar.gz ../${cur_dir_name}/{ClusterModifier,DisksMonitoring,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,DisksMonitoring.service,publish/BobTools.sh} --transform s/${cur_dir_name}/bob-tools-${{ env.VERSION }}/
           rpmbuild -ba --define "_topdir ${PWD}/rpmbuild" bob-tools.spec
       - name: Upload artifact
         uses: actions/upload-artifact@v2
@@ -93,9 +93,9 @@ jobs:
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
           cp control bob-tools_${{ env.VERSION }}_amd64/DEBIAN/
-          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}_amd64/usr/bin/
+          cp {ClusterModifier,DisksMonitoring,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}_amd64/usr/bin/
           cp publish/BobTools.sh bob-tools_${{ env.VERSION }}_amd64/usr/bin/bobtools
-          chmod +x bob-tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,bobtools}
+          chmod +x bob-tools_${{ env.VERSION }}_amd64/usr/bin/{ClusterModifier,DisksMonitoring,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,bobtools}
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}_amd64/lib/systemd/system/
           sed -i "s/current_version/${{ env.VERSION }}/" bob-tools_${{ env.VERSION }}_amd64/DEBIAN/control
@@ -147,9 +147,9 @@ jobs:
       - name: Create file structure 
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
-          cp {ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}/usr/bin/
+          cp {ClusterModifier,DisksMonitoring,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator} bob-tools_${{ env.VERSION }}/usr/bin/
           cp publish/BobTools.sh bob-tools_${{ env.VERSION }}/usr/bin/bobtools
-          chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,DiskStatusAnalyzer,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,bobtools}
+          chmod +x bob-tools_${{ env.VERSION }}/usr/bin/{ClusterModifier,DisksMonitoring,BobAliensRecovery,OldPartitionsRemover,RecordsCalculator,bobtools}
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/etc/systemd/system/
           cp DisksMonitoring.service bob-tools_${{ env.VERSION }}/lib/systemd/system/
           zip -r bob-tools_${{ env.VERSION }}.zip bob-tools_${{ env.VERSION }}
