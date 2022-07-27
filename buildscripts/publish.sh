@@ -6,6 +6,5 @@ echo $VERSION
 dotnet publish -c $CONFIGURATION -r $RUNTIME -o publish src/DisksMonitoring
 dotnet publish -c $CONFIGURATION -r $RUNTIME -o publish src/OldPartitionsRemover
 dotnet publish -c $CONFIGURATION -r $RUNTIME -o publish src/RecordsCalculator
-dotnet publish -c $CONFIGURATION -r $RUNTIME -o publish src/DiskStatusAnalyzer
 dotnet publish -c $CONFIGURATION -r $RUNTIME -o publish src/ClusterModifier
 dotnet publish -c $CONFIGURATION -r $RUNTIME -o publish src/BobAliensRecovery
