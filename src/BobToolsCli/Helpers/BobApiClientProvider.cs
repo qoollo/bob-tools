@@ -30,7 +30,7 @@ namespace BobToolsCli.Helpers
                 if (nameSplit.Length > 2)
                     throw new ArgumentException("Wrong credentials format");
 
-                if (!Credentials.TryParse(nameSplit.Last(), out var creds))
+                if (!Credentials.TryParse(nameSplit[nameSplit.Length - 1], out var creds))
                     throw new ArgumentException("Wrong credentials format");
 
                 if (nameSplit.Length == 1)
