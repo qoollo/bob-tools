@@ -26,8 +26,10 @@ namespace BobApi
                 BaseAddress = address,
                 Timeout = TimeSpan.FromSeconds(30),
             };
-            _client.DefaultRequestHeaders.Add("username", username);
-            _client.DefaultRequestHeaders.Add("password", password);
+            if (username != null)
+                _client.DefaultRequestHeaders.Add("username", username);
+            if (password != null)
+                _client.DefaultRequestHeaders.Add("password", password);
             _throwOnNoConnection = throwOnNoConnection;
         }
 
