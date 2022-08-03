@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "DiskStatusAnalyzer": {
-      "commandName": "Project",
-      "commandLineArgs": "copy-disk -s node1 -d node1 -n disk1"
-    }
-  }
-}
