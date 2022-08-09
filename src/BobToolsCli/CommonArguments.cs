@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using BobApi;
 using BobApi.BobEntities;
 using BobToolsCli.ConfigurationFinding;
 using BobToolsCli.ConfigurationReading;
@@ -28,6 +25,15 @@ namespace BobToolsCli
         [Option("api-port", HelpText = "Override default api port for the node. E.g. node1:80,node2:8000. Wildcard char (*) can be used to set port for all nodes.", Separator = ',')]
         public IEnumerable<string> ApiPortOverrides { get; set; } = Enumerable.Empty<string>();
 
+        [Option("credentials", HelpText = "Override credentials for the nodes. Form is dest:user=password, separated by ','. E.g. node1:user1=pass1,node2:user2=pass2.", Separator = ',')]
+        public IEnumerable<string> Credentials { get; set; } = Enumerable.Empty<string>();
+
+        [Option("user", HelpText = "User for node authentication")]
+        public string Username { get; set; }
+
+        [Option("password", HelpText = "Password for node authentication")]
+        public string Password { get; set; }
+
         [Option("continue-on-error", HelpText = "Continue copy on cluster state errors", Default = false)]
         public bool ContinueOnError { get; set; }
 
@@ -39,7 +45,7 @@ namespace BobToolsCli
             if (BootstrapNode != null)
             {
                 if (TryParseHostPort(BootstrapNode, out var host, out var port))
-                    return await new NodeClusterConfigurationFetcher(GetNodePortStorage()).GetConfigurationFromNode(host, port, cancellationToken);
+                    return await new NodeClusterConfigurationFetcher(GetBobApiClientProvider()).GetConfigurationFromNode(host, port, cancellationToken);
                 else
                     return ConfigurationReadingResult<ClusterConfiguration>.Error($"Failed to parse bootstrap node address from \"{BootstrapNode}\"");
             }
@@ -65,9 +71,9 @@ namespace BobToolsCli
             };
         }
 
-        public NodePortStorage GetNodePortStorage()
+        public BobApiClientProvider GetBobApiClientProvider()
         {
-            return new NodePortStorage(ApiPortOverrides);
+            return new BobApiClientProvider(ApiPortOverrides, Credentials, Username, Password);
         }
 
         private static bool TryParseHostPort(string s, out string host, out int port)

@@ -13,15 +13,15 @@ namespace BobToolsCli.ConfigurationReading
 {
     internal class NodeClusterConfigurationFetcher
     {
-        private readonly NodePortStorage _nodePortStorage;
-        public NodeClusterConfigurationFetcher(NodePortStorage nodePortStorage)
+        private readonly BobApiClientProvider _bobApiClientProvider;
+        public NodeClusterConfigurationFetcher(BobApiClientProvider bobApiClientProvider)
         {
-            _nodePortStorage = nodePortStorage;
+            _bobApiClientProvider = bobApiClientProvider;
         }
 
         public async Task<ConfigurationReadingResult<ClusterConfiguration>> GetConfigurationFromNode(string host, int port, CancellationToken cancellationToken)
         {
-            var client = new BobApiClient(new Uri($"http://{host}:{port}"));
+            var client = _bobApiClientProvider.GetClient(host, port);
             var nodesResult = await client.GetNodes(cancellationToken);
             if (nodesResult.IsOk(out var nodes, out var nodesError))
             {
@@ -38,8 +38,7 @@ namespace BobToolsCli.ConfigurationReading
             var result = new List<ClusterConfiguration.Node>();
             foreach (var node in nodes)
             {
-                var nodeAddr = _nodePortStorage.GetNodeApiUri(node);
-                var nodeClient = new BobApiClient(nodeAddr);
+                using var nodeClient = _bobApiClientProvider.GetClient(node);
                 var statusResult = await nodeClient.GetStatus(cancellationToken);
                 if (statusResult.IsOk(out var status, out var statusError))
                 {
@@ -62,7 +61,7 @@ namespace BobToolsCli.ConfigurationReading
                     }
                     else
                         return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
-                            .Error($"Expected to find node \"{node.Name}\" at \"{nodeAddr.Host}:{nodeAddr.Port}\", but found \"{status.Name}\"");
+                            .Error($"Expected to find node \"{node.Name}\" but found \"{status.Name}\"");
                 }
                 else
                     return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
