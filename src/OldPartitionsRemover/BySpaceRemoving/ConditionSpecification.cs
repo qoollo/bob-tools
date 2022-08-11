@@ -5,6 +5,7 @@ using BobApi;
 using BobApi.BobEntities;
 using BobToolsCli.BobApliClientFactories;
 using ByteSizeLib;
+using Microsoft.Extensions.Logging;
 using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.BySpaceRemoving
@@ -63,7 +64,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
 
         public ClusterConfiguration.Node Node { get; }
 
-        public async Task<Result<bool>> CheckIsDone(CancellationToken cancellationToken)
+        public async Task<Result<bool>> CheckIsDone(ILogger logger, CancellationToken cancellationToken)
         {
             var spaceResult = await _getCurrentBytes(cancellationToken);
             return spaceResult.Map(space =>
@@ -72,7 +73,9 @@ namespace OldPartitionsRemover.BySpaceRemoving
                     _minSpace = space;
                 if (space > _maxSpace)
                     _maxSpace = space;
-                return _isDone(ByteSize.FromBytes(space));
+                var s = ByteSize.FromBytes(space);
+                logger.LogTrace("Current space is {Space}", s);
+                return _isDone(s);
             });
         }
 

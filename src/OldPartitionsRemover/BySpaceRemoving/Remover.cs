@@ -82,7 +82,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
             return await removalFunctionsResult
                 .Bind(async removalFunctions => await _resultsCombiner.CombineResults(removalFunctions, 0, async (n, rem) =>
                 {
-                    var isDoneRes = await nodeSpec.CheckIsDone(cancellationToken);
+                    var isDoneRes = await nodeSpec.CheckIsDone(_logger, cancellationToken);
                     return await isDoneRes.Bind(async isDone =>
                     {
                         if (isDone)
