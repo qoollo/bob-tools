@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
 using BobApi;
 using BobApi.BobEntities;
+using BobToolsCli.Helpers;
 using BobToolsCli.Exceptions;
 using Microsoft.Extensions.Logging;
 
@@ -20,14 +21,14 @@ namespace BobAliensRecovery.AliensRecovery
         }
 
         internal async Task RestartTargetNodes(IEnumerable<RecoveryTransaction> recoveryTransactions,
-            ClusterConfiguration clusterConfiguration, ClusterOptions clusterOptions,
+            ClusterConfiguration clusterConfiguration, BobApiClientProvider bobApiClientProvider,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
             var restartOperations = GetRestartOperations(recoveryTransactions, clusterConfiguration);
 
             foreach (var ro in restartOperations.Distinct())
             {
-                using var api = new BobApiClient(clusterOptions.GetNodeApiUri(ro.Node));
+                using var api = bobApiClientProvider.GetClient(ro.Node);
                 var restartResult = await api.RestartDisk(ro.DiskName, cancellationToken);
                 if (restartResult.TryGetData(out var isRestarted) && isRestarted)
                     _logger.LogDebug("Reloaded {disk} on {node}", ro.DiskName, ro.Node.Name);

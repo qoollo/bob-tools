@@ -14,7 +14,7 @@ Requires: rsync
 
 %description
 Various tools for interacting with bob:
-Records calculator.Tool for counting all unique records and replicas in bob.
+Records calculator. Tool for counting all unique records and replicas in bob.
 Old partitions remover. Tool for removing all partitions in cluster older than provided date.
 Disk status analyzer. Tool for copying aliens.
 BobAliensRecovery. Tool for recovering aliens from nodes.
@@ -34,13 +34,12 @@ mkdir -p %{buildroot}/lib/systemd/system/
 
 cp ClusterModifier %{buildroot}/usr/bin/
 cp DisksMonitoring %{buildroot}/usr/bin/
-cp DiskStatusAnalyzer %{buildroot}/usr/bin/
 cp BobAliensRecovery %{buildroot}/usr/bin/
 cp OldPartitionsRemover %{buildroot}/usr/bin/
 cp RecordsCalculator %{buildroot}/usr/bin/
 cp publish/BobTools.sh %{buildroot}/usr/bin/bobtools
-cp DisksMonitoring.service %{buildroot}/etc/systemd/system/
-cp DisksMonitoring.service %{buildroot}/lib/systemd/system/
+cp linux-packages/DisksMonitoring.service %{buildroot}/etc/systemd/system/
+cp linux-packages/DisksMonitoring.service %{buildroot}/lib/systemd/system/
 
 %clean
 rm -rf %{buildroot}
@@ -48,7 +47,6 @@ rm -rf %{buildroot}
 %files
 %attr(0755, root, root) /usr/bin/ClusterModifier
 %attr(0755, root, root) /usr/bin/DisksMonitoring
-%attr(0755, root, root) /usr/bin/DiskStatusAnalyzer
 %attr(0755, root, root) /usr/bin/BobAliensRecovery
 %attr(0755, root, root) /usr/bin/OldPartitionsRemover
 %attr(0755, root, root) /usr/bin/RecordsCalculator

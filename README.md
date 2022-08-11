@@ -10,17 +10,17 @@ Tool for counting all unique records and replicas in bob.
 
 Tool for removing all partitions in cluster older than provided date.
 
-## Disk status analyzer
-
-Tool for copying aliens.
-
 ## Disks monitoring
 
-Tool for discovery, formatting and mounting of new disks
+Tool for discovery, formatting and mounting of new disks.
 
 ## BobAliensRecovery
 
 Tool for recovering aliens from nodes.
+
+## Cluster modifier
+
+Tool for expanding clusters according to configurations.
 
 ### Dockerized
 

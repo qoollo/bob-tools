@@ -188,8 +188,8 @@ namespace ClusterModifier
             var rootDir = _args.FindRootDir(node.Name);
             if (rootDir == null)
             {
-                var apiAddr = _args.GetNodePortStorage().GetNodeApiUri(node);
-                var nodeConfigResult = await new BobApi.BobApiClient(apiAddr).GetNodeConfiguration(cancellationToken);
+                var client = _args.GetBobApiClientProvider().GetClient(node);
+                var nodeConfigResult = await client.GetNodeConfiguration(cancellationToken);
                 if (nodeConfigResult.IsOk(out var conf, out var error))
                     rootDir = conf.RootDir;
                 else

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery;
@@ -9,7 +7,6 @@ using BobToolsCli;
 using BobToolsCli.Exceptions;
 using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Extensions;
 
@@ -29,7 +26,7 @@ namespace BobAliensRecovery
 
             var cluster = await GetClusterConfiguration(arguments!, cancellationToken);
 
-            await recoverer.RecoverAliens(cluster, arguments.ClusterOptions, arguments.AliensRecoveryOptions,
+            await recoverer.RecoverAliens(cluster, arguments.GetBobApiClientProvider(), arguments.AliensRecoveryOptions,
                 cancellationToken);
         }
 

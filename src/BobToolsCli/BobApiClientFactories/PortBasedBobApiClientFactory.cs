@@ -6,11 +6,11 @@ namespace BobToolsCli.BobApliClientFactories
 {
     public class PortBasedBobApiClientFactory : IBobApiClientFactory
     {
-        private readonly NodePortStorage _nodePortStorage;
+        private readonly BobApiClientProvider _bobApiClientProvider;
 
-        public PortBasedBobApiClientFactory(NodePortStorage nodePortStorage)
+        public PortBasedBobApiClientFactory(BobApiClientProvider bobApiClientProvider)
         {
-            _nodePortStorage = nodePortStorage;
+            _bobApiClientProvider = bobApiClientProvider;
         }
 
         public IPartitionsBobApiClient GetPartitionsBobApiClient(ClusterConfiguration.Node node)
@@ -25,7 +25,7 @@ namespace BobToolsCli.BobApliClientFactories
 
         private BobApiClient GetBobApiClient(ClusterConfiguration.Node node)
         {
-            return new BobApiClient(_nodePortStorage.GetNodeApiUri(node));
+            return _bobApiClientProvider.GetClient(node);
         }
     }
 }
