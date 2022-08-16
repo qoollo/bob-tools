@@ -17,13 +17,13 @@ namespace BobAliensRecovery.AliensRecovery
 {
     public class BlobsMover
     {
-        private readonly RemoteFileCopier _remoteFileCopier;
+        private readonly IRemoteFileCopier _remoteFileCopier;
         private readonly PartitionInfoAggregator _partitionInfoAggregator;
         private readonly FilesFinder _filesFinder;
         private readonly ParallelP2PProcessor _parallelP2PProcessor;
         private readonly ILogger<BlobsMover> _logger;
 
-        public BlobsMover(RemoteFileCopier remoteFileCopier,
+        public BlobsMover(IRemoteFileCopier remoteFileCopier,
 			  PartitionInfoAggregator partitionInfoAggregator,
 			  FilesFinder filesFinder,
 			  ParallelP2PProcessor parallelP2PProcessor,
