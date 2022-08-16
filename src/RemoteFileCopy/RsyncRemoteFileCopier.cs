@@ -13,14 +13,14 @@ using RemoteFileCopy.Ssh;
 
 namespace RemoteFileCopy
 {
-    public class RemoteFileCopier : IRemoteFileCopier
+    public class RsyncRemoteFileCopier : IRemoteFileCopier
     {
-        private readonly ILogger<RemoteFileCopier> _logger;
+        private readonly ILogger<RsyncRemoteFileCopier> _logger;
         private readonly RsyncWrapper _rsyncWrapper;
         private readonly SshWrapper _sshWrapper;
         private readonly FilesFinder _filesFinder;
 
-        public RemoteFileCopier(ILogger<RemoteFileCopier> logger,
+        public RsyncRemoteFileCopier(ILogger<RsyncRemoteFileCopier> logger,
             RsyncWrapper rsyncWrapper,
             SshWrapper sshWrapper,
             FilesFinder filesFinder)
