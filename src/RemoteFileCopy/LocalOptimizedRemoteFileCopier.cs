@@ -57,12 +57,27 @@ namespace RemoteFileCopy
 
         public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
         {
+            if (TryGetLocalPath(dir, out var path))
+            {
+                if (System.IO.Directory.Exists(path))
+                {
+                    System.IO.Directory.Delete(path);
+                    return true;
+                }
+                return false;
+            }
             return await _remoteFileCopier.RemoveDirectory(dir, cancellationToken);
         }
 
         public async Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default)
         {
             return await _remoteFileCopier.RemoveEmptySubdirs(dir, cancellationToken);
+        }
+
+        private bool TryGetLocalPath(RemoteDir dir, out string path)
+        {
+            path = dir.Path;
+            return _localAddresses.Contains(dir.Address);
         }
     }
 }
