@@ -34,7 +34,6 @@ namespace RemoteFileCopy
                         if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
                         {
                             _localAddresses.Add(ip.Address);
-                            Console.WriteLine(ip.Address);
                         }
                     }
                 }
