@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.NetworkInformation;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,10 +19,26 @@ namespace RemoteFileCopy
     public class LocalOptimizedRemoteFileCopier : IRemoteFileCopier
     {
         private readonly IRemoteFileCopier _remoteFileCopier;
+        private readonly HashSet<IPAddress> _localAddresses;
 
         public LocalOptimizedRemoteFileCopier(IRemoteFileCopier remoteFileCopier)
         {
             _remoteFileCopier = remoteFileCopier;
+            _localAddresses = new HashSet<IPAddress>();
+            foreach (var iface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (iface.OperationalStatus == OperationalStatus.Up)
+                {
+                    foreach (var ip in iface.GetIPProperties().UnicastAddresses)
+                    {
+                        if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            _localAddresses.Add(ip.Address);
+                            Console.WriteLine(ip.Address);
+                        }
+                    }
+                }
+            }
         }
 
         public async Task<RsyncResult> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
