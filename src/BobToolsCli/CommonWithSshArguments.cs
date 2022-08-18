@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using CommandLine;
 using RemoteFileCopy.Ssh;
 
@@ -8,6 +10,9 @@ namespace BobToolsCli
         [Option("ssh-cmd", HelpText = "Ssh cmd.", Default = "ssh")]
         public string SshCmd { get; set; }
 
+        [Option("ssh-flags", HelpText = "Additional flags to pass to ssh. Without spaces, without -, delimeted by comma", Separator = ',')]
+        public IEnumerable<string> SshFlags { get; set; } = Array.Empty<string>();
+
         [Option("ssh-port", HelpText = "Ssh port.", Default = 22)]
         public int SshPort { get; set; }
 
@@ -17,6 +22,6 @@ namespace BobToolsCli
         [Option("ssh-key-path", HelpText = "Path to ssh key.", Default = "~/.ssh/id_rsa")]
         public string SshKeyPath { get; set; }
 
-        public SshConfiguration SshConfiguration => new(SshCmd, SshPort, SshUser, SshKeyPath);
+        public SshConfiguration SshConfiguration => new(SshCmd, SshFlags, SshPort, SshUser, SshKeyPath);
     }
 }
