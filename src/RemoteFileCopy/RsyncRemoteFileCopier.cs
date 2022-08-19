@@ -48,7 +48,44 @@ namespace RemoteFileCopy
                 && await RemoveEmptySubdirs(dir, cancellationToken);
         }
 
-        public async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
+        public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
+        {
+            var result = await _sshWrapper.InvokeSshProcess(dir.Address, $"rm -rf \"{dir.Path}\"", cancellationToken);
+            return !result.IsError;
+        }
+
+        public async Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default)
+        {
+            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address,
+                $"[ -d {dir.Path} ] && find {dir.Path} -type d -empty -delete", cancellationToken);
+            foreach (var line in sshResult.StdErr)
+                _logger.LogInformation(line);
+            return !sshResult.IsError;
+        }
+
+        public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        {
+                var srcFiles = await _filesFinder.FindFiles(from, cancellationToken);
+                var dstFiles = await _filesFinder.FindFiles(to, cancellationToken);
+
+                var equal = srcFiles
+                    .Select(f => (from, file: f))
+                    .ToHashSet(FileInfoComparer.Instance);
+                equal.IntersectWith(dstFiles.Select(f => (to, f)));
+
+                var filesToRemove = equal.Select(t => t.file);
+
+                if (filesToRemove.Any())
+                {
+                    if (await RemoveFiles(filesToRemove, cancellationToken))
+                        _logger.LogInformation("Successfully removed source files from {dir}", from);
+                    else
+                        _logger.LogWarning("Failed to remove source files from {dir}", from);
+                }
+
+        }
+
+        internal async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
         {
             var error = false;
             var filesByAddress = fileInfos.GroupBy(f => f.Address);
@@ -66,19 +103,22 @@ namespace RemoteFileCopy
             return !error;
         }
 
-        public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
-        {
-            var result = await _sshWrapper.InvokeSshProcess(dir.Address, $"rm -rf \"{dir.Path}\"", cancellationToken);
-            return !result.IsError;
-        }
 
-        public async Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default)
+        private class FileInfoComparer : IEqualityComparer<(RemoteDir dir, RemoteFileInfo file)>
         {
-            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address,
-                $"[ -d {dir.Path} ] && find {dir.Path} -type d -empty -delete", cancellationToken);
-            foreach (var line in sshResult.StdErr)
-                _logger.LogInformation(line);
-            return !sshResult.IsError;
+            public bool Equals((RemoteDir dir, RemoteFileInfo file) x, (RemoteDir dir, RemoteFileInfo file) y)
+            {
+                return x.file.Checksum == y.file.Checksum
+                    && x.file.LengthBytes == y.file.LengthBytes
+                    && x.file.Filename.AsSpan(x.dir.Path.Length).SequenceEqual(y.file.Filename.AsSpan(y.dir.Path.Length));
+            }
+
+            public int GetHashCode((RemoteDir dir, RemoteFileInfo file) obj)
+            {
+                return HashCode.Combine(obj.file.Checksum);
+            }
+
+            public static FileInfoComparer Instance { get; } = new();
         }
     }
 }

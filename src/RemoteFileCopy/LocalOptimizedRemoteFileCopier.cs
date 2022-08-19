@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using RemoteFileCopy.Entities;
 using RemoteFileCopy.Rsync.Entities;
 using System.IO;
-using System.Linq;
 
 namespace RemoteFileCopy
 {
@@ -55,27 +54,6 @@ namespace RemoteFileCopy
                 return true;
             }
             return await _remoteFileCopier.RemoveInDir(dir, cancellationToken);
-        }
-
-        public async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
-        {
-            var local = fileInfos.Where(f => _localAddresses.Contains(f.Address)).ToArray();
-            var remote = fileInfos.Except(local).ToArray();
-            var result = true;
-            if (local.Length > 0)
-            {
-                foreach(var f in local)
-                {
-                    var exists = File.Exists(f.Filename);
-                    if (exists)
-                        File.Delete(f.Filename);
-                    else
-                        result = false;
-                }
-            }
-            if (remote.Length > 0)
-                result &= await _remoteFileCopier.RemoveFiles(fileInfos, cancellationToken);
-            return result;
         }
 
         public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
@@ -140,6 +118,11 @@ namespace RemoteFileCopy
                     result = false;
             }
             return result && Directory.GetFiles(path).Length == 0;
+        }
+
+        public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        {
+            await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
         }
     }
 }
