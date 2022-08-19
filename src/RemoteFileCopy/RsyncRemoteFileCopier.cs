@@ -65,24 +65,23 @@ namespace RemoteFileCopy
 
         public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
-                var srcFiles = await _filesFinder.FindFiles(from, cancellationToken);
-                var dstFiles = await _filesFinder.FindFiles(to, cancellationToken);
+            var srcFiles = await _filesFinder.FindFiles(from, cancellationToken);
+            var dstFiles = await _filesFinder.FindFiles(to, cancellationToken);
 
-                var equal = srcFiles
-                    .Select(f => (from, file: f))
-                    .ToHashSet(FileInfoComparer.Instance);
-                equal.IntersectWith(dstFiles.Select(f => (to, f)));
+            var equal = srcFiles
+                .Select(f => (from, file: f))
+                .ToHashSet(FileInfoComparer.Instance);
+            equal.IntersectWith(dstFiles.Select(f => (to, f)));
 
-                var filesToRemove = equal.Select(t => t.file);
+            var filesToRemove = equal.Select(t => t.file);
 
-                if (filesToRemove.Any())
-                {
-                    if (await RemoveFiles(filesToRemove, cancellationToken))
-                        _logger.LogInformation("Successfully removed source files from {dir}", from);
-                    else
-                        _logger.LogWarning("Failed to remove source files from {dir}", from);
-                }
-
+            if (filesToRemove.Any())
+            {
+                if (await RemoveFiles(filesToRemove, cancellationToken))
+                    _logger.LogInformation("Successfully removed source files from {dir}", from);
+                else
+                    _logger.LogWarning("Failed to remove source files from {dir}", from);
+            }
         }
 
         internal async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
