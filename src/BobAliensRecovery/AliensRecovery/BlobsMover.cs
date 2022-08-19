@@ -64,13 +64,13 @@ namespace BobAliensRecovery.AliensRecovery
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Starting {transaction}", transaction);
-            var rsyncResult = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
+            var (isError, files) = await _remoteFileCopier.CopyWithRsync(transaction.From, transaction.To, cancellationToken);
 
             var blobsToRemove = new List<BlobInfo>();
-            if (!rsyncResult.IsError)
+            if (!isError)
             {
                 _logger.LogDebug("Synced {transaction}", transaction);
-                var partitions = _partitionInfoAggregator.GetPartitionInfos(rsyncResult.SyncedFiles);
+                var partitions = _partitionInfoAggregator.GetPartitionInfos(files);
                 foreach (var partition in partitions)
                     blobsToRemove.AddRange(partition.Blobs.Where(b => b.IsClosed));
             }

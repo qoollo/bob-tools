@@ -28,7 +28,7 @@ namespace RemoteFileCopy.Rsync
             _remoteDependenciesChecker = remoteDependenciesChecker;
         }
 
-        public async Task<RsyncResult> InvokeRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        internal async Task<RsyncResult> InvokeRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             await CreateDir(to, cancellationToken);
 

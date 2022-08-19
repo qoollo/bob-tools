@@ -5,8 +5,9 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using RemoteFileCopy.Entities;
-using RemoteFileCopy.Rsync.Entities;
 using System.IO;
+using System;
+using System.Security.Cryptography;
 
 namespace RemoteFileCopy
 {
@@ -34,13 +35,15 @@ namespace RemoteFileCopy
             }
         }
 
-        public async Task<RsyncResult> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        public async Task<(bool isError, string[] files)> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
-                await CopyFiles(fromPath, toPath, cancellationToken);
+                var files = await CopyFiles(fromPath, toPath, cancellationToken);
+                return (false, files.ToArray());
             }
-            return await _remoteFileCopier.CopyWithRsync(from, to, cancellationToken);
+            else
+                return await _remoteFileCopier.CopyWithRsync(from, to, cancellationToken);
         }
 
         public async Task<bool> RemoveInDir(RemoteDir dir, CancellationToken cancellationToken = default)
@@ -80,14 +83,32 @@ namespace RemoteFileCopy
             return await _remoteFileCopier.RemoveEmptySubdirs(dir, cancellationToken);
         }
 
+        public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        {
+            if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
+            {
+                foreach (var file in Directory.GetFiles(fromPath))
+                {
+                    var dest = file.Replace(fromPath, toPath);
+                    if (File.Exists(dest) && GetCheckSum(file) == GetCheckSum(dest))
+                    {
+                        File.Delete(file);
+                    }
+                }
+            }
+            else
+                await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
+        }
+
         private bool TryGetLocalPath(RemoteDir dir, out string path)
         {
             path = dir.Path;
             return _localAddresses.Contains(dir.Address);
         }
 
-        private async Task<object> CopyFiles(string from, string to, CancellationToken cancellationToken)
+        private async Task<List<string>> CopyFiles(string from, string to, CancellationToken cancellationToken)
         {
+            var result = new List<string>();
             if (!Directory.Exists(to))
                 Directory.CreateDirectory(to);
 
@@ -97,14 +118,15 @@ namespace RemoteFileCopy
                 using var open = File.Open(file, FileMode.Open);
                 using var write = File.Create(dest);
                 await open.CopyToAsync(write, cancellationToken);
+                result.Add(file);
             }
 
             foreach (var dir in Directory.GetDirectories(from))
             {
-                await CopyFiles(dir, dir.Replace(from, to), cancellationToken);
+                result.AddRange(await CopyFiles(dir, dir.Replace(from, to), cancellationToken));
             }
 
-            return new object();
+            return result;
         }
 
         private bool ClearAndCheckIsEmpty(string path)
@@ -120,9 +142,10 @@ namespace RemoteFileCopy
             return result && Directory.GetFiles(path).Length == 0;
         }
 
-        public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        private string GetCheckSum(string filePath)
         {
-            await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
+            using (var fileStream = File.OpenRead(filePath))
+            return BitConverter.ToString(SHA256.Create().ComputeHash(fileStream)).Replace("-", "").ToLowerInvariant();
         }
     }
 }
