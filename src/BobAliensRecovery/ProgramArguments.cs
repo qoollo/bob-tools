@@ -14,6 +14,9 @@ namespace BobAliensRecovery
         [Option("copy-parallel-degree", HelpText = "Number of simultaneous copy processes", Default = 1)]
         public int CopyParallelDegree { get; set; }
 
+        [Option("hash-parallel", HelpText = "Run hash calculations in parallel", Default = true)]
+        public bool ParallelHash { get; set; }
+
         public AliensRecoveryOptions AliensRecoveryOptions
             => new(RemoveCopied, ContinueOnError, RestartNodes, CopyParallelDegree);
     }
