@@ -8,6 +8,7 @@ using RemoteFileCopy.Entities;
 using System.IO;
 using System;
 using System.Security.Cryptography;
+using System.Linq;
 
 namespace RemoteFileCopy
 {
@@ -37,6 +38,8 @@ namespace RemoteFileCopy
         {
             if (TryGetLocalPath(dir, out var path))
             {
+                if (!Directory.Exists(path))
+                    return false;
                 foreach (var f in Directory.GetFiles(path))
                     File.Delete(f);
                 foreach (var d in Directory.GetDirectories(path))
@@ -50,9 +53,9 @@ namespace RemoteFileCopy
         {
             if (TryGetLocalPath(dir, out var path))
             {
-                if (System.IO.Directory.Exists(path))
+                if (Directory.Exists(path))
                 {
-                    System.IO.Directory.Delete(path);
+                    Directory.Delete(path);
                     return true;
                 }
                 return false;
@@ -64,6 +67,8 @@ namespace RemoteFileCopy
         {
             if (TryGetLocalPath(dir, out var path))
             {
+                if (!Directory.Exists(path))
+                    return false;
                 ClearAndCheckIsEmpty(path);
                 return true;
             }
@@ -74,9 +79,11 @@ namespace RemoteFileCopy
         {
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
+                if (!Directory.Exists(fromPath))
+                    return;
                 foreach (var file in Directory.GetFiles(fromPath))
                 {
-                    var dest = file.Replace(fromPath, toPath);
+                    var dest = Path.Combine(toPath, Path.GetFileName(fromPath));
                     if (File.Exists(dest) && GetCheckSum(file) == GetCheckSum(dest))
                     {
                         File.Delete(file);
@@ -101,7 +108,7 @@ namespace RemoteFileCopy
 
             foreach (var file in Directory.GetFiles(from))
             {
-                var dest = file.Replace(from, to);
+                var dest = Path.Combine(to, Path.GetFileName(from));
                 using var open = File.Open(file, FileMode.Open);
                 using var write = File.Create(dest);
                 await open.CopyToAsync(write, cancellationToken);
@@ -110,7 +117,8 @@ namespace RemoteFileCopy
 
             foreach (var dir in Directory.GetDirectories(from))
             {
-                result.AddRange(await CopyFiles(dir, dir.Replace(from, to), cancellationToken));
+                var destDir = Path.Combine(to, dir.Substring(from.Length));
+                result.AddRange(await CopyFiles(dir, destDir, cancellationToken));
             }
 
             return result;
@@ -126,7 +134,7 @@ namespace RemoteFileCopy
                 else
                     result = false;
             }
-            return result && Directory.GetFiles(path).Length == 0;
+            return result && Directory.EnumerateFiles(path).Any();
         }
 
         private string GetCheckSum(string filePath)
