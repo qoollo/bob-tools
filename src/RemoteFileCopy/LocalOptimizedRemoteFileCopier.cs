@@ -19,20 +19,7 @@ namespace RemoteFileCopy
         public LocalOptimizedRemoteFileCopier(IRemoteFileCopier remoteFileCopier)
         {
             _remoteFileCopier = remoteFileCopier;
-            _localAddresses = new HashSet<IPAddress>();
-            foreach (var iface in NetworkInterface.GetAllNetworkInterfaces())
-            {
-                if (iface.OperationalStatus == OperationalStatus.Up)
-                {
-                    foreach (var ip in iface.GetIPProperties().UnicastAddresses)
-                    {
-                        if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
-                        {
-                            _localAddresses.Add(ip.Address);
-                        }
-                    }
-                }
-            }
+            _localAddresses = GetLocalAddresses();
         }
 
         public async Task<(bool isError, string[] files)> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
@@ -146,6 +133,25 @@ namespace RemoteFileCopy
         {
             using (var fileStream = File.OpenRead(filePath))
             return BitConverter.ToString(SHA256.Create().ComputeHash(fileStream)).Replace("-", "").ToLowerInvariant();
+        }
+
+        private static HashSet<IPAddress> GetLocalAddresses()
+        {
+            var result = new HashSet<IPAddress>();
+            foreach (var iface in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (iface.OperationalStatus == OperationalStatus.Up)
+                {
+                    foreach (var ip in iface.GetIPProperties().UnicastAddresses)
+                    {
+                        if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                        {
+                            result.Add(ip.Address);
+                        }
+                    }
+                }
+            }
+            return result;
         }
     }
 }
