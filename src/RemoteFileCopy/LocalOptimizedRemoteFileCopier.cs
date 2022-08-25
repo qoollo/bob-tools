@@ -27,7 +27,7 @@ namespace RemoteFileCopy
         {
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
-                var files = await CopyFiles(fromPath, toPath, cancellationToken);
+                var files = CopyFiles(fromPath, toPath, cancellationToken);
                 return (false, files.ToArray());
             }
             else
@@ -100,7 +100,7 @@ namespace RemoteFileCopy
             return _localAddresses.Contains(dir.Address);
         }
 
-        private async Task<List<string>> CopyFiles(string from, string to, CancellationToken cancellationToken)
+        private List<string> CopyFiles(string from, string to, CancellationToken cancellationToken)
         {
             var result = new List<string>();
             if (!Directory.Exists(to))
@@ -109,16 +109,14 @@ namespace RemoteFileCopy
             foreach (var file in Directory.GetFiles(from))
             {
                 var dest = Path.Combine(to, Path.GetFileName(from));
-                using var open = File.Open(file, FileMode.Open);
-                using var write = File.Create(dest);
-                await open.CopyToAsync(write, cancellationToken);
+                File.Copy(file, dest);
                 result.Add(file);
             }
 
             foreach (var dir in Directory.GetDirectories(from))
             {
                 var destDir = Path.Combine(to, dir.Substring(from.Length));
-                result.AddRange(await CopyFiles(dir, destDir, cancellationToken));
+                result.AddRange(CopyFiles(dir, destDir, cancellationToken));
             }
 
             return result;
