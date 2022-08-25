@@ -10,7 +10,7 @@ namespace BobToolsCli
         [Option("ssh-cmd", HelpText = "Ssh cmd.", Default = "ssh")]
         public string SshCmd { get; set; }
 
-        [Option("ssh-flags", HelpText = "Additional flags to pass to ssh. Without spaces, without -, delimeted by comma", Separator = ',')]
+        [Option("ssh-flags", HelpText = "Additional flags to pass to ssh. Without spaces, without dash, delimeted by comma. Example: T,x", Separator = ',')]
         public IEnumerable<string> SshFlags { get; set; } = Array.Empty<string>();
 
         [Option("ssh-port", HelpText = "Ssh port.", Default = 22)]
