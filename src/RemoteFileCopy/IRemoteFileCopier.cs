@@ -6,7 +6,7 @@ namespace RemoteFileCopy
 {
     public interface IRemoteFileCopier
     {
-        Task<(bool isError, string[] files)> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
+        Task<CopyResult> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
 
         Task<bool> RemoveInDir(RemoteDir dir, CancellationToken cancellationToken = default);
 

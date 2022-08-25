@@ -30,14 +30,14 @@ namespace RemoteFileCopy
             _filesFinder = filesFinder;
         }
 
-        public async Task<(bool isError, string[] files)> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        public async Task<CopyResult> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             var result = await _rsyncWrapper.InvokeRsync(from, to, cancellationToken);
             Action<string, object[]> log = _logger.LogDebug;
             if (result.SyncedSize > 0)
                 log = _logger.LogInformation;
             log("Copy from {from} to {to}: {result}", new object[] { from, to, result });
-            return (result.IsError, result.SyncedFiles.Select(f => f.Filename).ToArray());
+            return new CopyResult(result.IsError, result.SyncedFiles.Select(f => f.Filename).ToArray());
         }
 
         public async Task<bool> RemoveInDir(RemoteDir dir, CancellationToken cancellationToken = default)

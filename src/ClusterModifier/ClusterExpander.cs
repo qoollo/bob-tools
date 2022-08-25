@@ -149,8 +149,8 @@ namespace ClusterModifier
 
         private async Task<bool> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
         {
-            var (isError, _) = await _remoteFileCopier.CopyWithRsync(from, to, cancellationToken);
-            if (isError)
+            var copyResult = await _remoteFileCopier.Copy(from, to, cancellationToken);
+            if (copyResult.IsError)
                 throw new OperationException($"Failed to copy data from {from} to {to}");
             return true;
         }

@@ -23,15 +23,15 @@ namespace RemoteFileCopy
             _localAddresses = GetLocalAddresses();
         }
 
-        public async Task<(bool isError, string[] files)> CopyWithRsync(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        public async Task<CopyResult> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
                 var files = CopyFiles(fromPath, toPath, cancellationToken);
-                return (false, files.ToArray());
+                return new CopyResult(false, files.ToArray());
             }
             else
-                return await _remoteFileCopier.CopyWithRsync(from, to, cancellationToken);
+                return await _remoteFileCopier.Copy(from, to, cancellationToken);
         }
 
         public async Task<bool> RemoveInDir(RemoteDir dir, CancellationToken cancellationToken = default)
