@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace RemoteFileCopy.Ssh
 {
@@ -12,14 +13,14 @@ namespace RemoteFileCopy.Ssh
             string pathToKey)
         {
             Cmd = cmd;
-            Flags = flags;
+            Flags = flags.ToArray();
             Port = port;
             Username = username;
             PathToKey = pathToKey;
         }
 
         public string Cmd { get; }
-        public IEnumerable<string> Flags { get; }
+        public string[] Flags { get; }
         public int Port { get; }
         public string Username { get; }
         public string PathToKey { get; }
