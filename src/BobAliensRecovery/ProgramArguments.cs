@@ -14,6 +14,9 @@ namespace BobAliensRecovery
         [Option("copy-parallel-degree", HelpText = "Number of simultaneous copy processes", Default = 1)]
         public int CopyParallelDegree { get; set; }
 
+        [Option("hash-algorithm", HelpText = "Hash algorithm to use for file transmission confirmation. Available are: simple, sha", Default = "sha")]
+        public string? HashAlgorithm { get; set; }
+
         public AliensRecoveryOptions AliensRecoveryOptions
             => new(RemoveCopied, ContinueOnError, RestartNodes, CopyParallelDegree);
     }
