@@ -16,12 +16,12 @@ namespace ClusterModifier
     public class ClusterExpander
     {
         private readonly ILogger<ClusterExpander> _logger;
-        private readonly RemoteFileCopier _remoteFileCopier;
+        private readonly IRemoteFileCopier _remoteFileCopier;
         private readonly ParallelP2PProcessor _parallelP2PProcessor;
         private readonly ClusterExpandArguments _args;
 
         public ClusterExpander(ILogger<ClusterExpander> logger,
-                               RemoteFileCopier remoteFileCopier,
+                               IRemoteFileCopier remoteFileCopier,
                                ParallelP2PProcessor parallelP2PProcessor,
                                ClusterExpandArguments args)
         {
@@ -149,8 +149,8 @@ namespace ClusterModifier
 
         private async Task<bool> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
         {
-            var result = await _remoteFileCopier.CopyWithRsync(from, to, cancellationToken);
-            if (result.IsError)
+            var copyResult = await _remoteFileCopier.Copy(from, to, cancellationToken);
+            if (copyResult.IsError)
                 throw new OperationException($"Failed to copy data from {from} to {to}");
             return true;
         }
