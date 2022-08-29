@@ -25,6 +25,7 @@ namespace RemoteFileCopy
 
         public async Task<CopyResult> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
                 var files = CopyFiles(fromPath, toPath, cancellationToken);
@@ -36,6 +37,7 @@ namespace RemoteFileCopy
 
         public async Task<bool> RemoveInDir(RemoteDir dir, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(dir, out var path))
             {
                 if (!Directory.Exists(path))
@@ -51,6 +53,7 @@ namespace RemoteFileCopy
 
         public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(dir, out var path))
             {
                 if (Directory.Exists(path))
@@ -65,6 +68,7 @@ namespace RemoteFileCopy
 
         public async Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(dir, out var path))
             {
                 if (!Directory.Exists(path))
@@ -77,6 +81,7 @@ namespace RemoteFileCopy
 
         public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
                 if (!Directory.Exists(fromPath))
@@ -103,6 +108,7 @@ namespace RemoteFileCopy
 
         private List<string> CopyFiles(string from, string to, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var result = new List<string>();
             if (!Directory.Exists(to))
                 Directory.CreateDirectory(to);
