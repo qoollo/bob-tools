@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using BobAliensRecovery.AliensRecovery.Entities;
 using Microsoft.Extensions.Logging;
-using RemoteFileCopy.Rsync.Entities;
 
 namespace BobAliensRecovery.AliensRecovery
 {
@@ -18,19 +17,19 @@ namespace BobAliensRecovery.AliensRecovery
             _logger = logger;
         }
 
-        internal IEnumerable<PartitionInfo> GetPartitionInfos(IEnumerable<RsyncFileInfo> syncedFiles)
+        internal IEnumerable<PartitionInfo> GetPartitionInfos(IEnumerable<string> syncedFiles)
         {
-            var filesByPartitionAndVdiskid = new Dictionary<(int, string), List<RsyncFileInfo>>();
+            var filesByPartitionAndVdiskid = new Dictionary<(int, string), List<string>>();
             foreach (var file in syncedFiles)
             {
-                var components = file.Filename.Split(s_pathSeparators);
+                var components = file.Split(s_pathSeparators);
                 if (components.Length >= 3 && int.TryParse(components[^3], out var vdiskId))
                 {
                     var partition = components[^2];
                     if (filesByPartitionAndVdiskid.TryGetValue((vdiskId, partition), out var fileInfos))
                         fileInfos.Add(file);
                     else
-                        filesByPartitionAndVdiskid.Add((vdiskId, partition), new List<RsyncFileInfo> { file });
+                        filesByPartitionAndVdiskid.Add((vdiskId, partition), new List<string> { file });
                 }
                 else
                     _logger.LogWarning("Found file without whole info: {filename}", file);
@@ -45,26 +44,26 @@ namespace BobAliensRecovery.AliensRecovery
             return result;
         }
 
-        private List<BlobInfo> GetBlobs(List<RsyncFileInfo> files)
+        private List<BlobInfo> GetBlobs(List<string> files)
         {
-            var filesByBlob = new Dictionary<string, List<RsyncFileInfo>>();
+            var filesByBlob = new Dictionary<string, List<string>>();
             foreach (var file in files)
             {
-                var name = Path.GetFileNameWithoutExtension(file.Filename);
+                var name = Path.GetFileNameWithoutExtension(file);
                 if (filesByBlob.TryGetValue(name, out var fileInfos))
                     fileInfos.Add(file);
                 else
-                    filesByBlob.Add(name, new List<RsyncFileInfo> { file });
+                    filesByBlob.Add(name, new List<string> { file });
             }
             var blobs = new List<BlobInfo>();
             foreach (var (blobName, blobFiles) in filesByBlob)
             {
-                var blobFile = blobFiles.FirstOrDefault(f => f.Filename.EndsWith(".blob"));
-                var indexFile = blobFiles.FirstOrDefault(f => f.Filename.EndsWith(".index"));
+                var blobFile = blobFiles.FirstOrDefault(f => f.EndsWith(".blob"));
+                var indexFile = blobFiles.FirstOrDefault(f => f.EndsWith(".index"));
                 if (blobFile != null)
                     blobs.Add(new BlobInfo(blobFile, indexFile, blobFiles));
                 else
-                    _logger.LogWarning("Found blob without .blob file: {filename}", blobFiles.First().Filename);
+                    _logger.LogWarning("Found blob without .blob file: {filename}", blobFiles.First());
             }
 
             return blobs;
