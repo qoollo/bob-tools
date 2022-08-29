@@ -6,7 +6,7 @@ using RemoteFileCopy.Ssh.Entities;
 
 namespace RemoteFileCopy.Rsync.Entities
 {
-    public class RsyncResult
+    internal class RsyncResult
     {
         private static readonly Regex s_totalSizeRegex = new(@"total size is ([\d,]+)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
