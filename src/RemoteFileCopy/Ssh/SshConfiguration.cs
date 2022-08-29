@@ -20,7 +20,7 @@ namespace RemoteFileCopy.Ssh
         }
 
         public string Cmd { get; }
-        public IReadOnlyCollection<string> Flags { get; }
+        public IReadOnlyList<string> Flags { get; }
         public int Port { get; }
         public string Username { get; }
         public string PathToKey { get; }
