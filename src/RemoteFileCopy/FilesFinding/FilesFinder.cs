@@ -1,14 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using RemoteFileCopy.DependenciesChecking;
 using RemoteFileCopy.Entities;
 using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Ssh;
@@ -27,7 +22,7 @@ namespace RemoteFileCopy.FilesFinding
             _logger = logger;
         }
 
-        public async Task<IEnumerable<RemoteFileInfo>> FindFiles(RemoteDir dir,
+        internal async Task<IEnumerable<RemoteFileInfo>> FindFiles(RemoteDir dir,
             CancellationToken cancellationToken = default)
         {
             var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {GetBashHereDoc(dir.Path)}", cancellationToken);

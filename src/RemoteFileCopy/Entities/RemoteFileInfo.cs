@@ -2,7 +2,7 @@ using System.Net;
 
 namespace RemoteFileCopy.Entities
 {
-    public class RemoteFileInfo
+    internal class RemoteFileInfo
     {
         public RemoteFileInfo(IPAddress address, string filename, long lengthBytes, string checksum)
         {

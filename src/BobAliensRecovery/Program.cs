@@ -5,9 +5,7 @@ using BobAliensRecovery.AliensRecovery;
 using BobApi.BobEntities;
 using BobToolsCli;
 using BobToolsCli.Exceptions;
-using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
-using RemoteFileCopy.Exceptions;
 using RemoteFileCopy.Extensions;
 
 namespace BobAliensRecovery
