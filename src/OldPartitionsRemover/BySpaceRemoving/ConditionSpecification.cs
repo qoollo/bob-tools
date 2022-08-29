@@ -13,9 +13,9 @@ namespace OldPartitionsRemover.BySpaceRemoving
     public class ConditionSpecification
     {
         private readonly ByteSize _threshold;
-        private readonly string _thresholdType;
+        private readonly ThresholdType _thresholdType;
 
-        public ConditionSpecification(ByteSize threshold, string thresholdType)
+        public ConditionSpecification(ByteSize threshold, ThresholdType thresholdType)
         {
             _threshold = threshold;
             _thresholdType = thresholdType;
@@ -24,11 +24,13 @@ namespace OldPartitionsRemover.BySpaceRemoving
         public NodeConditionSpecification GetForNode(IBobApiClientFactory bobApiClientFactory,
             ClusterConfiguration.Node node)
         {
-            if (_thresholdType.Equals("free", StringComparison.OrdinalIgnoreCase))
-                return GetFreeSpaceCondition(bobApiClientFactory.GetSpaceBobApiClient(node), node);
-            else if (_thresholdType.Equals("occupied", StringComparison.OrdinalIgnoreCase))
-                return GetOccupiedSpaceCondition(bobApiClientFactory.GetSpaceBobApiClient(node), node);
-            throw new NotImplementedException();
+            var spaceClient = bobApiClientFactory.GetSpaceBobApiClient(node);
+            return (_thresholdType) switch
+            {
+                ThresholdType.Free => GetFreeSpaceCondition(spaceClient, node),
+                ThresholdType.Occupied => GetOccupiedSpaceCondition(spaceClient, node),
+                _ => throw new NotImplementedException()
+            };
         }
 
         private NodeConditionSpecification GetFreeSpaceCondition(ISpaceBobApiClient client, ClusterConfiguration.Node node)

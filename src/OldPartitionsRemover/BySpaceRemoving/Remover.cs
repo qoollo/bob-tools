@@ -52,11 +52,12 @@ namespace OldPartitionsRemover.BySpaceRemoving
             CancellationToken cancellationToken)
         {
             var thresholdResult = _arguments.GetThreshold();
-            return await thresholdResult.Bind(async bs =>
+            var thresholdTypeResult = _arguments.GetThresholdType();
+            return await thresholdResult.Bind(bs => thresholdTypeResult.Bind(async tt =>
             {
-                var spec = new ConditionSpecification(bs, _arguments.ThresholdType);
+                var spec = new ConditionSpecification(bs, tt);
                 return await RemoveInClusterWithLessFreeSpace(clusterConfiguration, spec, cancellationToken);
-            });
+            }));
         }
 
         private async Task<Result<List<int>>> RemoveInClusterWithLessFreeSpace(ClusterConfiguration clusterConfiguration,

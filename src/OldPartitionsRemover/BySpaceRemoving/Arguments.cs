@@ -17,7 +17,14 @@ namespace OldPartitionsRemover.BySpaceRemoving
         public int DelayMilliseconds { get; set; }
 
         [Option("threshold-type", Default = "free", HelpText = "Type of threshold: `free` space on node or bob's `occupied` space")]
-        public string ThresholdType { get; set; } // Enums are case sensitive in CommandLineParser by default, and changing this requires recreating whole help
+        public string ThresholdTypeString { get; set; } // Enums are case sensitive in CommandLineParser by default, and changing this requires recreating whole help
+
+        public Result<ThresholdType> GetThresholdType()
+        {
+            if (Enum.TryParse<ThresholdType>(ThresholdTypeString, true, out var tt))
+                return Result<ThresholdType>.Ok(tt);
+            return Result<ThresholdType>.Error("Wrong threshold type provided");
+        }
 
         public Result<ByteSize> GetThreshold()
         {
