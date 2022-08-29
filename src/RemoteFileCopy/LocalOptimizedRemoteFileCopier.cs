@@ -117,13 +117,13 @@ namespace RemoteFileCopy
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var dest = Path.Combine(to, Path.GetFileName(from));
-                File.Copy(file, dest);
+                File.Copy(file, dest, true);
                 result.Add(file);
             }
 
             foreach (var dir in Directory.GetDirectories(from))
             {
-                var destDir = Path.Combine(to, dir.Substring(from.Length));
+                var destDir = Path.Combine(to, dir.Substring(from.Length + 1));
                 result.AddRange(CopyFiles(dir, destDir, cancellationToken));
             }
 
