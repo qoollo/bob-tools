@@ -1,27 +1,26 @@
 using System.Collections.Generic;
 using System.Linq;
-using RemoteFileCopy.Rsync.Entities;
 
 namespace BobAliensRecovery.AliensRecovery.Entities
 {
     class BlobInfo
     {
-        public BlobInfo(RsyncFileInfo blob, RsyncFileInfo? index, IEnumerable<RsyncFileInfo> files)
+        public BlobInfo(string blob, string? index, IEnumerable<string> files)
         {
             Blob = blob;
             Index = index;
             Files = files.ToArray();
         }
 
-        public RsyncFileInfo Blob { get; }
-        public RsyncFileInfo? Index { get; }
-        public IEnumerable<RsyncFileInfo> Files { get; }
+        public string Blob { get; }
+        public string? Index { get; }
+        public IEnumerable<string> Files { get; }
 
         public bool IsClosed => Index != null;
 
         public override string ToString()
         {
-            return $"{Blob.Filename}" + (IsClosed ? ", closed" : "");
+            return $"{Blob}" + (IsClosed ? ", closed" : "");
         }
     }
 }
