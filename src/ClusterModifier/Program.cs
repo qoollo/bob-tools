@@ -26,7 +26,7 @@ namespace ClusterModifier
             CancellationToken cancellationToken)
         {
             services.AddTransient<ClusterExpander>();
-            services.AddRemoteFileCopy(arguments.SshConfiguration);
+            services.AddRemoteFileCopy(arguments.SshConfiguration, arguments.FilesFinderConfiguration);
             var provider = services.BuildServiceProvider();
 
             var expander = provider.GetRequiredService<ClusterExpander>();

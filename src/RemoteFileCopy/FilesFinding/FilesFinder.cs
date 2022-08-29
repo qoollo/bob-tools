@@ -17,17 +17,21 @@ namespace RemoteFileCopy.FilesFinding
         private static readonly Regex s_fileInfo = new(@"f(.+) l(\d+) c(.+)");
         private readonly SshWrapper _sshWrapper;
         private readonly ILogger<FilesFinder> _logger;
+        private readonly FilesFinderConfiguration _filesFinderConfiguration;
 
-        public FilesFinder(SshWrapper sshWrapper, ILogger<FilesFinder> logger)
+        public FilesFinder(SshWrapper sshWrapper, ILogger<FilesFinder> logger,
+            FilesFinderConfiguration filesFinderConfiguration)
         {
             _sshWrapper = sshWrapper;
             _logger = logger;
+            _filesFinderConfiguration = filesFinderConfiguration;
         }
 
         internal async Task<IEnumerable<RemoteFileInfo>> FindFiles(RemoteDir dir,
-            CancellationToken cancellationToken = default)
+                                                                   CancellationToken cancellationToken = default)
         {
-            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {GetBashHereDoc(dir.Path, ShaHashFunction)}", cancellationToken);
+            var function = GetHashFunction();
+            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {GetBashHereDoc(dir.Path, function)}", cancellationToken);
 
             if (sshResult.IsError)
             {
@@ -47,6 +51,16 @@ namespace RemoteFileCopy.FilesFinding
                     _logger.LogDebug("Failed to parse {line} into file info", line);
             }
             return result;
+        }
+
+        private string GetHashFunction()
+        {
+            return _filesFinderConfiguration.HashType switch
+            {
+                HashType.Simple => SimpleHashFunction,
+                HashType.Sha => ShaHashFunction,
+                _ => throw new NotImplementedException()
+            };
         }
 
         internal static string GetBashHereDoc(string path, string hashFunction)
