@@ -61,7 +61,7 @@ namespace BobAliensRecovery.AliensRecovery
                     var result = await InvokeTransaction(t, aliensRecoveryOptions, cancellationToken);
                     var res = Interlocked.Increment(ref copied);
                     if (res % step == 0)
-                        _logger.LogInformation("Copied {Count}/{Total} VDisks", res, step);
+                        _logger.LogInformation("Copied {Count}/{Total} VDisks", res, recoveryTransactions.Count);
                     return result;
                 }));
             var results = await _parallelP2PProcessor.Invoke(aliensRecoveryOptions.CopyParallelDegree, operations, cancellationToken);
@@ -71,7 +71,7 @@ namespace BobAliensRecovery.AliensRecovery
         private async Task<List<BlobInfo>> InvokeTransaction(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting {transaction}", transaction);
+            _logger.LogDebug("Starting {transaction}", transaction);
             var copyResult = await _remoteFileCopier.Copy(transaction.From, transaction.To, cancellationToken);
 
             var blobsToRemove = new List<BlobInfo>();
