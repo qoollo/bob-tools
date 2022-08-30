@@ -64,8 +64,9 @@ namespace RemoteFileCopy
 
         public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
-            var srcFiles = await _filesFinder.FindFiles(from, cancellationToken);
-            var dstFiles = await _filesFinder.FindFiles(to, cancellationToken);
+            var files = await Task.WhenAll(new[] { from, to }.Select(f => _filesFinder.FindFiles(f, cancellationToken)));
+            var srcFiles = files[0];
+            var dstFiles = files[1];
 
             var equal = srcFiles
                 .Select(f => (from, file: f))
