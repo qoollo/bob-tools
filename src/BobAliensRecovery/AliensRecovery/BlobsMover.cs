@@ -132,6 +132,7 @@ namespace BobAliensRecovery.AliensRecovery
                     .GroupBy(t => (t.From.Address, t.To.Address))
                     .ToDictionary(g => g.Key, g => g.ToList());
                 var banned = new HashSet<IPAddress>();
+                int total = transactions.Count(), count = 0, step = total / 10;
                 while (transactionsByPair.Count > 0)
                 {
                     (IPAddress, IPAddress) nextTransactionKey;
@@ -154,6 +155,9 @@ namespace BobAliensRecovery.AliensRecovery
                     var completed = await _responses.Reader.ReadAsync();
                     banned.Remove(completed.From.Address);
                     banned.Remove(completed.To.Address);
+                    count++;
+                    if (count % step == 0)
+                        _logger.LogInformation("Completed {}/{} hash transactions", count, total);
                 }
                 for (var i = 0; i < _degree; i++)
                     await _requests.Writer.WriteAsync(null);
