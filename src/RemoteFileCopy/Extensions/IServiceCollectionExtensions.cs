@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.DependencyInjection;
 using RemoteFileCopy.DependenciesChecking;
 using RemoteFileCopy.FilesFinding;
@@ -8,7 +9,7 @@ namespace RemoteFileCopy.Extensions
 {
     public static class IServiceCollectionExtensions
     {
-        private static readonly SshConfiguration s_defaultSshConfiguration = new("ssh", 22, "bobd", "~/.ssh/id_rsa");
+        private static readonly SshConfiguration s_defaultSshConfiguration = new("ssh", Array.Empty<string>(), 22, "bobd", "~/.ssh/id_rsa");
 
         public static IServiceCollection AddRemoteFileCopy(this IServiceCollection services,
             SshConfiguration? sshConfiguration = null)
@@ -16,7 +17,8 @@ namespace RemoteFileCopy.Extensions
             sshConfiguration ??= s_defaultSshConfiguration;
             services.AddSingleton(sshConfiguration);
             return services
-                .AddScoped<RemoteFileCopier>()
+                .AddScoped<RsyncRemoteFileCopier>()
+                .AddScoped<IRemoteFileCopier>(s => new LocalOptimizedRemoteFileCopier(s.GetService<RsyncRemoteFileCopier>()!))
                 .AddScoped<SshWrapper>()
                 .AddScoped<RsyncWrapper>()
                 .AddScoped<FilesFinder>()

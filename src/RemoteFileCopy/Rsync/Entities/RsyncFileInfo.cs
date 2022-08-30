@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace RemoteFileCopy.Rsync.Entities
 {
-    public class RsyncFileInfo
+    internal class RsyncFileInfo
     {
         private static readonly Regex s_rsyncLine = new(@".*f""(?<f>.+)"".*l""(?<l>.+)"".*c""(?<c>.+)""");
         // private static readonly Regex s_rsyncLine = new(".*f\"(?<f>.+)\".*l\"(?<l>.+)\".*c\"(?<c>.+)\"");
