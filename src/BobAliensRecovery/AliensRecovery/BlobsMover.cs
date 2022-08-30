@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
 using BobToolsCli.Exceptions;
@@ -46,7 +50,7 @@ namespace BobAliensRecovery.AliensRecovery
 
             if (aliensRecoveryOptions.RemoveCopied)
             {
-                await RemoveAlreadyMovedFiles(recoveryTransactions, cancellationToken);
+                await RemoveAlreadyMovedFiles(recoveryTransactions, aliensRecoveryOptions.HashParallelDegree, cancellationToken);
             }
         }
 
@@ -82,23 +86,90 @@ namespace BobAliensRecovery.AliensRecovery
         }
 
         private async Task RemoveAlreadyMovedFiles(IEnumerable<RecoveryTransaction> transactions,
-            CancellationToken cancellationToken = default)
+                                                   int hashParallelDegree,
+                                                   CancellationToken cancellationToken = default)
         {
-            var cleanedUpDirectories = new HashSet<RemoteDir>();
-
-            foreach (var transaction in transactions)
+            if (hashParallelDegree > 1)
             {
-                await _remoteFileCopier.RemoveAlreadyMovedFiles(transaction.From, transaction.To, cancellationToken);
+                var coordinator = new Coordinator(hashParallelDegree, _remoteFileCopier, _logger);
+                await coordinator.RunTasks(transactions, cancellationToken);
+            }
+            else
+                foreach (var transaction in transactions)
+                    await _remoteFileCopier.RemoveAlreadyMovedFiles(transaction.From, transaction.To, cancellationToken);
 
-                if (!cleanedUpDirectories.Contains(transaction.From))
+            var dirsToCleanUp = transactions.Select(t => t.From).Distinct();
+            foreach (var dir in dirsToCleanUp)
+            {
+                if (await _remoteFileCopier.RemoveEmptySubdirs(dir, cancellationToken))
+                    _logger.LogInformation("Successfully removed empty directories at {dir}", dir);
+                else
+                    _logger.LogWarning("Failed to clean up empty directories at {dir}", dir);
+            }
+        }
+
+        private class Coordinator
+        {
+            private readonly int _degree;
+            private readonly Channel<RecoveryTransaction?> _requests = Channel.CreateUnbounded<RecoveryTransaction?>();
+            private readonly Channel<RecoveryTransaction> _responses = Channel.CreateUnbounded<RecoveryTransaction>();
+            private IRemoteFileCopier _remoteFileCopier;
+            private ILogger _logger;
+
+            public Coordinator(int degree, IRemoteFileCopier remoteFileCopier, ILogger logger)
+            {
+                _degree = degree;
+                _remoteFileCopier = remoteFileCopier;
+                _logger = logger;
+            }
+
+            public async Task RunTasks(IEnumerable<RecoveryTransaction> transactions,
+                                       CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var workersTask = Task.WhenAll(Enumerable.Range(0, _degree).Select(_ => Worker(cancellationToken)));
+                var transactionsByPair = transactions
+                    .GroupBy(t => (t.From.Address, t.To.Address))
+                    .ToDictionary(g => g.Key, g => g.ToList());
+                var banned = new HashSet<IPAddress>();
+                while (transactionsByPair.Count > 0)
                 {
-                    if (await _remoteFileCopier.RemoveEmptySubdirs(transaction.From, cancellationToken))
+                    (IPAddress, IPAddress) nextTransactionKey;
+                    do
                     {
-                        cleanedUpDirectories.Add(transaction.From);
-                        _logger.LogInformation("Successfully removed empty directories at {dir}", transaction.From);
+                        nextTransactionKey = transactionsByPair.Keys.FirstOrDefault(k => !banned.Contains(k.Item1) && !banned.Contains(k.Item2));
+                        if (nextTransactionKey != default)
+                        {
+                            var availableTransactions = transactionsByPair[nextTransactionKey];
+                            var transaction = availableTransactions[0];
+                            availableTransactions.RemoveAt(0);
+                            if (availableTransactions.Count == 0)
+                                transactionsByPair.Remove(nextTransactionKey);
+                            banned.Add(nextTransactionKey.Item1);
+                            banned.Add(nextTransactionKey.Item2);
+                            await _requests.Writer.WriteAsync(transaction);
+                        }
                     }
-                    else
-                        _logger.LogWarning("Failed to clean up empty directories at {dir}", transaction.From);
+                    while (nextTransactionKey != default);
+                    var completed = await _responses.Reader.ReadAsync();
+                    banned.Remove(completed.From.Address);
+                    banned.Remove(completed.To.Address);
+                }
+                for (var i = 0; i < _degree; i++)
+                    await _requests.Writer.WriteAsync(null);
+                await workersTask;
+            }
+
+            private async Task Worker(CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var transaction = await _requests.Reader.ReadAsync();
+                while(transaction != null)
+                {
+                    await _remoteFileCopier.RemoveAlreadyMovedFiles(transaction.From, transaction.To, cancellationToken);
+
+                    await _responses.Writer.WriteAsync(transaction);
+                    transaction = await _requests.Reader.ReadAsync();
                 }
             }
         }

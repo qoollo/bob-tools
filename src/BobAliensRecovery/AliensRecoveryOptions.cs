@@ -12,12 +12,14 @@ namespace BobAliensRecovery
         public AliensRecoveryOptions(bool removeCopied,
             bool continueOnError,
             bool restartNodes,
-            int copyParallelDegree)
+            int copyParallelDegree,
+            int hashParallelDegree)
         {
             RemoveCopied = removeCopied;
             ContinueOnError = continueOnError;
             RestartNodes = restartNodes;
             CopyParallelDegree = copyParallelDegree;
+            HashParallelDegree = hashParallelDegree;
         }
 
         public bool RemoveCopied { get; }
@@ -25,7 +27,10 @@ namespace BobAliensRecovery
         public bool ContinueOnError { get; }
 
         public bool RestartNodes { get; }
+
         public int CopyParallelDegree { get; }
+
+        public int HashParallelDegree { get; }
 
         public void LogErrorWithPossibleException<E>(ILogger logger, string format, params object[] args)
             where E : Exception, new()
