@@ -51,11 +51,11 @@ public class RemoverTests
 
     [Test, AD]
     public async Task RemovePartitionsBySpace_WithConnectionError_ReturnsError(
-        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Unavailable());
+        A.CallTo(() => partitionsBobApiClient.GetPartitions(null, default))
+            .WithAnyArguments().Returns(BobApiResult<List<string>>.Unavailable());
 
         var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
 
@@ -245,6 +245,29 @@ public class RemoverTests
         result.IsOk(out var _, out var err).Should().BeTrue();
     }
 
+    [Test, AD]
+    public async Task RemovePartitionsBySpace_WithOccupiedSpaceFlag_RemovesUntilSpaceIsSmallerThanThreshold(
+        Arguments arguments,
+        ISpaceBobApiClient spaceBobApiClient,
+        IPartitionsBobApiClient partitionsBobApiClient,
+        Remover sut)
+    {
+        arguments.ThresholdType = "occupied";
+        A.CallTo(() => spaceBobApiClient.GetOccupiedSpaceBytes(A<CancellationToken>.Ignored))
+            .ReturnsNextFromSequence(BobApiResult<ulong>.Ok(1500), BobApiResult<ulong>.Ok(500));
+        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
+            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
+        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
+            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 200 }));
+        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "2", A<CancellationToken>.Ignored))
+            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 100 }));
+
+        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+
+        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(0, 200, A<CancellationToken>.Ignored))
+            .MustNotHaveHappened();
+    }
+
     private class ADAttribute : AutoDataAttribute
     {
         public ADAttribute() : base(() =>
@@ -257,6 +280,7 @@ public class RemoverTests
                 args.DelayMilliseconds = 0;
                 args.ThresholdString = "1000B";
                 args.ContinueOnError = false;
+                args.ThresholdType = "free";
             }));
 
             return fixture;
