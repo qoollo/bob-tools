@@ -28,12 +28,15 @@ namespace RemoteFileCopy.Ssh
         public IEnumerable<string> GetSshCommandAndArguments(bool withSpace)
         {
             var space = withSpace ? " " : "";
-            return new[]
+            var result = new List<string>
             {
                 "-p" + space + _configuration.Port.ToString(),
                 "-i" + space + _configuration.PathToKey,
                 "-o" + space + "StrictHostKeyChecking=no",
             };
+            foreach(var flag in _configuration.Flags)
+                result.Add("-" + flag);
+            return result;
         }
 
         public string SshCommand => _configuration.Cmd;
