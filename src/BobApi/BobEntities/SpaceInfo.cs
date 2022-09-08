@@ -12,5 +12,8 @@ namespace BobApi.BobEntities
 
         [JsonProperty("used_disk_space_bytes")]
         public ulong UsedDiskSpaceBytes { get; set; }
+
+        [JsonProperty("occupied_disk_space_bytes")]
+        public ulong OccupiedDiskSpaceBytes { get; set; }
     }
 }

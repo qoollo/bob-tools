@@ -102,6 +102,10 @@ namespace BobApi
         public async Task<BobApiResult<ulong>> GetFreeSpaceBytes(CancellationToken cancellationToken = default)
             => (await GetJson<SpaceInfo>("status/space", cancellationToken)).Map(i => i.FreeDiskSpaceBytes);
 
+        public async Task<BobApiResult<ulong>> GetOccupiedSpaceBytes(CancellationToken cancellationToken = default)
+            => (await GetJson<SpaceInfo>("status/space", cancellationToken)).Map(i => i.OccupiedDiskSpaceBytes);
+
+
         public void Dispose()
         {
             _client?.Dispose();
