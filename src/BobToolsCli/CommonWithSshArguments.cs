@@ -27,7 +27,7 @@ namespace BobToolsCli
         [Option("hash-type", HelpText = "Hash type. Available options are simple, sha", Default = "sha")]
         public string HashTypeString { get; set; }
 
-        public SshConfiguration SshConfiguration => new(SshCmd, SshPort, SshUser, SshKeyPath);
+        public SshConfiguration SshConfiguration => new(SshCmd, SshFlags, SshPort, SshUser, SshKeyPath);
 
         public FilesFinderConfiguration FilesFinderConfiguration =>
             Enum.TryParse<HashType>(HashTypeString, true, out var ht) ? new(ht) : throw new ConfigurationException("Failed to parse hash-type");
