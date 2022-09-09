@@ -9,6 +9,15 @@ namespace BobToolsCli.Helpers
 {
     public class ParallelP2PProcessor
     {
+        private readonly int? _perNodeLimit;
+        private readonly SemaphoreSlim _takeWaker;
+
+        public ParallelP2PProcessor(int? perNodeLimit = null)
+        {
+            _perNodeLimit = perNodeLimit;
+            _takeWaker = new SemaphoreSlim(1);
+        }
+
         public async Task<Result<T>[]> Invoke<T>(int maxDegreeOfParallelism,
 					   IEnumerable<Operation<T>> operations,
 					   CancellationToken cancellationToken = default)
@@ -24,7 +33,7 @@ namespace BobToolsCli.Helpers
                 },
                 async (ind, t) =>
                 {
-                    var operation = TakeOperation(countByAddress, remaining);
+                    var operation = await TakeOperation(countByAddress, remaining, t);
                     try
                     {
                         results[ind] = await operation.Invoke();
@@ -39,18 +48,26 @@ namespace BobToolsCli.Helpers
 
         public static Operation<T> CreateOperation<T>(IPAddress from, IPAddress to, Func<Task<T>> func) => new(from, to, func);
 
-        private Operation<T> TakeOperation<T>(Dictionary<IPAddress, int> countByAddress, List<Operation<T>> remaining)
+        private async ValueTask<Operation<T>> TakeOperation<T>(Dictionary<IPAddress, int> countByAddress, List<Operation<T>> remaining, CancellationToken cancellationToken)
         {
-            Operation<T> operation;
-            lock (countByAddress)
+            while (true)
             {
-                operation = remaining.OrderBy(t => countByAddress[t.From] + countByAddress[t.To]).First();
-                remaining.Remove(operation);
-                countByAddress[operation.From]++;
-                countByAddress[operation.To]++;
-            }
+                lock (countByAddress)
+                {
+                    var operation = remaining.OrderBy(t => countByAddress[t.From] + countByAddress[t.To]).First();
 
-            return operation;
+                    if (_perNodeLimit == null
+                        || (countByAddress[operation.From] < _perNodeLimit
+                            && countByAddress[operation.To] < _perNodeLimit))
+                    {
+                        remaining.Remove(operation);
+                        countByAddress[operation.From]++;
+                        countByAddress[operation.To]++;
+                        return operation;
+                    }
+                }
+                await _takeWaker.WaitAsync(cancellationToken);
+            }
         }
 
         private void CleanUp<T>(Dictionary<IPAddress, int> countByAddress, Operation<T> operation)
@@ -60,6 +77,7 @@ namespace BobToolsCli.Helpers
                 countByAddress[operation.From]--;
                 countByAddress[operation.To]--;
             }
+            _takeWaker.Release();
         }
 
         public struct Operation<T>

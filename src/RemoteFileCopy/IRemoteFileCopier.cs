@@ -14,6 +14,6 @@ namespace RemoteFileCopy
 
         Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default);
 
-        Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
+        Task<int> RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
     }
 }

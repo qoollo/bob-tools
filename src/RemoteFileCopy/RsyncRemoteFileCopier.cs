@@ -62,7 +62,7 @@ namespace RemoteFileCopy
             return !sshResult.IsError;
         }
 
-        public async Task RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        public async Task<int> RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             var files = await Task.WhenAll(new[] { from, to }.Select(f => _filesFinder.FindFiles(f, cancellationToken)));
             var srcFiles = files[0];
@@ -73,15 +73,19 @@ namespace RemoteFileCopy
                 .ToHashSet(FileInfoComparer.Instance);
             equal.IntersectWith(dstFiles.Select(f => (to, f)));
 
-            var filesToRemove = equal.Select(t => t.file);
+            var filesToRemove = equal.Select(t => t.file).ToArray();
 
-            if (filesToRemove.Any())
+            if (filesToRemove.Length > 0)
             {
                 if (await RemoveFiles(filesToRemove, cancellationToken))
+                {
                     _logger.LogInformation("Successfully removed source files from {dir}", from);
+                    return filesToRemove.Length;
+                }
                 else
                     _logger.LogWarning("Failed to remove source files from {dir}", from);
             }
+            return 0;
         }
 
         internal async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)

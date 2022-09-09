@@ -91,8 +91,11 @@ namespace BobAliensRecovery.AliensRecovery
         {
             if (hashParallelDegree > 1)
             {
-                var coordinator = new Coordinator(hashParallelDegree, _remoteFileCopier, _logger);
-                await coordinator.RunTasks(transactions, cancellationToken);
+                var processor = new ParallelP2PProcessor(1);
+                var operations = transactions.Select(
+                    t => ParallelP2PProcessor.CreateOperation(t.From.Address, t.To.Address,
+                        () => _remoteFileCopier.RemoveAlreadyMovedFiles(t.From, t.To, cancellationToken)));
+                await processor.Invoke(hashParallelDegree, operations, cancellationToken);
             }
             else
                 foreach (var transaction in transactions)
@@ -108,74 +111,5 @@ namespace BobAliensRecovery.AliensRecovery
             }
         }
 
-        private class Coordinator
-        {
-            private readonly int _degree;
-            private readonly Channel<RecoveryTransaction?> _requests = Channel.CreateUnbounded<RecoveryTransaction?>();
-            private readonly Channel<RecoveryTransaction> _responses = Channel.CreateUnbounded<RecoveryTransaction>();
-            private IRemoteFileCopier _remoteFileCopier;
-            private ILogger _logger;
-
-            public Coordinator(int degree, IRemoteFileCopier remoteFileCopier, ILogger logger)
-            {
-                _degree = degree;
-                _remoteFileCopier = remoteFileCopier;
-                _logger = logger;
-            }
-
-            public async Task RunTasks(IEnumerable<RecoveryTransaction> transactions,
-                                       CancellationToken cancellationToken)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var workersTask = Task.WhenAll(Enumerable.Range(0, _degree).Select(_ => Worker(cancellationToken)));
-                var transactionsByPair = transactions
-                    .GroupBy(t => (t.From.Address, t.To.Address))
-                    .ToDictionary(g => g.Key, g => g.ToList());
-                var banned = new HashSet<IPAddress>();
-                int total = transactions.Count(), count = 0, step = total / 10;
-                while (transactionsByPair.Count > 0)
-                {
-                    (IPAddress, IPAddress) nextTransactionKey;
-                    do
-                    {
-                        nextTransactionKey = transactionsByPair.Keys.FirstOrDefault(k => !banned.Contains(k.Item1) && !banned.Contains(k.Item2));
-                        if (nextTransactionKey != default)
-                        {
-                            var availableTransactions = transactionsByPair[nextTransactionKey];
-                            var transaction = availableTransactions[0];
-                            availableTransactions.RemoveAt(0);
-                            if (availableTransactions.Count == 0)
-                                transactionsByPair.Remove(nextTransactionKey);
-                            banned.Add(nextTransactionKey.Item1);
-                            banned.Add(nextTransactionKey.Item2);
-                            await _requests.Writer.WriteAsync(transaction);
-                        }
-                    }
-                    while (nextTransactionKey != default);
-                    var completed = await _responses.Reader.ReadAsync();
-                    banned.Remove(completed.From.Address);
-                    banned.Remove(completed.To.Address);
-                    count++;
-                    if (count % step == 0)
-                        _logger.LogInformation("Completed {}/{} hash transactions", count, total);
-                }
-                for (var i = 0; i < _degree; i++)
-                    await _requests.Writer.WriteAsync(null);
-                await workersTask;
-            }
-
-            private async Task Worker(CancellationToken cancellationToken)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var transaction = await _requests.Reader.ReadAsync();
-                while(transaction != null)
-                {
-                    await _remoteFileCopier.RemoveAlreadyMovedFiles(transaction.From, transaction.To, cancellationToken);
-
-                    await _responses.Writer.WriteAsync(transaction);
-                    transaction = await _requests.Reader.ReadAsync();
-                }
-            }
-        }
     }
 }
