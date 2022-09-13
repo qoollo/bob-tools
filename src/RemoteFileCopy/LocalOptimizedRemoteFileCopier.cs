@@ -85,7 +85,7 @@ namespace RemoteFileCopy
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
                 if (!Directory.Exists(fromPath))
-                    return;
+                    return 0;
                 int count = 0;
                 foreach (var file in Directory.GetFiles(fromPath))
                 {
