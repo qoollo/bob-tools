@@ -98,8 +98,10 @@ namespace BobAliensRecovery.AliensRecovery
                 await processor.Invoke(hashParallelDegree, operations, cancellationToken);
             }
             else
+            {
                 foreach (var transaction in transactions)
                     await _remoteFileCopier.RemoveAlreadyMovedFiles(transaction.From, transaction.To, cancellationToken);
+            }
 
             var dirsToCleanUp = transactions.Select(t => t.From).Distinct();
             foreach (var dir in dirsToCleanUp)
