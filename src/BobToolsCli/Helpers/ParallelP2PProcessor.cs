@@ -77,7 +77,7 @@ namespace BobToolsCli.Helpers
                 countByAddress[operation.From]--;
                 countByAddress[operation.To]--;
             }
-            _takeWaker.Release();
+            _takeWaker.Release(2);
         }
 
         public struct Operation<T>
