@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using BobAliensRecovery.AliensRecovery.Entities;
 using BobToolsCli.Exceptions;
@@ -46,7 +50,7 @@ namespace BobAliensRecovery.AliensRecovery
 
             if (aliensRecoveryOptions.RemoveCopied)
             {
-                await RemoveAlreadyMovedFiles(recoveryTransactions, cancellationToken);
+                await RemoveAlreadyMovedFiles(recoveryTransactions, aliensRecoveryOptions.HashParallelDegree, cancellationToken);
             }
         }
 
@@ -90,25 +94,32 @@ namespace BobAliensRecovery.AliensRecovery
         }
 
         private async Task RemoveAlreadyMovedFiles(IEnumerable<RecoveryTransaction> transactions,
-            CancellationToken cancellationToken = default)
+                                                   int hashParallelDegree,
+                                                   CancellationToken cancellationToken = default)
         {
-            var cleanedUpDirectories = new HashSet<RemoteDir>();
-
-            foreach (var transaction in transactions)
+            if (hashParallelDegree > 1)
             {
-                await _remoteFileCopier.RemoveAlreadyMovedFiles(transaction.From, transaction.To, cancellationToken);
+                var processor = new ParallelP2PProcessor(1);
+                var operations = transactions.Select(
+                    t => ParallelP2PProcessor.CreateOperation(t.From.Address, t.To.Address,
+                        () => _remoteFileCopier.RemoveAlreadyMovedFiles(t.From, t.To, cancellationToken)));
+                await processor.Invoke(hashParallelDegree, operations, cancellationToken);
+            }
+            else
+            {
+                foreach (var transaction in transactions)
+                    await _remoteFileCopier.RemoveAlreadyMovedFiles(transaction.From, transaction.To, cancellationToken);
+            }
 
-                if (!cleanedUpDirectories.Contains(transaction.From))
-                {
-                    if (await _remoteFileCopier.RemoveEmptySubdirs(transaction.From, cancellationToken))
-                    {
-                        cleanedUpDirectories.Add(transaction.From);
-                        _logger.LogInformation("Successfully removed empty directories at {dir}", transaction.From);
-                    }
-                    else
-                        _logger.LogWarning("Failed to clean up empty directories at {dir}", transaction.From);
-                }
+            var dirsToCleanUp = transactions.Select(t => t.From).Distinct();
+            foreach (var dir in dirsToCleanUp)
+            {
+                if (await _remoteFileCopier.RemoveEmptySubdirs(dir, cancellationToken))
+                    _logger.LogInformation("Successfully removed empty directories at {dir}", dir);
+                else
+                    _logger.LogWarning("Failed to clean up empty directories at {dir}", dir);
             }
         }
+
     }
 }
