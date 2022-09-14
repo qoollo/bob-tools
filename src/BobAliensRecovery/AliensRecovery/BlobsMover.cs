@@ -39,11 +39,11 @@ namespace BobAliensRecovery.AliensRecovery
 
 
         internal async Task CopyBlobsAndDeleteClosed(
-            IEnumerable<RecoveryTransaction> recoveryTransactions,
+            List<RecoveryTransaction> recoveryTransactions,
             AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken)
         {
-            _logger.LogInformation("{count} transactions to invoke, {degree} parallel requests", recoveryTransactions.Count(),
+            _logger.LogInformation("{count} transactions to invoke, {degree} parallel requests", recoveryTransactions.Count,
                 aliensRecoveryOptions.CopyParallelDegree);
             var blobsToRemove = await CopyBlobsInParallel(recoveryTransactions, aliensRecoveryOptions, cancellationToken);
             _logger.LogInformation("Copied {blobsCount} blobs", blobsToRemove.Count);
@@ -54,12 +54,20 @@ namespace BobAliensRecovery.AliensRecovery
             }
         }
 
-        private async Task<List<BlobInfo>> CopyBlobsInParallel(IEnumerable<RecoveryTransaction> recoveryTransactions,
+        private async Task<List<BlobInfo>> CopyBlobsInParallel(List<RecoveryTransaction> recoveryTransactions,
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
+            int copied = 0;
+            var step = recoveryTransactions.Count / 10;
             var operations = recoveryTransactions.Select(t => ParallelP2PProcessor.CreateOperation(
-                t.From.Address, t.To.Address, () => InvokeTransaction(t, aliensRecoveryOptions, cancellationToken)
-            ));
+                t.From.Address, t.To.Address, async () =>
+                {
+                    var result = await InvokeTransaction(t, aliensRecoveryOptions, cancellationToken);
+                    var res = Interlocked.Increment(ref copied);
+                    if (res % step == 0)
+                        _logger.LogInformation("Copied {Count}/{Total} VDisks", res, recoveryTransactions.Count);
+                    return result;
+                }));
             var results = await _parallelP2PProcessor.Invoke(aliensRecoveryOptions.CopyParallelDegree, operations, cancellationToken);
             return results.Where(r => r.Data != null).SelectMany(r => r.Data).ToList();
         }
@@ -67,7 +75,7 @@ namespace BobAliensRecovery.AliensRecovery
         private async Task<List<BlobInfo>> InvokeTransaction(RecoveryTransaction transaction, AliensRecoveryOptions aliensRecoveryOptions,
             CancellationToken cancellationToken)
         {
-            _logger.LogInformation("Starting {transaction}", transaction);
+            _logger.LogDebug("Starting {transaction}", transaction);
             var copyResult = await _remoteFileCopier.Copy(transaction.From, transaction.To, cancellationToken);
 
             var blobsToRemove = new List<BlobInfo>();

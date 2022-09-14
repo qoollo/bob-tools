@@ -49,7 +49,7 @@ namespace BobAliensRecovery
                 .AddScoped<RecoveryTransactionsProducer>()
                 .AddScoped<ReplicasFinder>();
 
-            services.AddRemoteFileCopy(args.SshConfiguration);
+            services.AddRemoteFileCopy(args.SshConfiguration, args.FilesFinderConfiguration);
 
             return services.BuildServiceProvider();
         }
