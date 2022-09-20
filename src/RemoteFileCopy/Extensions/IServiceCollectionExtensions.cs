@@ -19,6 +19,7 @@ namespace RemoteFileCopy.Extensions
             sshConfiguration ??= s_defaultSshConfiguration;
             filesFinderConfiguration ??= s_defaultFilesFinderConfiguration;
             services.AddSingleton(sshConfiguration);
+            services.AddSingleton(filesFinderConfiguration);
             return services
                 .AddScoped<RsyncRemoteFileCopier>()
                 .AddScoped<IRemoteFileCopier>(s => new LocalOptimizedRemoteFileCopier(s.GetService<RsyncRemoteFileCopier>()!))
