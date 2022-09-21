@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,6 +67,8 @@ namespace RemoteFileCopy.Rsync
             var sshResult = await _sshWrapper.InvokeSshProcess(from.Address, rsyncCommand.ToString(), cancellationToken);
 
             _logger.LogDebug("Rsync output: {rsync}", string.Join(Environment.NewLine, sshResult.StdOut));
+            if (sshResult.StdErr.Any())
+                _logger.LogWarning("Rsync stderr: {rsync}", string.Join(Environment.NewLine, sshResult.StdErr));
             return new RsyncResult(sshResult);
         }
 
