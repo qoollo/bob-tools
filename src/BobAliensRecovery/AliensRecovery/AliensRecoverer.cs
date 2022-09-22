@@ -64,6 +64,12 @@ namespace BobAliensRecovery.AliensRecovery
                 aliensRecoveryOptions, dirs);
             _logger.LogInformation("Recovery transactions found");
 
+            if (recoveryTransactions.Count == 0)
+            {
+                _logger.LogInformation("No move needed, terminating");
+                return;
+            }
+
             await _blobsMover.CopyBlobsAndDeleteClosed(recoveryTransactions, aliensRecoveryOptions,
                  cancellationToken);
             _logger.LogInformation("Blobs transfer finished");
