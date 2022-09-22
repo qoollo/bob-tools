@@ -161,10 +161,8 @@ namespace RemoteFileCopy
 
         private long GetFileSize(string filePath)
         {
-            using (var fileStream = File.OpenRead(filePath))
-            {
-                return fileStream.Length;
-            }
+            var fileInfo = new FileInfo(filePath);
+            return fileInfo.Length;
         }
 
         private string GetCheckSum(string filePath)
