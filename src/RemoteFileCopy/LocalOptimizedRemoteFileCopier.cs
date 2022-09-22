@@ -160,7 +160,10 @@ namespace RemoteFileCopy
         private string GetCheckSum(string filePath)
         {
             using (var fileStream = File.OpenRead(filePath))
-            return BitConverter.ToString(SHA256.Create().ComputeHash(fileStream)).Replace("-", "").ToLowerInvariant();
+            {
+                return fileStream.Length +
+                    BitConverter.ToString(SHA256.Create().ComputeHash(fileStream)).Replace("-", "").ToLowerInvariant();
+            }
         }
 
         private static HashSet<IPAddress> GetLocalAddresses()
