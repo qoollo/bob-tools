@@ -84,13 +84,13 @@ namespace RemoteFileCopy
             cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
-                return RemoveAlreadyMovedFiles(fromPath, toPath, cancellationToken);
+                return RemoveLocalAlreadyMovedFiles(fromPath, toPath, cancellationToken);
             }
             else
                 return await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
         }
 
-        private int RemoveAlreadyMovedFiles(string fromPath, string toPath,
+        private int RemoveLocalAlreadyMovedFiles(string fromPath, string toPath,
                                             CancellationToken cancellationToken)
         {
             if (!Directory.Exists(fromPath) || !Directory.Exists(toPath))
@@ -109,7 +109,7 @@ namespace RemoteFileCopy
             foreach(var dir in Directory.GetDirectories(fromPath))
             {
                 var toDir = Path.Combine(toPath, dir.Substring(fromPath.Length + 1));
-                count += RemoveAlreadyMovedFiles(dir, toDir, cancellationToken);
+                count += RemoveLocalAlreadyMovedFiles(dir, toDir, cancellationToken);
             }
             return count;
         }
