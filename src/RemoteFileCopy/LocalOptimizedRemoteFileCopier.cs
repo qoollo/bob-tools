@@ -84,23 +84,36 @@ namespace RemoteFileCopy
             cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
             {
-                if (!Directory.Exists(fromPath))
-                    return 0;
-                int count = 0;
-                foreach (var file in Directory.GetFiles(fromPath))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var dest = Path.Combine(toPath, Path.GetFileName(fromPath));
-                    if (File.Exists(dest) && GetCheckSum(file) == GetCheckSum(dest))
-                    {
-                        File.Delete(file);
-                        count++;
-                    }
-                }
-                return count;
+                return RemoveLocalAlreadyMovedFiles(fromPath, toPath, cancellationToken);
             }
             else
                 return await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
+        }
+
+        private int RemoveLocalAlreadyMovedFiles(string fromPath, string toPath,
+                                            CancellationToken cancellationToken)
+        {
+            if (!Directory.Exists(fromPath) || !Directory.Exists(toPath))
+                return 0;
+            int count = 0;
+            foreach (var file in Directory.GetFiles(fromPath))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var dest = Path.Combine(toPath, Path.GetFileName(fromPath));
+                if (File.Exists(dest)
+                    && GetFileSize(file) == GetFileSize(dest)
+                    && GetCheckSum(file) == GetCheckSum(dest))
+                {
+                    File.Delete(file);
+                    count++;
+                }
+            }
+            foreach(var dir in Directory.GetDirectories(fromPath))
+            {
+                var toDir = Path.Combine(toPath, dir.Substring(fromPath.Length + 1));
+                count += RemoveLocalAlreadyMovedFiles(dir, toDir, cancellationToken);
+            }
+            return count;
         }
 
         private bool TryGetLocalPath(RemoteDir dir, out string path)
@@ -143,13 +156,22 @@ namespace RemoteFileCopy
                 else
                     result = false;
             }
-            return result && Directory.EnumerateFiles(path).Any();
+            return result && !Directory.EnumerateFiles(path).Any();
+        }
+
+        private long GetFileSize(string filePath)
+        {
+            var fileInfo = new FileInfo(filePath);
+            return fileInfo.Length;
         }
 
         private string GetCheckSum(string filePath)
         {
             using (var fileStream = File.OpenRead(filePath))
-            return BitConverter.ToString(SHA256.Create().ComputeHash(fileStream)).Replace("-", "").ToLowerInvariant();
+            {
+                var hash = SHA256.Create().ComputeHash(fileStream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
         }
 
         private static HashSet<IPAddress> GetLocalAddresses()
