@@ -100,7 +100,9 @@ namespace RemoteFileCopy
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var dest = Path.Combine(toPath, Path.GetFileName(fromPath));
-                if (File.Exists(dest) && GetCheckSum(file) == GetCheckSum(dest))
+                if (File.Exists(dest)
+                    && GetFileSize(file) == GetFileSize(dest)
+                    && GetCheckSum(file) == GetCheckSum(dest))
                 {
                     File.Delete(file);
                     count++;
@@ -157,12 +159,20 @@ namespace RemoteFileCopy
             return result && !Directory.EnumerateFiles(path).Any();
         }
 
+        private long GetFileSize(string filePath)
+        {
+            using (var fileStream = File.OpenRead(filePath))
+            {
+                return fileStream.Length;
+            }
+        }
+
         private string GetCheckSum(string filePath)
         {
             using (var fileStream = File.OpenRead(filePath))
             {
-                return fileStream.Length +
-                    BitConverter.ToString(SHA256.Create().ComputeHash(fileStream)).Replace("-", "").ToLowerInvariant();
+                var hash = SHA256.Create().ComputeHash(fileStream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
         }
 
