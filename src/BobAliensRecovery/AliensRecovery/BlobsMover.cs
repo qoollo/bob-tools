@@ -58,7 +58,7 @@ namespace BobAliensRecovery.AliensRecovery
             AliensRecoveryOptions aliensRecoveryOptions, CancellationToken cancellationToken)
         {
             int copied = 0;
-            var step = recoveryTransactions.Count / 10;
+            var step = Math.Max(recoveryTransactions.Count / 10, 1);
             var operations = recoveryTransactions.Select(t => ParallelP2PProcessor.CreateOperation(
                 t.From.Address, t.To.Address, async () =>
                 {
