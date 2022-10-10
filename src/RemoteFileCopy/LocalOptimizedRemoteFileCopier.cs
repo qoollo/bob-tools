@@ -132,7 +132,7 @@ namespace RemoteFileCopy
             foreach (var file in Directory.GetFiles(from))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var dest = Path.Combine(to, Path.GetFileName(from));
+                var dest = Path.Combine(to, Path.GetFileName(file));
                 File.Copy(file, dest, true);
                 result.Add(file);
             }
