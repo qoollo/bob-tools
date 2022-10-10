@@ -13,7 +13,7 @@ namespace RemoteFileCopy.FilesFinding
     public class FilesFinder
     {
         private const string ShaHashFunction = "$(sha1sum < $f | awk '{{ print $1 }}')";
-        private const string SimpleHashFunction = "$({ head -c 4096 $f ; tail -c 1073741824 $f ; } | hexdump -e '16/1 \"%02x\"')";
+        private const string SimpleHashFunction = "$({ head -c 4096 $f ; tail -c 1048576 $f ; } | hexdump -e '16/1 \"%02x\"')";
         private static readonly Regex s_fileInfo = new(@"f(.+) l(\d+) c(.+)");
         private readonly SshWrapper _sshWrapper;
         private readonly ILogger<FilesFinder> _logger;
