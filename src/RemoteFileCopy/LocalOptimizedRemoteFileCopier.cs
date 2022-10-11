@@ -99,7 +99,7 @@ namespace RemoteFileCopy
             foreach (var file in Directory.GetFiles(fromPath))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var dest = Path.Combine(toPath, Path.GetFileName(fromPath));
+                var dest = Path.Combine(toPath, Path.GetFileName(file));
                 if (File.Exists(dest)
                     && GetFileSize(file) == GetFileSize(dest)
                     && GetCheckSum(file) == GetCheckSum(dest))
