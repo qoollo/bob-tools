@@ -14,7 +14,7 @@ namespace RemoteFileCopy.FilesFinding
     {
         private const string ShaHashFunction = "$(sha1sum < $f | awk '{{ print $1 }}')";
         private const string SimpleHashFunction = "$({ head -c 4096 $f ; tail -c 1048576 $f ; } | hexdump -e '16/1 \"%02x\"')";
-        private static readonly Regex s_fileInfo = new(@"f(.+) l(\d+) c(.+)");
+        private static readonly Regex s_fileInfo = new(@"f(.+) l(\d+) c(.*)");
         private readonly SshWrapper _sshWrapper;
         private readonly ILogger<FilesFinder> _logger;
         private readonly FilesFinderConfiguration _filesFinderConfiguration;
@@ -46,7 +46,7 @@ namespace RemoteFileCopy.FilesFinding
             {
                 var match = s_fileInfo.Match(line);
                 if (match.Success && long.TryParse(match.Groups[2].Value, out var size))
-                    result.Add(new RemoteFileInfo(dir.Address, match.Groups[1].Value, size, match.Groups[3].Value));
+                    result.Add(new RemoteFileInfo(dir.Address, match.Groups[1].Value, size, match.Groups[3].Success ? match.Groups[3].Value : ""));
                 else
                     _logger.LogDebug("Failed to parse {line} into file info", line);
             }
