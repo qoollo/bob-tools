@@ -5,6 +5,8 @@ on:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-alpha.[0-9]+'
+    branches:
+      - 65-check-version-match
 
 jobs:
 
@@ -36,7 +38,15 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+          echo "TAG_NAME=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
+      - name: Version check
+        if: ${{ env.VERSION }} != ${{ env.TAG_NAME }}
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed('Tag not match version in versions.props')
       - name: build rpm
         run: |
           sed -i "s/current_version/${{ env.VERSION }}/" linux-packages/bob-tools.spec
