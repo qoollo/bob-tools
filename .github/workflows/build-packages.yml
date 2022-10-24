@@ -98,7 +98,15 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+          echo "TAG_NAME=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
+      - name: Version check
+        if: ${{ env.VERSION }} != ${{ env.TAG_NAME }}
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed('Tag not match version in versions.props')
       - name: build deb
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}_amd64/{DEBIAN,usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
@@ -153,7 +161,15 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+          echo "TAG_NAME=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
+      - name: Version check
+        if: ${{ env.VERSION }} != ${{ env.TAG_NAME }}
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed('Tag not match version in versions.props')
       - name: Create file structure 
         run: |
           mkdir -p bob-tools_${{ env.VERSION }}/{usr/bin,etc/DisksMonitoring,etc/systemd/system,lib/systemd/system}
