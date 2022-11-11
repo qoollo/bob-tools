@@ -14,6 +14,7 @@ namespace RemoteFileCopy
 {
     public class RsyncRemoteFileCopier : IRemoteFileCopier
     {
+        private const int RemoveFilesBatch = 10;
         private readonly ILogger<RsyncRemoteFileCopier> _logger;
         private readonly RsyncWrapper _rsyncWrapper;
         private readonly SshWrapper _sshWrapper;
@@ -92,16 +93,20 @@ namespace RemoteFileCopy
         {
             var error = false;
             var filesByAddress = fileInfos.GroupBy(f => f.Address);
+            var content = new StringBuilder();
             foreach (var group in filesByAddress)
             {
-                var content = new StringBuilder();
-                content.AppendLine("'EOF'");
-                foreach (var file in group)
-                    content.AppendLine($"rm -f '{file.Filename}'");
-                content.AppendLine("EOF");
+                foreach (var chunk in group.Chunk(RemoveFilesBatch))
+                {
+                    content.AppendLine("'EOF'");
+                    foreach (var file in chunk)
+                        content.AppendLine($"rm -f '{file.Filename}'");
+                    content.AppendLine("EOF");
 
-                var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"bash << {content}", cancellationToken);
-                error |= sshResults.IsError;
+                    var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"bash << {content}", cancellationToken);
+                    error |= sshResults.IsError;
+                }
+                content.Clear();
             }
             return !error;
         }
