@@ -9,6 +9,7 @@ using RemoteFileCopy.Entities;
 using RemoteFileCopy.FilesFinding;
 using RemoteFileCopy.Rsync;
 using RemoteFileCopy.Ssh;
+using RemoteFileCopy.Ssh.Entities;
 
 namespace RemoteFileCopy
 {
@@ -96,6 +97,8 @@ namespace RemoteFileCopy
             var content = new StringBuilder();
             foreach (var group in filesByAddress)
             {
+                async Task<SshResult> InvokeSsh(string command)
+                    => await _sshWrapper.InvokeSshProcess(group!.Key, command, cancellationToken);
                 foreach (var chunk in group.Chunk(RemoveFilesBatch))
                 {
                     content.AppendLine("'EOF'");
@@ -103,7 +106,22 @@ namespace RemoteFileCopy
                         content.AppendLine($"rm -f '{file.Filename}'");
                     content.AppendLine("EOF");
 
-                    var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"bash << {content}", cancellationToken);
+                    var sshResults = await InvokeSsh( $"bash << {content}");
+                    if (sshResults.IsError)
+                    {
+                        _logger.LogError("Failed to remove {Batch} files: {StdErr}",
+                                         RemoveFilesBatch,
+                                         sshResults.GetStdErr());
+                        foreach(var file in chunk) {
+                            var fileSshResult = await InvokeSsh($"rm -f `{file}`");
+                            if (fileSshResult.IsError)
+                            {
+                                _logger.LogError("Failed to remove {file}: {StdErr}",
+                                                 file,
+                                                 fileSshResult.GetStdErr());
+                            }
+                        }
+                    }
                     error |= sshResults.IsError;
                 }
                 content.Clear();

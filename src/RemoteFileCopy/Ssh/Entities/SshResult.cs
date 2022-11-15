@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -17,5 +18,7 @@ namespace RemoteFileCopy.Ssh.Entities
         public bool IsError => StdErr.Any(s => !string.IsNullOrWhiteSpace(s));
         public IEnumerable<string> StdOut { get; }
         public IEnumerable<string> StdErr { get; }
+
+        public string GetStdErr() => string.Join(Environment.NewLine, StdErr);
     }
 }
