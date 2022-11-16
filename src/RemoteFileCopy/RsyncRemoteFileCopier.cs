@@ -109,11 +109,12 @@ namespace RemoteFileCopy
                     var sshResults = await InvokeSsh( $"bash << {content}");
                     if (sshResults.IsError)
                     {
-                        _logger.LogError("Failed to remove {Batch} files: {StdErr}",
+                        _logger.LogWarning("Failed to remove {Batch} files: {StdErr}",
                                          RemoveFilesBatch,
                                          sshResults.GetStdErr());
-                        foreach(var file in chunk) {
-                            var fileSshResult = await InvokeSsh($"rm -f `{file}`");
+                        foreach(var file in chunk)
+                        {
+                            var fileSshResult = await InvokeSsh($"rm -f '{file.Filename}'");
                             if (fileSshResult.IsError)
                             {
                                 _logger.LogError("Failed to remove {file}: {StdErr}",
