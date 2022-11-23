@@ -9,11 +9,13 @@ using RemoteFileCopy.Entities;
 using RemoteFileCopy.FilesFinding;
 using RemoteFileCopy.Rsync;
 using RemoteFileCopy.Ssh;
+using RemoteFileCopy.Ssh.Entities;
 
 namespace RemoteFileCopy
 {
     public class RsyncRemoteFileCopier : IRemoteFileCopier
     {
+        private const int RemoveFilesBatch = 10;
         private readonly ILogger<RsyncRemoteFileCopier> _logger;
         private readonly RsyncWrapper _rsyncWrapper;
         private readonly SshWrapper _sshWrapper;
@@ -92,16 +94,38 @@ namespace RemoteFileCopy
         {
             var error = false;
             var filesByAddress = fileInfos.GroupBy(f => f.Address);
+            var content = new StringBuilder();
             foreach (var group in filesByAddress)
             {
-                var content = new StringBuilder();
-                content.AppendLine("'EOF'");
-                foreach (var file in group)
-                    content.AppendLine($"rm -f '{file.Filename}'");
-                content.AppendLine("EOF");
+                async Task<SshResult> InvokeSsh(string command)
+                    => await _sshWrapper.InvokeSshProcess(group!.Key, command, cancellationToken);
+                foreach (var chunk in group.Chunk(RemoveFilesBatch))
+                {
+                    content.AppendLine("'EOF'");
+                    foreach (var file in chunk)
+                        content.AppendLine($"rm -f '{file.Filename}'");
+                    content.AppendLine("EOF");
 
-                var sshResults = await _sshWrapper.InvokeSshProcess(group.Key, $"bash << {content}", cancellationToken);
-                error |= sshResults.IsError;
+                    var sshResults = await InvokeSsh( $"bash << {content}");
+                    if (sshResults.IsError)
+                    {
+                        _logger.LogWarning("Failed to remove {Batch} files: {StdErr}",
+                                         RemoveFilesBatch,
+                                         sshResults.GetStdErr());
+                        foreach(var file in chunk)
+                        {
+                            var fileSshResult = await InvokeSsh($"rm -f '{file.Filename}'");
+                            if (fileSshResult.IsError)
+                            {
+                                _logger.LogError("Failed to remove {file}: {StdErr}",
+                                                 file,
+                                                 fileSshResult.GetStdErr());
+                            }
+                        }
+                    }
+                    error |= sshResults.IsError;
+                }
+                content.Clear();
             }
             return !error;
         }
