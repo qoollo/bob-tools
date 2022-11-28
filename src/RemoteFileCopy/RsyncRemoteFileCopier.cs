@@ -124,8 +124,8 @@ namespace RemoteFileCopy
                         }
                     }
                     error |= sshResults.IsError;
+                    content.Clear();
                 }
-                content.Clear();
             }
             return !error;
         }
