@@ -25,7 +25,7 @@ namespace BobAliensRecovery
             var cluster = await GetClusterConfiguration(arguments!, cancellationToken);
 
             await recoverer.RecoverAliens(cluster, arguments.GetBobApiClientProvider(), arguments.AliensRecoveryOptions,
-                    cancellationToken);
+                cancellationToken);
         }
 
         private static async Task<ClusterConfiguration> GetClusterConfiguration(
