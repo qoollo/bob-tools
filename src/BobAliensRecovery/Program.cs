@@ -19,13 +19,13 @@ namespace BobAliensRecovery
 
         private static async Task RecoverAliens(ProgramArguments arguments, IServiceCollection services, CancellationToken cancellationToken)
         {
-            var provider = CreateServiceProvider(services, arguments);
+            using var provider = CreateServiceProvider(services, arguments);
             var recoverer = provider.GetRequiredService<AliensRecoverer>();
 
             var cluster = await GetClusterConfiguration(arguments!, cancellationToken);
 
             await recoverer.RecoverAliens(cluster, arguments.GetBobApiClientProvider(), arguments.AliensRecoveryOptions,
-                cancellationToken);
+                    cancellationToken);
         }
 
         private static async Task<ClusterConfiguration> GetClusterConfiguration(
@@ -38,7 +38,7 @@ namespace BobAliensRecovery
                 throw new ConfigurationException(err);
         }
 
-        private static IServiceProvider CreateServiceProvider(IServiceCollection services, ProgramArguments args)
+        private static ServiceProvider CreateServiceProvider(IServiceCollection services, ProgramArguments args)
         {
             services
                 .AddScoped<AliensRecoverer>()

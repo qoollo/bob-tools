@@ -40,6 +40,9 @@ namespace BobToolsCli
         [Option("bootstrap-node", HelpText = "Load config from node instead of file. Node is specified by host and port, e.g. 127.0.0.1:8000, localhost:8000")]
         public string BootstrapNode { get; set; }
 
+        [Option("file-log", HelpText = "Path to file to log")]
+        public string FileLogPath { get; set; }
+
         public async Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
         {
             if (BootstrapNode != null)

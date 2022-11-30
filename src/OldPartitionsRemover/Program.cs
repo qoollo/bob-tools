@@ -38,7 +38,7 @@ namespace OldPartitionsRemover
         {
             services.AddTransient<TRem>();
             services.AddTransient<ResultsCombiner>();
-            var provider = services.BuildServiceProvider();
+            using var provider = services.BuildServiceProvider();
             var remover = provider.GetRequiredService<TRem>();
 
             var removeResult = await remove(remover);

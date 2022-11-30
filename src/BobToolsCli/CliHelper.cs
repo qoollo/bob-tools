@@ -11,6 +11,7 @@ using CommandLine;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Exceptions;
+using Serilog.Extensions.Logging.File;
 
 namespace BobToolsCli
 {
@@ -84,7 +85,12 @@ namespace BobToolsCli
             return args =>
             {
                 var services = new ServiceCollection()
-                    .AddLogging(b => b.AddConsole().SetMinimumLevel(args.GetMinLogLevel()))
+                    .AddLogging(b =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(args.FileLogPath))
+                            b.AddFile(args.FileLogPath, minimumLevel: args.GetMinLogLevel());
+                        b.AddConsole().SetMinimumLevel(args.GetMinLogLevel());
+                    })
                     .AddSingleton(args)
                     .AddSingleton<CommonArguments>(args)
                     .AddSingleton<IConfigurationFinder>(args)
