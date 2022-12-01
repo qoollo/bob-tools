@@ -8,14 +8,34 @@ on:
 
 jobs:
 
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks-out repository 
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set env
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+          echo "TAG_NAME=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
+      - name: Version check
+        if: ${{ env.VERSION }} != ${{ env.TAG_NAME }}
+        uses: actions/github-script@v3
+        with:
+          script: |
+            core.setFailed('Tag not match version in versions.props')
+
   build-bob-aliens-recovery-docker-image:
     runs-on: ubuntu-latest
+    needs: check-version
     environment: prod
     steps:
       - name: Checks-out repository 
         uses: actions/checkout@v2
       - name: Set env
-        run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
+        run: |
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
@@ -40,6 +60,7 @@ jobs:
 
   build-bob-cluster-modifier-docker-image:
     runs-on: ubuntu-latest
+    needs: check-version
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -71,6 +92,7 @@ jobs:
 
   build-bob-disks-monitoring-docker-image:
     runs-on: ubuntu-latest
+    needs: check-version
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -102,6 +124,7 @@ jobs:
 
   build-bob-tools-docker-image:
     runs-on: ubuntu-latest
+    needs: check-version
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -133,6 +156,7 @@ jobs:
 
   build-bob-old-partitions-remover-docker-image:
     runs-on: ubuntu-latest
+    needs: check-version
     environment: prod
     steps:
       - name: Checks-out repository 
@@ -164,6 +188,7 @@ jobs:
 
   build-bob-records-calculator-docker-image:
     runs-on: ubuntu-latest
+    needs: check-version
     environment: prod
     steps:
       - name: Checks-out repository 

@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
@@ -26,10 +28,11 @@ namespace BobApi
                 BaseAddress = address,
                 Timeout = TimeSpan.FromSeconds(30),
             };
-            if (username != null)
-                _client.DefaultRequestHeaders.Add("username", username);
-            if (password != null)
-                _client.DefaultRequestHeaders.Add("password", password);
+            if (username != null) {
+                var headerValue = Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes(username + ":" + (password ?? "")));
+                _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", headerValue);
+            }
             _throwOnNoConnection = throwOnNoConnection;
         }
 
