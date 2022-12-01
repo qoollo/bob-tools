@@ -25,7 +25,7 @@ namespace RecordsCalculator
         private static async Task CountRecords(ProgramArguments arguments, IServiceCollection services,
             CancellationToken cancellationToken)
         {
-            var provider = services
+            using var provider = services
                 .AddTransient<ClusterRecordsCounter>()
                 .BuildServiceProvider();
 

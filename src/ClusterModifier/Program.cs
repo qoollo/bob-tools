@@ -27,7 +27,7 @@ namespace ClusterModifier
         {
             services.AddTransient<ClusterExpander>();
             services.AddRemoteFileCopy(arguments.SshConfiguration, arguments.FilesFinderConfiguration);
-            var provider = services.BuildServiceProvider();
+            using var provider = services.BuildServiceProvider();
 
             var expander = provider.GetRequiredService<ClusterExpander>();
             await expander.ExpandCluster(cancellationToken);
