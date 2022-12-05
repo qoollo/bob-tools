@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
       - name: Set env
         run: |
-          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g" >> $GITHUB_ENV
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g)" >> $GITHUB_ENV
           echo "TAG_NAME=$(echo 'refs/tags/v2.0.0-alpha.19' | cut -d / -f 3) | sed -e 's/^v//'" >> $GITHUB_ENV
       - name: Version check
         if: ${{ env.VERSION }} != ${{ env.TAG_NAME }}
