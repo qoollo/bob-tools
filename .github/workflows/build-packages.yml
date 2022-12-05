@@ -164,7 +164,6 @@ jobs:
         with:
           name: bob-tools-binaries
       - name: Set env
-      - name: Set env
         run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: Create file structure 
         run: |
