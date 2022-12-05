@@ -23,7 +23,7 @@ jobs:
           echo "TAG_NAME=$(echo 'refs/tags/v2.0.0-alpha.19' | cut -d / -f 3 | sed -e 's/^v//')" >> $GITHUB_ENV
       - name: Version check
         if: ${{ env.VERSION }} != ${{ env.TAG_NAME }}
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           script: |
             core.setFailed('Tag not match version in versions.props')
