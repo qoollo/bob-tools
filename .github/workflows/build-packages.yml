@@ -17,11 +17,11 @@ jobs:
           fetch-depth: 0
       - name: Set env
         run: |
-          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
-          echo "TAG_NAME=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
+          echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g)" >> $GITHUB_ENV
+          echo "TAG_NAME=$(echo $GITHUB_REF | cut -d / -f 3 | sed -e 's/^v//')" >> $GITHUB_ENV
       - name: Version check
-        if: ${{ env.VERSION }} != ${{ env.TAG_NAME }}
-        uses: actions/github-script@v3
+        if: ${{ env.VERSION != env.TAG_NAME }}
+        uses: actions/github-script@v6
         with:
           script: |
             core.setFailed('Tag not match version in versions.props')
@@ -161,7 +161,6 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: bob-tools-binaries
-      - name: Set env
       - name: Set env
         run: echo "VERSION=$(cat versions.props | grep InformationalVersion | sed 's/<.*>\(.*\)<.*>/\1/' | sed s/'\s'//g | sed -e 's/-/./g')" >> $GITHUB_ENV
       - name: Create file structure 
