@@ -56,8 +56,25 @@ namespace BobApi.Entities
 
         public static BobApiResult<T> Ok(T data) => new BobApiResult<T>(data, null);
 
-        public static BobApiResult<T> Unavailable() => new BobApiResult<T>(default, BobApiError.NodeIsUnavailable());
-        public static BobApiResult<T> Unsuccessful(HttpMethod requestMethod, Uri requestUri, string content)
-            => new BobApiResult<T>(default, BobApiError.UnsuccessfulResponse(requestMethod, requestUri, content));
+        public static BobApiResult<T> Unavailable() =>
+            new BobApiResult<T>(default, BobApiError.NodeIsUnavailable());
+
+        public static BobApiResult<T> Unsuccessful(
+            HttpMethod requestMethod,
+            HttpStatusCode statusCode,
+            Uri baseUri,
+            Uri requestUri,
+            string content
+        ) =>
+            new BobApiResult<T>(
+                default,
+                BobApiError.UnsuccessfulResponse(
+                    requestMethod,
+                    statusCode,
+                    baseUri,
+                    requestUri,
+                    content
+                )
+            );
     }
 }
