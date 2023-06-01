@@ -43,12 +43,12 @@ namespace BobToolsCli
         [Option("file-log", HelpText = "Path to file to log")]
         public string FileLogPath { get; set; }
 
-        public async Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(CancellationToken cancellationToken = default)
+        public async Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(bool skipErrors = false, CancellationToken cancellationToken = default)
         {
             if (BootstrapNode != null)
             {
                 if (TryParseHostPort(BootstrapNode, out var host, out var port))
-                    return await new NodeClusterConfigurationFetcher(GetBobApiClientProvider()).GetConfigurationFromNode(host, port, cancellationToken);
+                    return await new NodeClusterConfigurationFetcher(GetBobApiClientProvider()).GetConfigurationFromNode(host, port, skipErrors, cancellationToken);
                 else
                     return ConfigurationReadingResult<ClusterConfiguration>.Error($"Failed to parse bootstrap node address from \"{BootstrapNode}\"");
             }

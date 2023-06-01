@@ -30,7 +30,7 @@ namespace RecordsCalculator
                 .BuildServiceProvider();
 
             var counter = provider.GetRequiredService<ClusterRecordsCounter>();
-            var configResult = await arguments.FindClusterConfiguration(cancellationToken);
+            var configResult = await arguments.FindClusterConfiguration(cancellationToken: cancellationToken);
             if (configResult.IsOk(out var configuration, out var error))
             {
                 try

@@ -35,7 +35,8 @@ namespace OldPartitionsRemover.BySpaceRemoving
 
         public async Task<Result<int>> RemovePartitionsBySpace(CancellationToken cancellationToken)
         {
-            Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(cancellationToken);
+            Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(
+                    _arguments.ContinueOnError, cancellationToken);
             var nodeStats = await configResult.Bind(async conf => await RemoveInCluster(conf, cancellationToken));
             return nodeStats.Map(rs =>
             {

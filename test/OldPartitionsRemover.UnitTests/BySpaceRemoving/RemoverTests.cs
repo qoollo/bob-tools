@@ -26,7 +26,7 @@ public class RemoverTests
         IConfigurationFinder configurationFinder,
         Remover sut)
     {
-        A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
+        A.CallTo(() => configurationFinder.FindClusterConfiguration(A<bool>.Ignored, A<CancellationToken>.Ignored))
             .Returns(ConfigurationReadingResult<ClusterConfiguration>.Error(""));
 
         var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
@@ -252,7 +252,7 @@ public class RemoverTests
         IPartitionsBobApiClient partitionsBobApiClient,
         Remover sut)
     {
-        arguments.ThresholdType = "occupied";
+        arguments.ThresholdTypeString = "occupied";
         A.CallTo(() => spaceBobApiClient.GetOccupiedSpaceBytes(A<CancellationToken>.Ignored))
             .ReturnsNextFromSequence(BobApiResult<ulong>.Ok(1500), BobApiResult<ulong>.Ok(500));
         A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
@@ -280,7 +280,7 @@ public class RemoverTests
                 args.DelayMilliseconds = 0;
                 args.ThresholdString = "1000B";
                 args.ContinueOnError = false;
-                args.ThresholdType = "free";
+                args.ThresholdTypeString = "free";
             }));
 
             return fixture;

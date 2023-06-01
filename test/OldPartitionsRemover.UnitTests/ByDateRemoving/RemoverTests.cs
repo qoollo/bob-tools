@@ -26,7 +26,7 @@ public class RemoverTests
         IConfigurationFinder configurationFinder,
         Remover sut)
     {
-        A.CallTo(() => configurationFinder.FindClusterConfiguration(A<CancellationToken>.Ignored))
+        A.CallTo(() => configurationFinder.FindClusterConfiguration(A<bool>.Ignored, A<CancellationToken>.Ignored))
             .Returns(ConfigurationReadingResult<ClusterConfiguration>.Error(""));
 
         var result = await sut.RemoveOldPartitions(CancellationToken.None);
