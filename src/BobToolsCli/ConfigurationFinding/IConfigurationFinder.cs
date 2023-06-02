@@ -7,6 +7,6 @@ namespace BobToolsCli.ConfigurationFinding
 {
     public interface IConfigurationFinder
     {
-        Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(bool skipErrors = false, CancellationToken cancellationToken = default);
+        Task<ConfigurationReadingResult<ClusterConfiguration>> FindClusterConfiguration(bool skipUnavailableNodes = false, CancellationToken cancellationToken = default);
     }
 }
