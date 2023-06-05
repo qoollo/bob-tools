@@ -36,7 +36,7 @@ namespace ClusterModifier
             var oldConfigResult = await _args.GetClusterConfigurationFromFile(_args.OldConfigPath, cancellationToken);
             if (!oldConfigResult.IsOk(out var oldConfig, out var oldError))
                 throw new ConfigurationException($"Old config is not available: {oldError}");
-            var configResult = await _args.FindClusterConfiguration(cancellationToken);
+            var configResult = await _args.FindClusterConfiguration(cancellationToken: cancellationToken);
             if (!configResult.IsOk(out var config, out var newError))
                 throw new ConfigurationException($"Current config is not available: {newError}");
 

@@ -31,7 +31,7 @@ namespace BobAliensRecovery
         private static async Task<ClusterConfiguration> GetClusterConfiguration(
             ProgramArguments arguments, CancellationToken cancellationToken)
         {
-            var result = await arguments.FindClusterConfiguration(cancellationToken);
+            var result = await arguments.FindClusterConfiguration(cancellationToken: cancellationToken);
             if (result.IsOk(out var config, out var err))
                 return config;
             else

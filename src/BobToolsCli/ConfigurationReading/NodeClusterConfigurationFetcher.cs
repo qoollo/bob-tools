@@ -1,10 +1,7 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using BobApi;
 using BobApi.BobEntities;
 using BobApi.Entities;
 using BobToolsCli.Helpers;
@@ -19,21 +16,23 @@ namespace BobToolsCli.ConfigurationReading
             _bobApiClientProvider = bobApiClientProvider;
         }
 
-        public async Task<ConfigurationReadingResult<ClusterConfiguration>> GetConfigurationFromNode(string host, int port, CancellationToken cancellationToken)
+        public async Task<ConfigurationReadingResult<ClusterConfiguration>> GetConfigurationFromNode(
+                string host, int port, bool skipUnavailableNodes, CancellationToken cancellationToken)
         {
             var client = _bobApiClientProvider.GetClient(host, port);
             var nodesResult = await client.GetNodes(cancellationToken);
             if (nodesResult.IsOk(out var nodes, out var nodesError))
             {
                 var resultVdisks = GetVDisks(nodes);
-                var resultNodesRes = await GetNodes(nodes, cancellationToken);
+                var resultNodesRes = await GetNodes(nodes, skipUnavailableNodes, cancellationToken);
                 return resultNodesRes.Map(resultNodes => new ClusterConfiguration { Nodes = resultNodes, VDisks = resultVdisks });
             }
             else
                 return ConfigurationReadingResult<ClusterConfiguration>.Error($"Error getting nodes: {nodesError}");
         }
 
-        private async Task<ConfigurationReadingResult<List<ClusterConfiguration.Node>>> GetNodes(List<Node> nodes, CancellationToken cancellationToken)
+        private async Task<ConfigurationReadingResult<List<ClusterConfiguration.Node>>> GetNodes(
+                List<Node> nodes, bool skipUnavailableNodes, CancellationToken cancellationToken)
         {
             var result = new List<ClusterConfiguration.Node>();
             foreach (var node in nodes)
@@ -55,15 +54,15 @@ namespace BobToolsCli.ConfigurationReading
                             };
                             result.Add(resultNode);
                         }
-                        else
+                        else if (!skipUnavailableNodes)
                             return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
                                 .Error($"Error fetching disks for node {node.Name}: {nodeDisksError}");
                     }
-                    else
+                    else if (!skipUnavailableNodes)
                         return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
                             .Error($"Expected to find node \"{node.Name}\" but found \"{status.Name}\"");
                 }
-                else
+                else if (!skipUnavailableNodes)
                     return ConfigurationReadingResult<List<ClusterConfiguration.Node>>
                         .Error($"Error getting status for node {node.Name}: {statusError}");
             }

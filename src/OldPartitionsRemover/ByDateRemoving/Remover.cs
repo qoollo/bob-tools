@@ -38,7 +38,8 @@ namespace OldPartitionsRemover.ByDateRemoving
 
         public async Task<Result<int>> RemoveOldPartitions(CancellationToken cancellationToken)
         {
-            Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(cancellationToken);
+            Result<ClusterConfiguration> configResult = await _configurationFinder.FindClusterConfiguration(
+                    _arguments.ContinueOnError, cancellationToken);
             var thresholdResult = _arguments.GetThreshold();
             var removeOperations = await thresholdResult.Bind(t =>
             {
