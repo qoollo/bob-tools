@@ -35,6 +35,8 @@ namespace DisksMonitoring.OS.DisksFinding.LshwParsing
 
         public string FindSingleValue(TokenType type) => FindSingleValue(t => t.Type == type);
 
+        public string FindFirstOrDefaultValue(Func<Token, bool> f) => Tokens.FirstOrDefault(f).Value;
+
         public override string ToString()
         {
             return $"{Name} ({Enum.GetName(typeof(NodeType), Type)}), {Children.Count} children";
