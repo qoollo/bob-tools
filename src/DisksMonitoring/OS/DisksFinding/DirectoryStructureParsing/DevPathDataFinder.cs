@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing.FileSystemAccessors;
 using DisksMonitoring.OS.DisksFinding.Entities;
 
@@ -17,12 +18,12 @@ namespace DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing
             _fileSystemAccessor = fileSystemAccessor;
         }
 
-        public Dictionary<DevPath, PhysicalId> FindPhysicalIdByDevPath()
-            => Find(ByPathDir, PhysicalId.FromString);
+        public Dictionary<DevPath, PhysicalId> FindPhysicalIdByDevPath() =>
+            Find(ByPathDir, PhysicalId.FromString);
 
         private Dictionary<DevPath, T> Find<T>(string dirname, Func<string, T> filenameProcessor)
         {
-            var result = new Dictionary<DevPath, T>();
+            var result = new Dictionary<DevPath, string>();
             var filenames = _fileSystemAccessor.GetFilenames(dirname);
             foreach (var filename in filenames)
             {
@@ -30,10 +31,12 @@ namespace DisksMonitoring.OS.DisksFinding.DirectoryStructureParsing
                 if (devPathString != null)
                 {
                     var devPath = new DevPath(devPathString);
-                    result.Add(devPath, filenameProcessor(Path.GetFileName(filename)));
+                    var path = Path.GetFileName(filename);
+                    if (!result.TryGetValue(devPath, out var p) || path.Length > p.Length)
+                        result[devPath] = path;
                 }
             }
-            return result;
+            return result.ToDictionary(kv => kv.Key, kv => filenameProcessor(kv.Value));
         }
     }
 }
