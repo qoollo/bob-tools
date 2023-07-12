@@ -79,7 +79,7 @@ namespace DisksMonitoring.OS.DisksFinding
                 return null;
             var uuid = volumeNode.FindSingleValue(TokenType.Serial);
             var state = volumeNode.FindSingleValue(TokenType.State);
-            var mountPath = volumeNode.FindSingleValue(t => t.Type == TokenType.LogicalName && !t.Value.StartsWith("/dev"))
+            var mountPath = volumeNode.FindFirstOrDefaultValue(t => t.Type == TokenType.LogicalName && !t.Value.StartsWith("/dev"))
                 ?? volumeNode.FindSingleValue(TokenType.LastMountPoint);
             var filesystem = volumeNode.FindSingleValue(TokenType.Filesystem);
             var physicalId = new PhysicalId(physicalIdStr, diskPhysicalId);
