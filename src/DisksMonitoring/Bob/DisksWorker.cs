@@ -1,28 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using System.Windows.Markup;
 using BobApi;
 using DisksMonitoring.Config;
-using DisksMonitoring.Entities;
 using DisksMonitoring.OS;
 using DisksMonitoring.OS.DisksFinding;
 using Microsoft.Extensions.Logging;
 
 namespace DisksMonitoring.Bob
 {
-    class DisksStarter
+    class DisksWorker
     {
         private readonly DisksMonitor disksMonitor;
         private readonly Configuration configuration;
         private readonly DisksCopier disksCopier;
-        private readonly ILogger<DisksStarter> logger;
+        private readonly ILogger<DisksWorker> logger;
         private readonly DisksFinder disksFinder;
 
-        public DisksStarter(DisksMonitor disksMonitor, Configuration configuration, DisksCopier disksCopier,
-            ILogger<DisksStarter> logger, DisksFinder disksFinder)
+        public DisksWorker(DisksMonitor disksMonitor, Configuration configuration, DisksCopier disksCopier,
+            ILogger<DisksWorker> logger, DisksFinder disksFinder)
         {
             this.disksMonitor = disksMonitor;
             this.configuration = configuration;
@@ -31,7 +26,12 @@ namespace DisksMonitoring.Bob
             this.disksFinder = disksFinder;
         }
 
-        public async Task StartDisks(BobApiClient bobApiClient)
+        public async Task AlterBobDisks(BobApiClient bobApiClient)
+        {
+            await StartDisks(bobApiClient);
+        }
+
+        private async Task StartDisks(BobApiClient bobApiClient)
         {
             var disksToStart = configuration.MonitoringEntries;
             var disks = await disksFinder.FindDisks();
