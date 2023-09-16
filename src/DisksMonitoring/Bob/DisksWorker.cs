@@ -37,61 +37,80 @@ namespace DisksMonitoring.Bob
 
         public async Task AlterBobDisks(BobApiClient bobApiClient)
         {
-            await StopDisks(bobApiClient);
-            await StartDisks(bobApiClient);
+            var physicalDisks = await disksFinder.FindDisks();
+            if (physicalDisks.Count == 0)
+            {
+                logger.LogInformation("No physical disks found");
+                return;
+            }
+            var (toStart, toStop) = await GetDisksFromBob(bobApiClient, physicalDisks);
+            await CopyDisks(bobApiClient, physicalDisks, toStart);
+            await StopDisks(bobApiClient, toStop);
+            await StartDisks(bobApiClient, toStart);
         }
 
-        private async Task StartDisks(BobApiClient bobApiClient)
+        private async Task CopyDisks(
+            BobApiClient bobApiClient,
+            IEnumerable<PhysicalDisk> physicalDisks,
+            IEnumerable<BobDisk> disks
+        )
         {
-            var disks = await disksFinder.FindDisks();
-            if (disks.Count == 0)
-                return;
-
-            foreach (var disk in configuration.MonitoringEntries)
+            foreach (var disk in disks)
             {
-                var inactiveDisksResult = await bobApiClient.GetInactiveDisks();
-                if (!inactiveDisksResult.IsOk(out var inactiveDisks, out var err))
-                {
-                    logger.LogError("Failed to get inactive disks info from bob: {Error}", err);
-                    return;
-                }
-                if (!DiskIsInactive(inactiveDisks, disk))
-                    continue;
-
-                var volume = FindFittingVolume(disks, disk);
+                var volume = FindFittingVolume(physicalDisks, disk);
                 if (volume == null)
+                {
+                    logger.LogWarning("Expected to find volume for disk {Disk}, found none", disk);
                     continue;
+                }
 
                 if (!VolumeIsKnown(volume))
                     await CopyDataToNewVolume(bobApiClient, disk, volume);
+            }
+        }
 
+        private async Task StartDisks(BobApiClient bobApiClient, IEnumerable<BobDisk> disks)
+        {
+            foreach (var disk in disks)
+            {
                 await ChangeDiskState("started", async s => await bobApiClient.StartDisk(s), disk);
             }
         }
 
-        private async Task StopDisks(BobApiClient bobApiClient)
+        private async Task StopDisks(BobApiClient bobApiClient, IEnumerable<BobDisk> disks)
         {
-            var disks = await disksFinder.FindDisks();
-            if (disks.Count == 0)
-                return;
-
-            foreach (var disk in configuration.MonitoringEntries)
+            foreach (var disk in disks)
             {
-                var inactiveDisksResult = await bobApiClient.GetInactiveDisks();
-                if (!inactiveDisksResult.IsOk(out var inactiveDisks, out var err))
-                {
-                    logger.LogError("Failed to get inactive disks info from bob: {Error}", err);
-                    return;
-                }
-                if (DiskIsInactive(inactiveDisks, disk))
-                    continue;
-
-                var volume = FindFittingVolume(disks, disk);
-                if (volume != null)
-                    continue;
-
                 await ChangeDiskState("stopped", async s => await bobApiClient.StopDisk(s), disk);
             }
+        }
+
+        private async Task<(List<BobDisk> toStart, List<BobDisk> toStop)> GetDisksFromBob(
+            BobApiClient bobApiClient,
+            IEnumerable<PhysicalDisk> physicalDisks
+        )
+        {
+            List<BobDisk> toStart = new(),
+                toStop = new();
+            var inactiveDisksResult = await bobApiClient.GetInactiveDisks();
+            if (!inactiveDisksResult.IsOk(out var inactiveDisks, out var err))
+            {
+                logger.LogError("Failed to get inactive disks info from bob: {Error}", err);
+            }
+            else
+            {
+                foreach (var disk in configuration.MonitoringEntries)
+                {
+                    var volume = FindFittingVolume(physicalDisks, disk);
+                    var inactiveInBob = DiskIsInactiveInBob(inactiveDisks, disk);
+                    var physicalExists = volume != null;
+                    if (inactiveInBob && physicalExists)
+                        toStart.Add(disk);
+                    else if (!inactiveInBob && !physicalExists)
+                        toStop.Add(disk);
+                }
+            }
+            return (toStart, toStop);
         }
 
         private async Task ChangeDiskState(
@@ -106,13 +125,15 @@ namespace DisksMonitoring.Bob
                 !await TryChange(changeByName(disk.DiskNameInBob))
                 && retry++ < configuration.StartRetryCount
             )
+            {
                 logger.LogWarning(
                     "Failed to change state of {Disk} to {State} in try {Try}, trying again",
                     disk,
                     state,
                     retry
                 );
-            if (retry == configuration.StartRetryCount)
+            }
+            if (retry == configuration.StartRetryCount + 1)
                 logger.LogError("Failed to change state of {Disk} to {State}", disk, state);
             else
                 logger.LogInformation(
@@ -138,20 +159,20 @@ namespace DisksMonitoring.Bob
 
         private bool VolumeIsKnown(Volume volume) => configuration.KnownUuids.Contains(volume.UUID);
 
-        private static Volume FindFittingVolume(List<PhysicalDisk> disks, BobDisk diskToStart) =>
+        private static Volume FindFittingVolume(IEnumerable<PhysicalDisk> disks, BobDisk bobDisk) =>
             disks
                 .Select(
                     d =>
                         d.Volumes.FirstOrDefault(
                             v =>
-                                v.MountPath.Equals(diskToStart.MountPath)
+                                v.MountPath.Equals(bobDisk.MountPath)
                                 && v.IsMounted
                                 && !v.IsReadOnly
                         )
                 )
                 .FirstOrDefault();
 
-        private bool DiskIsInactive(
+        private bool DiskIsInactiveInBob(
             IEnumerable<BobApi.Entities.Disk> inactiveDisks,
             Entities.BobDisk disk
         ) => inactiveDisks.Any(d => d.Name == disk.DiskNameInBob);
