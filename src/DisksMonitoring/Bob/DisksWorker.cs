@@ -44,7 +44,10 @@ namespace DisksMonitoring.Bob
                 return;
             }
             var (toStart, toStop) = await GetDisksFromBob(bobApiClient, physicalDisks);
-            await CopyDisks(bobApiClient, physicalDisks, toStart);
+
+            if (configuration.AllowDisksCopy)
+                await CopyDisks(bobApiClient, physicalDisks, toStart);
+
             await StopDisks(bobApiClient, toStop);
             await StartDisks(bobApiClient, toStart);
         }
