@@ -162,6 +162,7 @@ namespace ClusterModifier
                 {
                     if (await _remoteFileCopier.RemoveAlreadyMovedFiles(dirToDelete, newDir, cancellationToken) > 0)
                         _logger.LogInformation("Removed files from {Directory} that were moved to {NewDirectory}", dirToDelete, newDir);
+                    await _remoteFileCopier.RemoveEmptySubdirs(dirToDelete, cancellationToken);
                 }
             }
         }
