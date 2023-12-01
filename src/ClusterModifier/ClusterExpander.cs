@@ -1,3 +1,4 @@
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -70,8 +71,9 @@ namespace ClusterModifier
             }
         }
 
-        private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
-            ClusterConfiguration config, CancellationToken cancellationToken)
+        private async Task OnVDiskDirs(ClusterConfiguration oldConfig, ClusterConfiguration config,
+                Action<ClusterConfiguration.VDisk, IEnumerable<RemoteDir>, IEnumerable<RemoteDir>> onOldNewDirsForVdisk,
+                CancellationToken cancellationToken)
         {
             var vDiskPairs = oldConfig.VDisks.Join(config.VDisks,
                                                    vd => vd.Id,
@@ -84,14 +86,23 @@ namespace ClusterModifier
             {
                 var oldDirs = oldVDisk.Replicas.Select(r => oldNodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, oldVDisk));
                 var newDirs = vDisk.Replicas.Select(r => nodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, vDisk));
+                onOldNewDirsForVdisk(vDisk, oldDirs, newDirs);
+            }
+        }
+
+        private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
+            ClusterConfiguration config, CancellationToken cancellationToken)
+        {
+            var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
+            await OnVDiskDirs(oldConfig, config, (_, oldDirs, newDirs) =>
+            {
                 var missing = newDirs.Except(oldDirs);
                 foreach (var newDir in missing)
                     if (sourceDirsByDest.TryGetValue(newDir, out var dirs))
                         dirs.UnionWith(oldDirs);
                     else
                         sourceDirsByDest.Add(newDir, oldDirs.ToHashSet());
-            }
-
+            }, cancellationToken);
             return sourceDirsByDest;
         }
 
@@ -131,18 +142,26 @@ namespace ClusterModifier
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Removing data from old replicas");
-            var newRemoteDirs = await GetAllRemoteDirs(newConfig, cancellationToken);
-            var oldRemoteDirs = await GetAllRemoteDirs(oldConfig, cancellationToken);
-            foreach (var remoteDir in oldRemoteDirs.Except(newRemoteDirs))
+            var oldDirNewDir = new List<(RemoteDir old, RemoteDir n)>();
+            await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) => {
+                var remaining = newDirs.Except(oldDirs);
+                if (!remaining.Any())
+                    throw new ClusterStateException($"VDisk {vDisk} does not have replicas in new cluster");
+                foreach(var remainingDir in remaining)
+                {
+                    var toDelete = oldDirs.Except(newDirs);
+                    foreach(var d in toDelete)
+                        oldDirNewDir.Add((d, remainingDir));
+                }
+            }, cancellationToken);
+            foreach (var (dirToDelete, newDir) in oldDirNewDir)
             {
                 if (_args.DryRun)
-                    _logger.LogInformation("Expected removing {Directory}", remoteDir);
+                    _logger.LogInformation("Expected removing files from {Directory} that were moved to {NewDirectory}", dirToDelete, newDir);
                 else
                 {
-                    if (await _remoteFileCopier.RemoveDirectory(remoteDir, cancellationToken))
-                        _logger.LogInformation("Removed {Directory}", remoteDir);
-                    else
-                        _logger.LogWarning("Failed to remove {Directory}", remoteDir);
+                    if (await _remoteFileCopier.RemoveAlreadyMovedFiles(dirToDelete, newDir, cancellationToken) > 0)
+                        _logger.LogInformation("Removed files from {Directory} that were moved to {NewDirectory}", dirToDelete, newDir);
                 }
             }
         }
