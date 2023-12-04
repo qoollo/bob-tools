@@ -144,12 +144,9 @@ namespace ClusterModifier
             _logger.LogInformation("Removing data from old replicas");
             var oldDirNewDir = new List<(RemoteDir old, RemoteDir n)>();
             await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) => {
-                var remaining = newDirs.Except(oldDirs);
-                if (!remaining.Any())
-                    throw new ClusterStateException($"VDisk {vDisk} does not have replicas in new cluster");
-                foreach(var remainingDir in remaining)
+                var toDelete = oldDirs.Except(newDirs).ToArray();
+                foreach(var remainingDir in newDirs)
                 {
-                    var toDelete = oldDirs.Except(newDirs);
                     foreach(var d in toDelete)
                         oldDirNewDir.Add((d, remainingDir));
                 }
