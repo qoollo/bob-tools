@@ -143,12 +143,13 @@ namespace ClusterModifier
         {
             _logger.LogInformation("Removing data from old replicas");
             var oldDirNewDir = new List<(RemoteDir old, RemoteDir n)>();
-            await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) => {
+            await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
+            {
                 var toDelete = oldDirs.Except(newDirs).ToArray();
-                foreach(var remainingDir in newDirs)
+                foreach(var newDir in newDirs)
                 {
                     foreach(var d in toDelete)
-                        oldDirNewDir.Add((d, remainingDir));
+                        oldDirNewDir.Add((d, newDir));
                 }
             }, cancellationToken);
             foreach (var (dirToDelete, newDir) in oldDirNewDir)
