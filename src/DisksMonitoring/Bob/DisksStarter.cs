@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Markup;
 using BobApi;
+using BobApi.BobEntities;
 using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
 using DisksMonitoring.OS;
@@ -31,7 +32,7 @@ namespace DisksMonitoring.Bob
             this.disksFinder = disksFinder;
         }
 
-        public async Task StartDisks(BobApiClient bobApiClient)
+        public async Task StartDisks(ClusterConfiguration clusterConfiguration, BobApiClient bobApiClient)
         {
             var disksToStart = configuration.MonitoringEntries;
             var disks = await disksFinder.FindDisks();
@@ -54,7 +55,7 @@ namespace DisksMonitoring.Bob
 
                 logger.LogInformation($"Trying to start disk {i}");
                 if (!configuration.KnownUuids.Contains(volume.UUID))
-                    await disksCopier.CopyDataFromReplica(bobApiClient, i);
+                    await disksCopier.CopyDataFromReplica(clusterConfiguration, bobApiClient, i);
                 configuration.SaveUUID(await disksMonitor.GetUUID(i));
                 logger.LogInformation($"Starting bobdisk {i}...");
                 int retry = 0;

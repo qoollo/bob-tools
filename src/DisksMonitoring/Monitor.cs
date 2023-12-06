@@ -36,6 +36,9 @@ class Monitor
     {
         var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
         var client = await _args.GetLocalBobClient(cancellationToken);
+        var clusterConfiguration = await _args.GetClusterConfiguration(
+            cancellationToken: cancellationToken
+        );
         _logger.LogInformation("Start monitor");
         while (true)
         {
@@ -45,7 +48,7 @@ class Monitor
                 await _externalScriptsRunner.RunPreCycleScripts();
                 await _disksMonitor.CheckAndUpdate(client);
                 await configuration.SaveToFile(_args.StateFile);
-                await _disksStarter.StartDisks(client);
+                await _disksStarter.StartDisks(clusterConfiguration, client);
                 await _externalScriptsRunner.RunPostCycleScripts();
             }
             catch (Exception e)

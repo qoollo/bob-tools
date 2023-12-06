@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BobApi.BobEntities;
 using BobToolsCli.ConfigurationFinding;
 using BobToolsCli.ConfigurationReading;
+using BobToolsCli.Exceptions;
 using BobToolsCli.Helpers;
 using CommandLine;
 using Microsoft.Extensions.Logging;
@@ -54,6 +55,13 @@ namespace BobToolsCli
             }
 
             return await GetClusterConfigurationFromFile(ClusterConfigPath, cancellationToken);
+        }
+
+        public async Task<ClusterConfiguration> GetClusterConfiguration(bool skipUnavailableNodes =false, CancellationToken cancellationToken = default)
+        {
+            if ((await FindClusterConfiguration(skipUnavailableNodes, cancellationToken)).IsOk(out var conf, out var err))
+                return conf;
+            throw new ConfigurationException($"Failed to get cluster configuration: {err}");
         }
 
         public async Task<ConfigurationReadingResult<ClusterConfiguration>> GetClusterConfigurationFromFile(string path,

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using BobApi;
+using BobApi.BobEntities;
 using BobApi.Entities;
 using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
@@ -26,7 +27,7 @@ namespace DisksMonitoring.Bob
             this.logger = logger;
         }
 
-        public async Task CopyDataFromReplica(BobApiClient bobApiClient, BobDisk bobDisk)
+        public async Task CopyDataFromReplica(ClusterConfiguration clusterConfiguration, BobApiClient bobApiClient, BobDisk bobDisk)
         {
             if (configuration.PathToDiskStatusAnalyzer == null || !File.Exists(configuration.PathToDiskStatusAnalyzer))
             {

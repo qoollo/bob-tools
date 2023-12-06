@@ -95,18 +95,13 @@ public class MonitorArguments : CommonWithSshArguments
 
     public async Task<BobApiClient> GetLocalBobClient(CancellationToken cancellationToken)
     {
-        var confResult = await FindClusterConfiguration(cancellationToken: cancellationToken);
-        if (confResult.IsOk(out var conf, out var err))
-        {
-            var node = conf.Nodes.Find(n => n.Name == LocalNodeName);
-            if (node == null)
-                throw new ConfigurationException(
-                    $"Failed to find local node {LocalNodeName} in configuration"
-                );
-            return GetBobApiClientProvider().GetClient(node);
-        }
-        else
-            throw new ConfigurationException("Failed to get cluster configuration");
+        var conf = await GetClusterConfiguration(cancellationToken: cancellationToken);
+        var node = conf.Nodes.Find(n => n.Name == LocalNodeName);
+        if (node == null)
+            throw new ConfigurationException(
+                $"Failed to find local node {LocalNodeName} in configuration"
+            );
+        return GetBobApiClientProvider().GetClient(node);
     }
 }
 
