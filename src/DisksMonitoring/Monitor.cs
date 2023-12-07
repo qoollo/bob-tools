@@ -48,7 +48,7 @@ class Monitor
                 await _externalScriptsRunner.RunPreCycleScripts();
                 await _disksMonitor.CheckAndUpdate(client);
                 await configuration.SaveToFile(_args.StateFile);
-                await _disksStarter.StartDisks(clusterConfiguration, client);
+                await _disksStarter.StartDisks(clusterConfiguration, _args.LocalNodeName, client);
                 await _externalScriptsRunner.RunPostCycleScripts();
             }
             catch (Exception e)

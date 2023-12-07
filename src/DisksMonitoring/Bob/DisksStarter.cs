@@ -32,7 +32,7 @@ namespace DisksMonitoring.Bob
             this.disksFinder = disksFinder;
         }
 
-        public async Task StartDisks(ClusterConfiguration clusterConfiguration, BobApiClient bobApiClient)
+        public async Task StartDisks(ClusterConfiguration clusterConfiguration, string nodeName, BobApiClient bobApiClient)
         {
             var disksToStart = configuration.MonitoringEntries;
             var disks = await disksFinder.FindDisks();
@@ -55,7 +55,7 @@ namespace DisksMonitoring.Bob
 
                 logger.LogInformation($"Trying to start disk {i}");
                 if (!configuration.KnownUuids.Contains(volume.UUID))
-                    await disksCopier.CopyDataFromReplica(clusterConfiguration, bobApiClient, i);
+                    await disksCopier.CopyDataFromReplica(clusterConfiguration, bobApiClient, nodeName, i);
                 configuration.SaveUUID(await disksMonitor.GetUUID(i));
                 logger.LogInformation($"Starting bobdisk {i}...");
                 int retry = 0;

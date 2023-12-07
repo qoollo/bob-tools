@@ -1,105 +1,76 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using BobApi;
 using BobApi.BobEntities;
-using BobApi.Entities;
 using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
-using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.Logging;
+using RemoteFileCopy;
+using RemoteFileCopy.Entities;
 
 namespace DisksMonitoring.Bob
 {
     class DisksCopier
     {
         private readonly Configuration configuration;
-        private readonly ProcessInvoker processInvoker;
         private readonly ILogger<DisksCopier> logger;
+        private readonly IRemoteFileCopier _remoteFileCopier;
 
-        public DisksCopier(Configuration configuration, ProcessInvoker processInvoker, ILogger<DisksCopier> logger)
+        public DisksCopier(
+            Configuration configuration,
+            ILogger<DisksCopier> logger,
+            IRemoteFileCopier remoteFileCopier
+        )
         {
             this.configuration = configuration;
-            this.processInvoker = processInvoker;
             this.logger = logger;
+            _remoteFileCopier = remoteFileCopier;
         }
 
-        public async Task CopyDataFromReplica(ClusterConfiguration clusterConfiguration, BobApiClient bobApiClient, BobDisk bobDisk)
+        public async Task CopyDataFromReplica(
+            ClusterConfiguration clusterConfiguration,
+            BobApiClient bobApiClient,
+            string nodeName,
+            BobDisk bobDisk
+        )
         {
-            if (configuration.PathToDiskStatusAnalyzer == null || !File.Exists(configuration.PathToDiskStatusAnalyzer))
+            var localNode = clusterConfiguration.Nodes.Single(n => n.Name == nodeName);
+            var disk = localNode.Disks.Single(d => d.Path == bobDisk.BobPath.Path);
+            var targetVDisk = clusterConfiguration
+                .VDisks
+                .SingleOrDefault(
+                    vDisk => vDisk.Replicas.Any(r => r.Node == nodeName && r.Disk == disk.Name)
+                );
+            if (targetVDisk == null)
             {
-                logger.LogInformation($"DiskStatusAnalyzer path ({configuration.PathToDiskStatusAnalyzer}) is invalid, skipping copy");
                 return;
             }
-            var statusResult = await bobApiClient.GetStatus();
-            if (!statusResult.IsOk(out var status, out var err))
+            var restReplicas = targetVDisk
+                .Replicas
+                .Where(r => r.Node != nodeName || r.Disk != disk.Name);
+            var currentDir = new RemoteDir(System.Net.IPAddress.Loopback, bobDisk.BobPath.Path);
+            foreach (var replica in restReplicas)
             {
-                logger.LogError($"Failed to get status from {bobApiClient}, {err}");
-                return;
-            }
-            var destName = status.Name;
-            var diskName = bobDisk.DiskNameInBob;
-            bool IsCurrent(Replica replica) => replica.Node == destName && replica.Disk == diskName;
-            var vdisks = status.VDisks.Where(vd => vd.Replicas.Any(IsCurrent));
-            if (!vdisks.Any())
-            {
-                logger.LogError($"VDisks with replica ({diskName}, {destName}) not found");
-                return;
-            }
-            foreach (var vdisk in vdisks)
-            {
-                var bobPath = Path.Combine(bobDisk.BobPath.Path, "bob");
-                await TryCreateDir(bobPath);
-                await TryCreateDir(Path.Combine(bobPath, vdisk.Id.ToString()));
-                foreach (var replica in vdisk.Replicas)
+                var replicaNode = clusterConfiguration.Nodes.Single(n => n.Name == replica.Node);
+                var replicaDisk = replicaNode.Disks.Single(d => d.Name == replica.Disk);
+                var replicaRemoteDir = new RemoteDir(
+                    await replicaNode.FindIPAddress(),
+                    replicaDisk.Path
+                );
+
+                var copyResult = await _remoteFileCopier.Copy(replicaRemoteDir, currentDir);
+                if (copyResult.IsError == false)
                 {
-                    if (replica.Node == destName)
-                        continue;
-                    logger.LogInformation($"Trying to copy {vdisk} from {replica.Node} to {destName}");
-                    try
-                    {
-                        await PerformCopy(replica.Node, destName, vdisk.Id);
-                        logger.LogInformation($"Successfully copied {vdisk} from {replica.Node} to {destName}");
-                        break;
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogError($"Failed to copy {vdisk} from {replica.Node} to {destName}: {e.Message}");
-                    }
+                    logger.LogInformation(
+                        "Succesfully copied data for disk {Disk} from {From} to {To}",
+                        bobDisk,
+                        replicaRemoteDir,
+                        currentDir
+                    );
+                    return;
                 }
             }
-        }
-
-        private async Task TryCreateDir(string path)
-        {
-            try
-            {
-                if (!System.IO.Directory.Exists(path))
-                    await CreateDir(path);
-                else
-                    logger.LogDebug($"Directory {path} already exists");
-            }
-            catch (Exception e)
-            {
-                logger.LogError($"Failed to create dir {path}: {e.Message}");
-            }
-        }
-
-        private async Task CreateDir(string path)
-        {
-            logger.LogInformation($"Creating dir {path}");
-            System.IO.Directory.CreateDirectory(path);
-            await processInvoker.SetDirPermissionsAndOwner(path, configuration.BobDirPermissions, configuration.BobDirOwner);
-        }
-
-        private async Task PerformCopy(string sourceName, string destName, int vdiskId)
-        {
-            string fullPath = Path.GetFullPath(configuration.PathToDiskStatusAnalyzer);
-            await processInvoker.InvokeSudoProcessWithWD(fullPath, Path.GetDirectoryName(fullPath),
-                "copy-vdisk", $"-s {sourceName}", $"-d {destName}", $"-v {vdiskId}");
+            logger.LogError("Failed to copy data to disk {Dir}", bobDisk);
         }
     }
 }
