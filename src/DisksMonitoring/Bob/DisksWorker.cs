@@ -140,16 +140,12 @@ namespace DisksMonitoring.Bob
 
         private static Volume FindFittingVolume(List<PhysicalDisk> disks, BobDisk diskToStart) =>
             disks
-                .Select(
-                    d =>
-                        d.Volumes.FirstOrDefault(
-                            v =>
-                                v.MountPath.Equals(diskToStart.MountPath)
-                                && v.IsMounted
-                                && !v.IsReadOnly
-                        )
-                )
-                .FirstOrDefault();
+                .SelectMany(d => d.Volumes)
+                .FirstOrDefault( v =>
+                    v.MountPath.Equals(diskToStart.MountPath)
+                    && v.IsMounted
+                    && !v.IsReadOnly
+                );
 
         private bool DiskIsInactive(
             IEnumerable<BobApi.Entities.Disk> inactiveDisks,
