@@ -44,13 +44,13 @@ namespace ClusterModifier
             _logger.LogDebug("Expanding cluster from {OldConfigPath} to {CurrentConfigPath}",
                 _args.OldConfigPath, _args.ClusterConfigPath);
 
-            await CopyDataToNewReplicas(oldConfig, config, cancellationToken);
+            var copyOperations = await CopyDataToNewReplicas(oldConfig, config, cancellationToken);
 
             if (_args.RemoveUnusedReplicas)
-                await RemoveUnusedReplicas(oldConfig, config, cancellationToken);
+                await RemoveUnusedReplicas(oldConfig, config, copyOperations, cancellationToken);
         }
 
-        private async Task CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
+        private async Task<List<(RemoteDir from, RemoteDir to)>> CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Copying data from old to current replicas");
@@ -69,6 +69,7 @@ namespace ClusterModifier
                 foreach(var (from, to) in operations)
                     _logger.LogInformation("Expected copying from {From} to {To}", from, to);
             }
+            return operations;
         }
 
         private async Task OnVDiskDirs(ClusterConfiguration oldConfig, ClusterConfiguration config,
@@ -138,17 +139,25 @@ namespace ClusterModifier
         }
 
         private async Task RemoveUnusedReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
-            CancellationToken cancellationToken)
+            IEnumerable<(RemoteDir from, RemoteDir to)> copyOperations, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Removing data from old replicas");
             var oldDirNewDir = new List<(RemoteDir old, RemoteDir n)>();
+            var sourceByDest = copyOperations
+                .GroupBy(t => t.to)
+                .ToDictionary(g => g.Key, g => g.Select(t => t.from).Distinct().ToArray());
             await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
             {
                 var toDelete = oldDirs.Except(newDirs).ToArray();
-                foreach(var newDir in newDirs)
+                foreach(var dir in toDelete)
                 {
-                    foreach(var d in toDelete)
-                        oldDirNewDir.Add((d, newDir));
+                    if (sourceByDest.TryGetValue(dir, out var sourceDirs))
+                    {
+                        foreach(var source in sourceDirs)
+                        {
+                            oldDirNewDir.Add((dir, source));
+                        }
+                    }
                 }
             }, cancellationToken);
             foreach (var (dirToDelete, newDir) in oldDirNewDir)
