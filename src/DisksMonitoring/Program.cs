@@ -16,6 +16,7 @@ using DisksMonitoring.OS.DisksProcessing;
 using DisksMonitoring.OS.DisksProcessing.FSTabAltering;
 using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.DependencyInjection;
+using RemoteFileCopy.Extensions;
 
 namespace DisksMonitoring;
 
@@ -36,7 +37,7 @@ class Program
         CancellationToken cancellationToken
     )
     {
-        var prov = CreateServiceProvider(services);
+        var prov = CreateServiceProvider(services, args);
         var generator = prov.GetRequiredService<ConfigurationGenerator>();
         var monitor = prov.GetRequiredService<Monitor>();
         var client = await args.GetLocalBobClient(cancellationToken);
@@ -50,13 +51,16 @@ class Program
         CancellationToken cancellationToken
     )
     {
-        var prov = CreateServiceProvider(services);
+        var prov = CreateServiceProvider(services, args);
         var generator = prov.GetRequiredService<ConfigurationGenerator>();
         var client = await args.GetLocalBobClient(cancellationToken);
         await generator.Generate(args.StateFile, client, cancellationToken);
     }
 
-    static IServiceProvider CreateServiceProvider(IServiceCollection services)
+    static IServiceProvider CreateServiceProvider(
+        IServiceCollection services,
+        CommonWithSshArguments args
+    )
     {
         services.AddTransient<LshwParser>();
         services.AddTransient<DisksFinder>();
@@ -75,6 +79,8 @@ class Program
         services.AddTransient<DevPathDataFinder>();
         services.AddTransient<IFileSystemAccessor, LinuxFileSystemAccessor>();
         services.AddTransient<Monitor>().AddTransient<ConfigurationGenerator>();
+
+        services.AddRemoteFileCopy(args.SshConfiguration, args.FilesFinderConfiguration);
 
         return services.BuildServiceProvider();
     }
