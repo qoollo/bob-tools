@@ -81,7 +81,6 @@ namespace ClusterModifier
                                                    (ovd, vd) => (ovd, vd)); 
             var oldNodeInfoByName = await GetNodeInfoByName(oldConfig, cancellationToken);
             var nodeInfoByName = await GetNodeInfoByName(config, cancellationToken);
-            var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
             foreach (var (oldVDisk, vDisk) in vDiskPairs)
             {
                 var oldDirs = oldVDisk.Replicas.Select(r => oldNodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, oldVDisk));
