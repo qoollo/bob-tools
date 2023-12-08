@@ -166,7 +166,7 @@ namespace DisksMonitoring.Bob
             disks
                 .SelectMany(d => d.Volumes)
                 .FirstOrDefault( v =>
-                    v.MountPath.Equals(diskToStart.MountPath)
+                    v.MountPath.Equals(bobDisk.MountPath)
                     && v.IsMounted
                     && !v.IsReadOnly
                 );
