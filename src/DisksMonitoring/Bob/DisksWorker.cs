@@ -11,6 +11,7 @@ using DisksMonitoring.OS.DisksFinding;
 using DisksMonitoring.OS.DisksFinding.Entities;
 using Microsoft.Extensions.Logging;
 
+#nullable enable
 namespace DisksMonitoring.Bob
 {
     class DisksWorker
@@ -36,43 +37,49 @@ namespace DisksMonitoring.Bob
             this.disksFinder = disksFinder;
         }
 
-        public async Task AlterBobDisks(ClusterConfiguration clusterConfiguration,
-            string nodeName, BobApiClient bobApiClient)
+        public async Task AlterBobDisks(
+            ClusterConfiguration clusterConfiguration,
+            string nodeName,
+            BobApiClient bobApiClient
+        )
         {
-            var physicalDisks = await disksFinder.FindDisks();
-            if (physicalDisks.Count == 0)
-            {
-                logger.LogInformation("No physical disks found");
+            var monitoredVolumes = await FindVolumesWithBob();
+            if (monitoredVolumes.Length == 0)
                 return;
-            }
-            var (toStart, toStop) = await GetDisksFromBob(bobApiClient, physicalDisks);
+            var (toStart, toStop) = await GetDisksFromBob(bobApiClient, monitoredVolumes);
 
             if (configuration.AllowDisksCopy)
-                await CopyDisks(clusterConfiguration, nodeName, bobApiClient, physicalDisks, toStart);
+                await CopyDisks(clusterConfiguration, nodeName, bobApiClient, toStart);
 
-            await StopDisks(bobApiClient, toStop);
-            await StartDisks(bobApiClient, toStart);
+            await StopDisks(bobApiClient, toStop.Select(v => v.BobDisk));
+            await StartDisks(bobApiClient, toStart.Select(v => v.BobDisk));
         }
 
         private async Task CopyDisks(
             ClusterConfiguration clusterConfiguration,
             string nodeName,
             BobApiClient bobApiClient,
-            IEnumerable<PhysicalDisk> physicalDisks,
-            IEnumerable<BobDisk> disks
+            IEnumerable<VolumeWithBob> volumesWithBob
         )
         {
-            foreach (var disk in disks)
+            foreach (var volumeWithBob in volumesWithBob)
             {
-                var volume = FindFittingVolume(physicalDisks, disk);
-                if (volume == null)
+                if (volumeWithBob.Volume == null)
                 {
-                    logger.LogWarning("Expected to find volume for disk {Disk}, found none", disk);
+                    logger.LogWarning(
+                        "Expected to find volume for disk {Disk}, found none",
+                        volumeWithBob.BobDisk
+                    );
                     continue;
                 }
 
-                if (!VolumeIsKnown(volume))
-                    await CopyDataToNewVolume(clusterConfiguration, nodeName, bobApiClient, disk, volume);
+                if (!volumeWithBob.VolumeIsKnown)
+                    await CopyDataToNewVolume(
+                        clusterConfiguration,
+                        nodeName,
+                        bobApiClient,
+                        volumeWithBob
+                    );
             }
         }
 
@@ -92,12 +99,12 @@ namespace DisksMonitoring.Bob
             }
         }
 
-        private async Task<(List<BobDisk> toStart, List<BobDisk> toStop)> GetDisksFromBob(
-            BobApiClient bobApiClient,
-            IEnumerable<PhysicalDisk> physicalDisks
-        )
+        private async Task<(
+            List<VolumeWithBob> toStart,
+            List<VolumeWithBob> toStop
+        )> GetDisksFromBob(BobApiClient bobApiClient, IEnumerable<VolumeWithBob> volumesWithBob)
         {
-            List<BobDisk> toStart = new(),
+            List<VolumeWithBob> toStart = new(),
                 toStop = new();
             var inactiveDisksResult = await bobApiClient.GetInactiveDisks();
             if (!inactiveDisksResult.IsOk(out var inactiveDisks, out var err))
@@ -106,15 +113,16 @@ namespace DisksMonitoring.Bob
             }
             else
             {
-                foreach (var disk in configuration.MonitoringEntries)
+                var inactiveDiskNames = inactiveDisks.Select(d => d.Name).ToHashSet();
+                foreach (var volumeWithBob in volumesWithBob)
                 {
-                    var volume = FindFittingVolume(physicalDisks, disk);
-                    var inactiveInBob = DiskIsInactiveInBob(inactiveDisks, disk);
-                    var physicalExists = volume != null;
-                    if (inactiveInBob && physicalExists)
-                        toStart.Add(disk);
-                    else if (!inactiveInBob && !physicalExists)
-                        toStop.Add(disk);
+                    var inactiveInBob = inactiveDiskNames.Contains(
+                        volumeWithBob.BobDisk.DiskNameInBob
+                    );
+                    if (inactiveInBob && volumeWithBob.PhysicalExists)
+                        toStart.Add(volumeWithBob);
+                    else if (!inactiveInBob && !volumeWithBob.PhysicalExists)
+                        toStop.Add(volumeWithBob);
                 }
             }
             return (toStart, toStop);
@@ -157,29 +165,55 @@ namespace DisksMonitoring.Bob
             ClusterConfiguration clusterConfiguration,
             string nodeName,
             BobApiClient bobApiClient,
-            BobDisk diskToStart,
-            Volume volume
+            VolumeWithBob volumeWithBob
         )
         {
-            logger.LogInformation("Volume {Volume} is unknown, copying data from replicas", volume);
-            await disksCopier.CopyDataFromReplica(clusterConfiguration, bobApiClient, nodeName, diskToStart);
-            configuration.SaveUUID(volume.UUID);
+            logger.LogInformation(
+                "Volume {Volume} is unknown, copying data from replicas",
+                volumeWithBob.Volume
+            );
+            await disksCopier.CopyDataFromReplica(
+                clusterConfiguration,
+                bobApiClient,
+                nodeName,
+                volumeWithBob.BobDisk
+            );
+            configuration.SaveUUID(volumeWithBob.Volume!.UUID);
         }
 
-        private bool VolumeIsKnown(Volume volume) => configuration.KnownUuids.Contains(volume.UUID);
-
-        private static Volume FindFittingVolume(IEnumerable<PhysicalDisk> disks, BobDisk bobDisk) =>
-            disks
+        private async Task<VolumeWithBob[]> FindVolumesWithBob()
+        {
+            var physicalDisks = await disksFinder.FindDisks();
+            if (physicalDisks.Count == 0)
+            {
+                logger.LogInformation("No physical disks found");
+            }
+            var fittingVolumesByMountPath = physicalDisks
                 .SelectMany(d => d.Volumes)
-                .FirstOrDefault( v =>
-                    v.MountPath.Equals(bobDisk.MountPath)
-                    && v.IsMounted
-                    && !v.IsReadOnly
-                );
+                .Where(v => v.IsMounted && !v.IsReadOnly)
+                // Normally there should be single volume per mount path
+                .GroupBy(v => v.MountPath)
+                .Where(g => g.Key != null)
+                .ToDictionary(g => g.Key!.Value, g => g.First());
+            var monitoredVolumes = configuration
+                .MonitoringEntries
+                .Select(d =>
+                {
+                    if (!fittingVolumesByMountPath.TryGetValue(d.MountPath, out var v))
+                        v = null;
+                    return new VolumeWithBob(
+                        v,
+                        d,
+                        v != null ? configuration.KnownUuids.Contains(v.UUID) : false
+                    );
+                })
+                .ToArray();
+            return monitoredVolumes;
+        }
 
-        private bool DiskIsInactiveInBob(
-            IEnumerable<BobApi.Entities.Disk> inactiveDisks,
-            Entities.BobDisk disk
-        ) => inactiveDisks.Any(d => d.Name == disk.DiskNameInBob);
+        private record struct VolumeWithBob(Volume? Volume, BobDisk BobDisk, bool VolumeIsKnown)
+        {
+            public bool PhysicalExists => Volume != null;
+        };
     }
 }
