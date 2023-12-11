@@ -143,32 +143,30 @@ namespace ClusterModifier
         {
             _logger.LogInformation("Removing data from old replicas");
             var oldDirNewDir = new List<(RemoteDir old, RemoteDir n)>();
-            var sourceByDest = copyOperations
-                .GroupBy(t => t.to)
-                .ToDictionary(g => g.Key, g => g.Select(t => t.from).Distinct().ToArray());
+            var copiedNewByOldDir = copyOperations
+                .GroupBy(t => t.from)
+                .ToDictionary(g => g.Key, g => g.Select(t => t.to).Distinct().ToArray());
             await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
             {
-                var toDelete = oldDirs.Except(newDirs).ToArray();
-                foreach(var dir in toDelete)
+                var oldDirsToDelete = oldDirs.Except(newDirs).ToArray();
+                foreach(var oldDir in oldDirsToDelete)
                 {
-                    if (sourceByDest.TryGetValue(dir, out var sourceDirs))
+                    if (copiedNewByOldDir.TryGetValue(oldDir, out var copiedNewDirs)
+                        && copiedNewDirs.Length > 0)
                     {
-                        foreach(var source in sourceDirs)
-                        {
-                            oldDirNewDir.Add((dir, source));
-                        }
+                        oldDirNewDir.Add((oldDir, copiedNewDirs[0]));
                     }
                 }
             }, cancellationToken);
-            foreach (var (dirToDelete, newDir) in oldDirNewDir)
+            foreach (var (oldDirToDelete, newDir) in oldDirNewDir)
             {
                 if (_args.DryRun)
-                    _logger.LogInformation("Expected removing files from {Directory} that were moved to {NewDirectory}", dirToDelete, newDir);
+                    _logger.LogInformation("Expected removing files from {Directory} that were moved to {NewDirectory}", oldDirToDelete, newDir);
                 else
                 {
-                    if (await _remoteFileCopier.RemoveAlreadyMovedFiles(dirToDelete, newDir, cancellationToken) > 0)
-                        _logger.LogInformation("Removed files from {Directory} that were moved to {NewDirectory}", dirToDelete, newDir);
-                    await _remoteFileCopier.RemoveEmptySubdirs(dirToDelete, cancellationToken);
+                    if (await _remoteFileCopier.RemoveAlreadyMovedFiles(oldDirToDelete, newDir, cancellationToken) > 0)
+                        _logger.LogInformation("Removed files from {Directory} that were moved to {NewDirectory}", oldDirToDelete, newDir);
+                    await _remoteFileCopier.RemoveEmptySubdirs(oldDirToDelete, cancellationToken);
                 }
             }
         }
