@@ -154,7 +154,7 @@ namespace ClusterModifier
                     if (copiedNewByOldDir.TryGetValue(oldDir, out var copiedNewDirs)
                         && copiedNewDirs.Length > 0)
                     {
-                        oldDirNewDir.Add((oldDir, copiedNewDirs[0]));
+                        oldDirNewDir.Add((oldDir, copiedNewDirs[0])); // All copies are identical, so don't need to check other dirs
                     }
                 }
             }, cancellationToken);
