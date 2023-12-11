@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BobApi;
+using BobApi.BobEntities;
 using DisksMonitoring.Config;
 using DisksMonitoring.Entities;
 using DisksMonitoring.OS;
@@ -35,7 +36,8 @@ namespace DisksMonitoring.Bob
             this.disksFinder = disksFinder;
         }
 
-        public async Task AlterBobDisks(BobApiClient bobApiClient)
+        public async Task AlterBobDisks(ClusterConfiguration clusterConfiguration,
+            string nodeName, BobApiClient bobApiClient)
         {
             var physicalDisks = await disksFinder.FindDisks();
             if (physicalDisks.Count == 0)
@@ -46,13 +48,15 @@ namespace DisksMonitoring.Bob
             var (toStart, toStop) = await GetDisksFromBob(bobApiClient, physicalDisks);
 
             if (configuration.AllowDisksCopy)
-                await CopyDisks(bobApiClient, physicalDisks, toStart);
+                await CopyDisks(clusterConfiguration, nodeName, bobApiClient, physicalDisks, toStart);
 
             await StopDisks(bobApiClient, toStop);
             await StartDisks(bobApiClient, toStart);
         }
 
         private async Task CopyDisks(
+            ClusterConfiguration clusterConfiguration,
+            string nodeName,
             BobApiClient bobApiClient,
             IEnumerable<PhysicalDisk> physicalDisks,
             IEnumerable<BobDisk> disks
@@ -68,7 +72,7 @@ namespace DisksMonitoring.Bob
                 }
 
                 if (!VolumeIsKnown(volume))
-                    await CopyDataToNewVolume(bobApiClient, disk, volume);
+                    await CopyDataToNewVolume(clusterConfiguration, nodeName, bobApiClient, disk, volume);
             }
         }
 
@@ -150,13 +154,15 @@ namespace DisksMonitoring.Bob
             (await task).TryGetData(out var isChanged) && isChanged;
 
         private async Task CopyDataToNewVolume(
+            ClusterConfiguration clusterConfiguration,
+            string nodeName,
             BobApiClient bobApiClient,
             BobDisk diskToStart,
             Volume volume
         )
         {
             logger.LogInformation("Volume {Volume} is unknown, copying data from replicas", volume);
-            await disksCopier.CopyDataFromReplica(bobApiClient, diskToStart);
+            await disksCopier.CopyDataFromReplica(clusterConfiguration, bobApiClient, nodeName, diskToStart);
             configuration.SaveUUID(volume.UUID);
         }
 

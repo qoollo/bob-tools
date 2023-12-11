@@ -73,7 +73,7 @@ class Program
         services.AddTransient<ConfigGenerator>();
         services.AddTransient<BobPathPreparer>();
         services.AddSingleton<Configuration>();
-        services.AddTransient<DisksStarter>();
+        services.AddTransient<DisksWorker>();
         services.AddTransient<DisksCopier>();
         services.AddTransient<ExternalScriptsRunner>();
         services.AddTransient<DevPathDataFinder>();

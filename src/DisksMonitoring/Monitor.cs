@@ -14,21 +14,21 @@ class Monitor
     private readonly MonitorArguments _args;
     private readonly DisksMonitor _disksMonitor;
     private readonly ExternalScriptsRunner _externalScriptsRunner;
-    private readonly DisksStarter _disksStarter;
+    private readonly DisksWorker _disksWorker;
     private readonly ILogger<Monitor> _logger;
 
     public Monitor(
         MonitorArguments args,
         DisksMonitor disksMonitor,
         ExternalScriptsRunner externalScriptsRunner,
-        DisksStarter disksStarter,
+        DisksWorker disksWorker,
         ILogger<Monitor> logger
     )
     {
         _args = args;
         _disksMonitor = disksMonitor;
         _externalScriptsRunner = externalScriptsRunner;
-        _disksStarter = disksStarter;
+        _disksWorker = disksWorker;
         _logger = logger;
     }
 
@@ -48,7 +48,7 @@ class Monitor
                 await _externalScriptsRunner.RunPreCycleScripts();
                 await _disksMonitor.CheckAndUpdate(client);
                 await configuration.SaveToFile(_args.StateFile);
-                await _disksStarter.StartDisks(clusterConfiguration, _args.LocalNodeName, client);
+                await _disksWorker.AlterBobDisks(clusterConfiguration, _args.LocalNodeName, client);
                 await _externalScriptsRunner.RunPostCycleScripts();
             }
             catch (Exception e)
