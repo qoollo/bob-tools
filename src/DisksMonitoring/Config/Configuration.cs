@@ -49,6 +49,7 @@ namespace DisksMonitoring.Config
         public int MaxUmountRetries { get; set; } = 3;
         public List<string> PreCycleScripts { get; set; } = new List<string>();
         public List<string> PostCycleScripts { get; set; } = new List<string>();
+        public bool AllowDisksCopy {get;set;} = false;
 
         public async Task ReadFromFile(string filename)
         {
