@@ -12,8 +12,8 @@ namespace DisksMonitoring.Bob
 {
     class DisksCopier
     {
-        private readonly Configuration configuration;
-        private readonly ILogger<DisksCopier> logger;
+        private readonly Configuration _configuration;
+        private readonly ILogger<DisksCopier> _logger;
         private readonly IRemoteFileCopier _remoteFileCopier;
 
         public DisksCopier(
@@ -22,8 +22,8 @@ namespace DisksMonitoring.Bob
             IRemoteFileCopier remoteFileCopier
         )
         {
-            this.configuration = configuration;
-            this.logger = logger;
+            _configuration = configuration;
+            _logger = logger;
             _remoteFileCopier = remoteFileCopier;
         }
 
@@ -34,13 +34,9 @@ namespace DisksMonitoring.Bob
             BobDisk bobDisk
         )
         {
-            var localNode = clusterConfiguration.Nodes.Single(n => n.Name == nodeName);
-            var disk = localNode.Disks.Single(d => d.Path == bobDisk.BobPath.Path);
-            var targetVDisk = clusterConfiguration
-                .VDisks
-                .SingleOrDefault(
-                    vDisk => vDisk.Replicas.Any(r => r.Node == nodeName && r.Disk == disk.Name)
-                );
+            var localNode = clusterConfiguration.FindNodeByName(nodeName);
+            var disk = localNode.FindDiskByPath(bobDisk.BobPath.Path);
+            var targetVDisk = clusterConfiguration.FindVDiskByNodeNameDiskName(nodeName, disk.Name);
             if (targetVDisk == null)
             {
                 return;
@@ -48,7 +44,7 @@ namespace DisksMonitoring.Bob
             var restReplicas = targetVDisk
                 .Replicas
                 .Where(r => r.Node != nodeName || r.Disk != disk.Name);
-            var currentDir = new RemoteDir(System.Net.IPAddress.Loopback, bobDisk.BobPath.Path);
+            var currentDir = new RemoteDir(await localNode.FindIPAddress(), bobDisk.BobPath.Path);
             foreach (var replica in restReplicas)
             {
                 var replicaNode = clusterConfiguration.Nodes.Single(n => n.Name == replica.Node);
@@ -61,7 +57,7 @@ namespace DisksMonitoring.Bob
                 var copyResult = await _remoteFileCopier.Copy(replicaRemoteDir, currentDir);
                 if (copyResult.IsError == false)
                 {
-                    logger.LogInformation(
+                    _logger.LogInformation(
                         "Succesfully copied data for disk {Disk} from {From} to {To}",
                         bobDisk,
                         replicaRemoteDir,
@@ -70,7 +66,7 @@ namespace DisksMonitoring.Bob
                     return;
                 }
             }
-            logger.LogError("Failed to copy data to disk {Dir}", bobDisk);
+            _logger.LogError("Failed to copy data to disk {Dir}", bobDisk);
         }
     }
 }
