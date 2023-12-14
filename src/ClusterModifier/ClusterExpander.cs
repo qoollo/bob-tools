@@ -110,18 +110,23 @@ namespace ClusterModifier
         private static List<(RemoteDir from, RemoteDir to)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest,
             HashSet<RemoteDir> dirsToDelete)
         {
-            var loadCount = new Dictionary<IPAddress, int>();
+            var loadCountByAddress = new Dictionary<IPAddress, int>();
+            var loadCountByDir = new Dictionary<RemoteDir, int>();
             foreach (var sources in sourceDirsByDest.Values)
                 foreach (var src in sources)
-                    loadCount[src.Address] = 0;
+                {
+                    loadCountByAddress[src.Address] = 0;
+                    loadCountByDir[src] = 0;
+                }
             var operations = new List<(RemoteDir, RemoteDir)>();
             foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address.ToString()).ThenBy(kv => kv.Key.Path))
             {
                 var bestSource = sources
-                    .OrderBy(rd => loadCount[rd.Address] - (rd.Address == dest.Address ? 1 : 0))
-                    .ThenBy(rd => !dirsToDelete.Contains(rd))
+                    .OrderByDescending(rd => dirsToDelete.Contains(rd) && loadCountByDir[rd] == 0)
+                    .ThenBy(rd => loadCountByAddress[rd.Address] - (rd.Address == dest.Address ? 1 : 0))
                     .ThenBy(rd => rd.Address.ToString()).ThenBy(rd => rd.Path).First();
-                loadCount[bestSource.Address]++;
+                loadCountByAddress[bestSource.Address]++;
+                loadCountByDir[bestSource]++;
                 operations.Add((bestSource, dest));
             }
 
