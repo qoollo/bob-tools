@@ -44,18 +44,19 @@ namespace ClusterModifier
             _logger.LogDebug("Expanding cluster from {OldConfigPath} to {CurrentConfigPath}",
                 _args.OldConfigPath, _args.ClusterConfigPath);
 
-            var copyOperations = await CopyDataToNewReplicas(oldConfig, config, cancellationToken);
+            var dirsToDelete = await FindDirsToDelete(oldConfig, config, cancellationToken);
+            var copyOperations = await CopyDataToNewReplicas(oldConfig, config, dirsToDelete, cancellationToken);
 
             if (_args.RemoveUnusedReplicas)
                 await RemoveUnusedReplicas(oldConfig, config, copyOperations, cancellationToken);
         }
 
         private async Task<List<(RemoteDir from, RemoteDir to)>> CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
-            CancellationToken cancellationToken)
+            HashSet<RemoteDir> dirsToDelete, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Copying data from old to current replicas");
             var sourceDirsByDest = await GetSourceDirsByDestination(oldConfig, config, cancellationToken);
-            var operations = CollectOperations(sourceDirsByDest);
+            var operations = CollectOperations(sourceDirsByDest, dirsToDelete);
             if (!_args.DryRun)
             {
                 var parallelOperations = operations
@@ -106,7 +107,8 @@ namespace ClusterModifier
             return sourceDirsByDest;
         }
 
-        private static List<(RemoteDir from, RemoteDir to)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest)
+        private static List<(RemoteDir from, RemoteDir to)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest,
+            HashSet<RemoteDir> dirsToDelete)
         {
             var loadCount = new Dictionary<IPAddress, int>();
             foreach (var sources in sourceDirsByDest.Values)
@@ -117,6 +119,7 @@ namespace ClusterModifier
             {
                 var bestSource = sources
                     .OrderBy(rd => loadCount[rd.Address] - (rd.Address == dest.Address ? 1 : 0))
+                    .ThenBy(rd => !dirsToDelete.Contains(rd))
                     .ThenBy(rd => rd.Address.ToString()).ThenBy(rd => rd.Path).First();
                 loadCount[bestSource.Address]++;
                 operations.Add((bestSource, dest));
@@ -136,6 +139,17 @@ namespace ClusterModifier
             }
 
             return nodeInfoByName;
+        }
+
+        private async Task<HashSet<RemoteDir>> FindDirsToDelete(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
+            CancellationToken cancellationToken)
+        {
+            var result = new HashSet<RemoteDir>();
+            await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
+            {
+                result.UnionWith( oldDirs.Except(newDirs));
+            }, cancellationToken);
+            return result;
         }
 
         private async Task RemoveUnusedReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
