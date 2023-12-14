@@ -90,7 +90,7 @@ namespace RemoteFileCopy
                 return await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
         }
 
-        public async Task<bool> ContainsSameFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        public async Task<bool> SourceContainsAllFilesFromDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
@@ -98,7 +98,7 @@ namespace RemoteFileCopy
                 return CheckContainsSameFiles(fromPath, toPath, cancellationToken);
             }
             else
-                return await _remoteFileCopier.ContainsSameFiles(from, to, cancellationToken);
+                return await _remoteFileCopier.SourceContainsAllFilesFromDest(from, to, cancellationToken);
         }
 
         private bool CheckContainsSameFiles(string fromPath, string toPath,
