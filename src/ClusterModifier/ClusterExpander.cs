@@ -162,20 +162,17 @@ namespace ClusterModifier
             var copiedNewByOldDir = copyOperations
                 .GroupBy(t => t.from)
                 .ToDictionary(g => g.Key, g => g.Select(t => t.to).Distinct().ToArray());
-            await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
+            foreach(var oldDir in dirsToDelete)
             {
-                foreach(var oldDir in oldDirs.Intersect(dirsToDelete))
+                if (copiedNewByOldDir.TryGetValue(oldDir, out var copiedNewDirs))
                 {
-                    if (copiedNewByOldDir.TryGetValue(oldDir, out var copiedNewDirs))
-                    {
-                        newDirsByOldDir[oldDir] = copiedNewDirs;
-                    }
-                    else
-                    {
-                        oldDirsToDeleteWithoutCopy.Add(oldDir);
-                    }
+                    newDirsByOldDir[oldDir] = copiedNewDirs;
                 }
-            }, cancellationToken);
+                else
+                {
+                    oldDirsToDeleteWithoutCopy.Add(oldDir);
+                }
+            }
             bool errorOccured = false;
             foreach (var (oldDirToDelete, newDirs) in newDirsByOldDir)
             {
@@ -210,6 +207,7 @@ namespace ClusterModifier
             if (errorOccured && !_args.ForceRemoveUncopiedUnusedReplicas)
                 _logger.LogError("Error occured during removal of unused replicas with copies, will not remove replicas without copies");
             else
+            {
                 foreach(var oldDir in oldDirsToDeleteWithoutCopy)
                 {
                     if (_args.DryRun)
@@ -222,6 +220,7 @@ namespace ClusterModifier
                             _logger.LogError("Failed to remove directory {From}", oldDir);
                     }
                 }
+            }
         }
 
         private async Task<bool> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
