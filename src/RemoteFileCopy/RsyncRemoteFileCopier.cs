@@ -96,13 +96,13 @@ namespace RemoteFileCopy
             var srcFiles = files[0];
             var dstFiles = files[1];
 
-            if (srcFiles.Count() != dstFiles.Count())
+            if (srcFiles.Count() < dstFiles.Count())
                 return false;
 
             var equal = srcFiles
                 .Select(f => (from, file: f))
                 .ToHashSet(FileInfoComparer.Instance);
-            return equal.SetEquals(dstFiles.Select(f => (to, f)));
+            return equal.IsSubsetOf(dstFiles.Select(f => (to, f)));
         }
 
         internal async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
