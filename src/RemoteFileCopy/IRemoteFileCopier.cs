@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using RemoteFileCopy.Entities;
 
@@ -15,5 +15,7 @@ namespace RemoteFileCopy
         Task<bool> RemoveEmptySubdirs(RemoteDir dir, CancellationToken cancellationToken = default);
 
         Task<int> RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
+
+        Task<bool> ContainsSameFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
     }
 }
