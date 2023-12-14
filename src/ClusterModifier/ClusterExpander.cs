@@ -176,6 +176,7 @@ namespace ClusterModifier
                     }
                 }
             }, cancellationToken);
+            bool errorOccured = false;
             foreach (var (oldDirToDelete, newDirs) in newDirsByOldDir)
             {
                 if (_args.DryRun)
@@ -187,9 +188,10 @@ namespace ClusterModifier
                     {
                         if (!await _remoteFileCopier.ContainsSameFiles(oldDirToDelete, newDir, cancellationToken))
                         {
+                            errorOccured = true;
                             _logger.LogError("Directories {From} and {To} contain different files, directory {From} can't be removed", 
                                     oldDirToDelete, newDir);
-                            deleteAllowed= false;
+                            deleteAllowed = false;
                             break;
                         }
                     }
@@ -198,23 +200,28 @@ namespace ClusterModifier
                         if (await _remoteFileCopier.RemoveDirectory(oldDirToDelete, cancellationToken))
                             _logger.LogInformation("Removed directory {From}", oldDirToDelete);
                         else
+                        {
+                            errorOccured = true;
                             _logger.LogError("Failed to remove directory {From}", oldDirToDelete);
+                        }
                     }
                 }
             }
-            foreach(var oldDir in oldDirsToDeleteWithoutCopy)
-            {
-                if (_args.DryRun)
-                    _logger.LogInformation("Expected removing files from {Directory} (directory has no replicas)", oldDir);
-                else
+            if (errorOccured && !_args.ForceRemoveUncopiedUnusedReplicas)
+                _logger.LogError("Error occured during removal of unused replicas with copies, will not remove replicas without copies");
+            else
+                foreach(var oldDir in oldDirsToDeleteWithoutCopy)
                 {
-                    if (await _remoteFileCopier.RemoveDirectory(oldDir, cancellationToken))
-                        _logger.LogInformation("Removed directory {From}", oldDir);
+                    if (_args.DryRun)
+                        _logger.LogInformation("Expected removing files from {Directory} (directory has no replicas)", oldDir);
                     else
-                        _logger.LogError("Failed to remove directory {From}", oldDir);
+                    {
+                        if (await _remoteFileCopier.RemoveDirectory(oldDir, cancellationToken))
+                            _logger.LogInformation("Removed directory {From}", oldDir);
+                        else
+                            _logger.LogError("Failed to remove directory {From}", oldDir);
+                    }
                 }
-
-            }
         }
 
         private async Task<bool> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
