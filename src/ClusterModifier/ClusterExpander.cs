@@ -199,7 +199,7 @@ namespace ClusterModifier
                     }
                     if (deleteAllowed)
                     {
-                        if (await _remoteFileCopier.RemoveDirectory(oldDirToDelete, cancellationToken))
+                        if (await _remoteFileCopier.RemoveInDir(oldDirToDelete, cancellationToken))
                             _logger.LogInformation("Removed directory {From}", oldDirToDelete);
                         else
                         {
