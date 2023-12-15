@@ -1,3 +1,4 @@
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -43,18 +44,19 @@ namespace ClusterModifier
             _logger.LogDebug("Expanding cluster from {OldConfigPath} to {CurrentConfigPath}",
                 _args.OldConfigPath, _args.ClusterConfigPath);
 
-            await CopyDataToNewReplicas(oldConfig, config, cancellationToken);
+            var dirsToDelete = await FindDirsToDelete(oldConfig, config, cancellationToken);
+            var copyOperations = await CopyDataToNewReplicas(oldConfig, config, dirsToDelete, cancellationToken);
 
             if (_args.RemoveUnusedReplicas)
-                await RemoveUnusedReplicas(oldConfig, config, cancellationToken);
+                await RemoveUnusedReplicas(oldConfig, config, copyOperations, dirsToDelete, cancellationToken);
         }
 
-        private async Task CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
-            CancellationToken cancellationToken)
+        private async Task<List<(RemoteDir from, RemoteDir to)>> CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
+            HashSet<RemoteDir> dirsToDelete, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Copying data from old to current replicas");
             var sourceDirsByDest = await GetSourceDirsByDestination(oldConfig, config, cancellationToken);
-            var operations = CollectOperations(sourceDirsByDest);
+            var operations = CollectOperations(sourceDirsByDest, dirsToDelete);
             if (!_args.DryRun)
             {
                 var parallelOperations = operations
@@ -68,10 +70,12 @@ namespace ClusterModifier
                 foreach(var (from, to) in operations)
                     _logger.LogInformation("Expected copying from {From} to {To}", from, to);
             }
+            return operations;
         }
 
-        private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
-            ClusterConfiguration config, CancellationToken cancellationToken)
+        private async Task OnVDiskDirs(ClusterConfiguration oldConfig, ClusterConfiguration config,
+                Action<ClusterConfiguration.VDisk, IEnumerable<RemoteDir>, IEnumerable<RemoteDir>> onOldNewDirsForVdisk,
+                CancellationToken cancellationToken)
         {
             var vDiskPairs = oldConfig.VDisks.Join(config.VDisks,
                                                    vd => vd.Id,
@@ -79,35 +83,50 @@ namespace ClusterModifier
                                                    (ovd, vd) => (ovd, vd)); 
             var oldNodeInfoByName = await GetNodeInfoByName(oldConfig, cancellationToken);
             var nodeInfoByName = await GetNodeInfoByName(config, cancellationToken);
-            var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
             foreach (var (oldVDisk, vDisk) in vDiskPairs)
             {
                 var oldDirs = oldVDisk.Replicas.Select(r => oldNodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, oldVDisk));
                 var newDirs = vDisk.Replicas.Select(r => nodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, vDisk));
+                onOldNewDirsForVdisk(vDisk, oldDirs, newDirs);
+            }
+        }
+
+        private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
+            ClusterConfiguration config, CancellationToken cancellationToken)
+        {
+            var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
+            await OnVDiskDirs(oldConfig, config, (_, oldDirs, newDirs) =>
+            {
                 var missing = newDirs.Except(oldDirs);
                 foreach (var newDir in missing)
                     if (sourceDirsByDest.TryGetValue(newDir, out var dirs))
                         dirs.UnionWith(oldDirs);
                     else
                         sourceDirsByDest.Add(newDir, oldDirs.ToHashSet());
-            }
-
+            }, cancellationToken);
             return sourceDirsByDest;
         }
 
-        private static List<(RemoteDir from, RemoteDir to)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest)
+        private static List<(RemoteDir from, RemoteDir to)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest,
+            HashSet<RemoteDir> dirsToDelete)
         {
-            var loadCount = new Dictionary<IPAddress, int>();
+            var loadCountByAddress = new Dictionary<IPAddress, int>();
+            var loadCountByDir = new Dictionary<RemoteDir, int>();
             foreach (var sources in sourceDirsByDest.Values)
                 foreach (var src in sources)
-                    loadCount[src.Address] = 0;
+                {
+                    loadCountByAddress[src.Address] = 0;
+                    loadCountByDir[src] = 0;
+                }
             var operations = new List<(RemoteDir, RemoteDir)>();
             foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address.ToString()).ThenBy(kv => kv.Key.Path))
             {
                 var bestSource = sources
-                    .OrderBy(rd => loadCount[rd.Address] - (rd.Address == dest.Address ? 1 : 0))
+                    .OrderByDescending(rd => dirsToDelete.Contains(rd) && loadCountByDir[rd] == 0)
+                    .ThenBy(rd => loadCountByAddress[rd.Address] - (rd.Address == dest.Address ? 1 : 0))
                     .ThenBy(rd => rd.Address.ToString()).ThenBy(rd => rd.Path).First();
-                loadCount[bestSource.Address]++;
+                loadCountByAddress[bestSource.Address]++;
+                loadCountByDir[bestSource]++;
                 operations.Add((bestSource, dest));
             }
 
@@ -127,22 +146,84 @@ namespace ClusterModifier
             return nodeInfoByName;
         }
 
+        private async Task<HashSet<RemoteDir>> FindDirsToDelete(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
+            CancellationToken cancellationToken)
+        {
+            var result = new HashSet<RemoteDir>();
+            await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
+            {
+                result.UnionWith(oldDirs.Except(newDirs));
+            }, cancellationToken);
+            return result;
+        }
+
         private async Task RemoveUnusedReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
+            IEnumerable<(RemoteDir from, RemoteDir to)> copyOperations, HashSet<RemoteDir> dirsToDelete,
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Removing data from old replicas");
-            var newRemoteDirs = await GetAllRemoteDirs(newConfig, cancellationToken);
-            var oldRemoteDirs = await GetAllRemoteDirs(oldConfig, cancellationToken);
-            foreach (var remoteDir in oldRemoteDirs.Except(newRemoteDirs))
+            var newDirsByOldDir = new Dictionary<RemoteDir, RemoteDir[]>();
+            var oldDirsToDeleteWithoutCopy = new List<RemoteDir>();
+            var copiedNewByOldDir = copyOperations
+                .GroupBy(t => t.from)
+                .ToDictionary(g => g.Key, g => g.Select(t => t.to).Distinct().ToArray());
+            foreach(var oldDir in dirsToDelete)
             {
-                if (_args.DryRun)
-                    _logger.LogInformation("Expected removing {Directory}", remoteDir);
+                if (copiedNewByOldDir.TryGetValue(oldDir, out var copiedNewDirs))
+                {
+                    newDirsByOldDir[oldDir] = copiedNewDirs;
+                }
                 else
                 {
-                    if (await _remoteFileCopier.RemoveDirectory(remoteDir, cancellationToken))
-                        _logger.LogInformation("Removed {Directory}", remoteDir);
+                    oldDirsToDeleteWithoutCopy.Add(oldDir);
+                }
+            }
+            bool errorOccured = false;
+            foreach (var (oldDirToDelete, newDirs) in newDirsByOldDir)
+            {
+                if (_args.DryRun)
+                    _logger.LogInformation("Expected removing files from {Directory}", oldDirToDelete);
+                else
+                {
+                    bool deleteAllowed = true;
+                    foreach(var newDir in newDirs)
+                    {
+                        if (!await _remoteFileCopier.SourceCopiedToDest(oldDirToDelete, newDir, cancellationToken))
+                        {
+                            errorOccured = true;
+                            _logger.LogError("Directories {From} and {To} contain different files, directory {From} can't be removed", 
+                                    oldDirToDelete, newDir);
+                            deleteAllowed = false;
+                            break;
+                        }
+                    }
+                    if (deleteAllowed)
+                    {
+                        if (await _remoteFileCopier.RemoveInDir(oldDirToDelete, cancellationToken))
+                            _logger.LogInformation("Removed directory {From}", oldDirToDelete);
+                        else
+                        {
+                            errorOccured = true;
+                            _logger.LogError("Failed to remove directory {From}", oldDirToDelete);
+                        }
+                    }
+                }
+            }
+            if (errorOccured && !_args.ForceRemoveUncopiedUnusedReplicas)
+                _logger.LogError("Error occured during removal of unused replicas with copies, will not remove replicas without copies");
+            else
+            {
+                foreach(var oldDir in oldDirsToDeleteWithoutCopy)
+                {
+                    if (_args.DryRun)
+                        _logger.LogInformation("Expected removing files from {Directory} (directory has no replicas)", oldDir);
                     else
-                        _logger.LogWarning("Failed to remove {Directory}", remoteDir);
+                    {
+                        if (await _remoteFileCopier.RemoveInDir(oldDir, cancellationToken))
+                            _logger.LogInformation("Removed directory {From}", oldDir);
+                        else
+                            _logger.LogError("Failed to remove directory {From}", oldDir);
+                    }
                 }
             }
         }

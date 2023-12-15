@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net.NetworkInformation;
 using System.Net;
 using System.Net.Sockets;
@@ -58,7 +58,7 @@ namespace RemoteFileCopy
             {
                 if (Directory.Exists(path))
                 {
-                    Directory.Delete(path);
+                    Directory.Delete(path, true);
                     return true;
                 }
                 return false;
@@ -88,6 +88,42 @@ namespace RemoteFileCopy
             }
             else
                 return await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
+        }
+
+        public async Task<bool> SourceCopiedToDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (TryGetLocalPath(from, out var fromPath) && TryGetLocalPath(to, out var toPath))
+            {
+                return CheckContainsSameFiles(fromPath, toPath, cancellationToken);
+            }
+            else
+                return await _remoteFileCopier.SourceCopiedToDest(from, to, cancellationToken);
+        }
+
+        private bool CheckContainsSameFiles(string fromPath, string toPath,
+                                            CancellationToken cancellationToken)
+        {
+            if (!Directory.Exists(fromPath) || !Directory.Exists(toPath))
+                return false;
+            foreach (var file in Directory.GetFiles(fromPath))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var dest = Path.Combine(toPath, Path.GetFileName(file));
+                if (!File.Exists(dest)
+                    || GetFileSize(file) != GetFileSize(dest)
+                    || GetCheckSum(file) != GetCheckSum(dest))
+                {
+                    return false;
+                }
+            }
+            foreach(var dir in Directory.GetDirectories(fromPath))
+            {
+                var toDir = Path.Combine(toPath, dir.Substring(fromPath.Length + 1));
+                if (!CheckContainsSameFiles(dir, toDir, cancellationToken))
+                    return false;
+            }
+            return true;
         }
 
         private int RemoveLocalAlreadyMovedFiles(string fromPath, string toPath,

@@ -90,6 +90,21 @@ namespace RemoteFileCopy
             return 0;
         }
 
+        public async Task<bool> SourceCopiedToDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        {
+            var files = await Task.WhenAll(new[] { from, to }.Select(f => _filesFinder.FindFiles(f, cancellationToken)));
+            var srcFiles = files[0];
+            var dstFiles = files[1];
+
+            if (srcFiles.Count() < dstFiles.Count())
+                return false;
+
+            var equal = srcFiles
+                .Select(f => (from, file: f))
+                .ToHashSet(FileInfoComparer.Instance);
+            return equal.IsSubsetOf(dstFiles.Select(f => (to, f)));
+        }
+
         internal async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
         {
             var error = false;

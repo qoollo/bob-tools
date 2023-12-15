@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using BobToolsCli;
 using BobToolsCli.Exceptions;
@@ -17,6 +17,9 @@ namespace ClusterModifier
 
         [Option("remove-unused-replicas", Required = false, HelpText = "Remove files in unused replicas")]
         public bool RemoveUnusedReplicas { get; set; } = false;
+
+        [Option("force-remove-unused-replicas-without-copies", Required = false, HelpText = "Remove replicas without copies even if error occured")]
+        public bool ForceRemoveUncopiedUnusedReplicas { get; set; } = false;
 
         [Option("bob-root-dir", HelpText = "Root dirs for bob nodes. E.g. node1:bob,node2:rootdir. Wildcard char (*) can be used to set root dir for all nodes.", Separator = ',')]
         public IEnumerable<string> BobRootDirOverrides { get; set; } = Enumerable.Empty<string>();
