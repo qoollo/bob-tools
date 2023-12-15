@@ -16,6 +16,6 @@ namespace RemoteFileCopy
 
         Task<int> RemoveAlreadyMovedFiles(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
 
-        Task<bool> SourceContainsAllFilesFromDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
+        Task<bool> SourceCopiedToDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default);
     }
 }

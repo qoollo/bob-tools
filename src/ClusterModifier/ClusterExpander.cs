@@ -188,7 +188,7 @@ namespace ClusterModifier
                     bool deleteAllowed = true;
                     foreach(var newDir in newDirs)
                     {
-                        if (!await _remoteFileCopier.SourceContainsAllFilesFromDest(oldDirToDelete, newDir, cancellationToken))
+                        if (!await _remoteFileCopier.SourceCopiedToDest(oldDirToDelete, newDir, cancellationToken))
                         {
                             errorOccured = true;
                             _logger.LogError("Directories {From} and {To} contain different files, directory {From} can't be removed", 

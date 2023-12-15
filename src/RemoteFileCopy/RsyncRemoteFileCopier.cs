@@ -90,7 +90,7 @@ namespace RemoteFileCopy
             return 0;
         }
 
-        public async Task<bool> SourceContainsAllFilesFromDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
+        public async Task<bool> SourceCopiedToDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             var files = await Task.WhenAll(new[] { from, to }.Select(f => _filesFinder.FindFiles(f, cancellationToken)));
             var srcFiles = files[0];
