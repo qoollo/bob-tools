@@ -152,7 +152,7 @@ namespace ClusterModifier
             var result = new HashSet<RemoteDir>();
             await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
             {
-                result.UnionWith( oldDirs.Except(newDirs));
+                result.UnionWith(oldDirs.Except(newDirs));
             }, cancellationToken);
             return result;
         }
@@ -219,7 +219,7 @@ namespace ClusterModifier
                         _logger.LogInformation("Expected removing files from {Directory} (directory has no replicas)", oldDir);
                     else
                     {
-                        if (await _remoteFileCopier.RemoveDirectory(oldDir, cancellationToken))
+                        if (await _remoteFileCopier.RemoveInDir(oldDir, cancellationToken))
                             _logger.LogInformation("Removed directory {From}", oldDir);
                         else
                             _logger.LogError("Failed to remove directory {From}", oldDir);
