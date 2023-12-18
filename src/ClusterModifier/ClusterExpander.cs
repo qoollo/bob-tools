@@ -192,7 +192,7 @@ namespace ClusterModifier
                         {
                             errorOccured = true;
                             _logger.LogError("Directories {From} and {To} contain different files, directory {From} can't be removed", 
-                                    oldDirToDelete, newDir);
+                                    oldDirToDelete, newDir, oldDirToDelete);
                             deleteAllowed = false;
                             break;
                         }
