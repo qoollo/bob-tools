@@ -44,9 +44,7 @@ namespace RemoteFileCopy
                     return false;
                 foreach (var f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
                     File.Delete(f);
-                foreach (var d in Directory.GetDirectories(path))
-                    Directory.Delete(d, true); // Recursive delete is allowed because all files have been deleted
-                return true;
+                return await RemoveEmptySubdirs(dir, cancellationToken);
             }
             return await _remoteFileCopier.RemoveInDir(dir, cancellationToken);
         }
