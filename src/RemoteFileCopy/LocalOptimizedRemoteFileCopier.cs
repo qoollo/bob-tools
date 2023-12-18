@@ -44,7 +44,8 @@ namespace RemoteFileCopy
                     return false;
                 foreach (var f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
                     File.Delete(f);
-                return await RemoveEmptySubdirs(dir, cancellationToken);
+                ClearAndCheckIsEmpty(path);
+                return true;
             }
             return await RemoveEmptySubdirs(dir, cancellationToken);
         }
