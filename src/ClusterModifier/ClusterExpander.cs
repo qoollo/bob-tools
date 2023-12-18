@@ -209,20 +209,25 @@ namespace ClusterModifier
                     }
                 }
             }
-            if (errorOccured && !_args.ForceRemoveUncopiedUnusedReplicas)
-                _logger.LogError("Error occured during removal of unused replicas with copies, will not remove replicas without copies");
-            else
+            if (oldDirsToDeleteWithoutCopy.Count > 0)
             {
-                foreach(var oldDir in oldDirsToDeleteWithoutCopy)
+                if (errorOccured && !_args.ForceRemoveUncopiedUnusedReplicas)
                 {
-                    if (_args.DryRun)
-                        _logger.LogInformation("Expected removing files from {Directory} (directory has no replicas)", oldDir);
-                    else
+                    _logger.LogError("Error occured during removal of unused replicas with copies, will not remove replicas without copies");
+                }
+                else
+                {
+                    foreach (var oldDir in oldDirsToDeleteWithoutCopy)
                     {
-                        if (await _remoteFileCopier.RemoveInDir(oldDir, cancellationToken))
-                            _logger.LogInformation("Removed directory {From}", oldDir);
+                        if (_args.DryRun)
+                            _logger.LogInformation("Expected removing files from {Directory} (directory has no replicas)", oldDir);
                         else
-                            _logger.LogError("Failed to remove directory {From}", oldDir);
+                        {
+                            if (await _remoteFileCopier.RemoveInDir(oldDir, cancellationToken))
+                                _logger.LogInformation("Removed directory {From}", oldDir);
+                            else
+                                _logger.LogError("Failed to remove directory {From}", oldDir);
+                        }
                     }
                 }
             }
