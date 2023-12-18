@@ -47,7 +47,7 @@ namespace RemoteFileCopy
                 ClearAndCheckIsEmpty(path);
                 return true;
             }
-            return await RemoveEmptySubdirs(dir, cancellationToken);
+            return await _remoteFileCopier.RemoveInDir(dir, cancellationToken);
         }
 
         public async Task<bool> RemoveDirectory(RemoteDir dir, CancellationToken cancellationToken = default)
