@@ -96,7 +96,7 @@ namespace RemoteFileCopy
             var srcFiles = files[0];
             var dstFiles = files[1];
 
-            if (srcFiles.Count() < dstFiles.Count())
+            if (srcFiles.Count() > dstFiles.Count())
                 return false;
 
             var equal = srcFiles
