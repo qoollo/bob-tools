@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -44,18 +43,19 @@ namespace ClusterModifier
             _logger.LogDebug("Expanding cluster from {OldConfigPath} to {CurrentConfigPath}",
                 _args.OldConfigPath, _args.ClusterConfigPath);
 
-            var dirsToDelete = await FindDirsToDelete(oldConfig, config, cancellationToken);
-            var copyOperations = await CopyDataToNewReplicas(oldConfig, config, dirsToDelete, cancellationToken);
+            var vDiskInfo = await GetVDiskInfo(oldConfig, config, cancellationToken);
+            var dirsToDelete = FindDirsToDelete(vDiskInfo);
+            var copyOperations = await CopyDataToNewReplicas(vDiskInfo, dirsToDelete, cancellationToken);
 
             if (_args.RemoveUnusedReplicas)
                 await RemoveUnusedReplicas(oldConfig, config, copyOperations, dirsToDelete, cancellationToken);
         }
 
-        private async Task<List<(RemoteDir from, RemoteDir to)>> CopyDataToNewReplicas(ClusterConfiguration oldConfig, ClusterConfiguration config,
+        private async Task<List<(RemoteDir from, RemoteDir to)>> CopyDataToNewReplicas(List<VDiskInfo> vDiskInfo,
             HashSet<RemoteDir> dirsToDelete, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Copying data from old to current replicas");
-            var sourceDirsByDest = await GetSourceDirsByDestination(oldConfig, config, cancellationToken);
+            var sourceDirsByDest = GetSourceDirsByDestination(vDiskInfo);
             var operations = CollectOperations(sourceDirsByDest, dirsToDelete);
             if (!_args.DryRun)
             {
@@ -73,8 +73,7 @@ namespace ClusterModifier
             return operations;
         }
 
-        private async Task OnVDiskDirs(ClusterConfiguration oldConfig, ClusterConfiguration config,
-                Action<ClusterConfiguration.VDisk, IEnumerable<RemoteDir>, IEnumerable<RemoteDir>> onOldNewDirsForVdisk,
+        private async Task<List<VDiskInfo>> GetVDiskInfo(ClusterConfiguration oldConfig, ClusterConfiguration config,
                 CancellationToken cancellationToken)
         {
             var vDiskPairs = oldConfig.VDisks.Join(config.VDisks,
@@ -83,27 +82,30 @@ namespace ClusterModifier
                                                    (ovd, vd) => (ovd, vd)); 
             var oldNodeInfoByName = await GetNodeInfoByName(oldConfig, cancellationToken);
             var nodeInfoByName = await GetNodeInfoByName(config, cancellationToken);
+            var result = new List<VDiskInfo>();
             foreach (var (oldVDisk, vDisk) in vDiskPairs)
             {
                 var oldDirs = oldVDisk.Replicas.Select(r => oldNodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, oldVDisk));
                 var newDirs = vDisk.Replicas.Select(r => nodeInfoByName[r.Node].GetRemoteDirForDisk(r.Disk, vDisk));
-                onOldNewDirsForVdisk(vDisk, oldDirs, newDirs);
+                result.Add(new VDiskInfo(vDisk, oldDirs.ToArray(), newDirs.ToArray()));
             }
+            return result;
         }
 
-        private async Task<Dictionary<RemoteDir, HashSet<RemoteDir>>> GetSourceDirsByDestination(ClusterConfiguration oldConfig,
-            ClusterConfiguration config, CancellationToken cancellationToken)
+        public record struct VDiskInfo(ClusterConfiguration.VDisk VDisk, RemoteDir[] OldDirs, RemoteDir[] NewDirs);
+
+        private Dictionary<RemoteDir, HashSet<RemoteDir>> GetSourceDirsByDestination(List<VDiskInfo> vDiskInfo)
         {
             var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
-            await OnVDiskDirs(oldConfig, config, (_, oldDirs, newDirs) =>
+            foreach(var info in vDiskInfo)
             {
-                var missing = newDirs.Except(oldDirs);
+                var missing = info.NewDirs.Except(info.OldDirs);
                 foreach (var newDir in missing)
                     if (sourceDirsByDest.TryGetValue(newDir, out var dirs))
-                        dirs.UnionWith(oldDirs);
+                        dirs.UnionWith(info.OldDirs);
                     else
-                        sourceDirsByDest.Add(newDir, oldDirs.ToHashSet());
-            }, cancellationToken);
+                        sourceDirsByDest.Add(newDir, info.OldDirs.ToHashSet());
+            }
             return sourceDirsByDest;
         }
 
@@ -146,14 +148,13 @@ namespace ClusterModifier
             return nodeInfoByName;
         }
 
-        private async Task<HashSet<RemoteDir>> FindDirsToDelete(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
-            CancellationToken cancellationToken)
+        private HashSet<RemoteDir> FindDirsToDelete(List<VDiskInfo> vDiskInfo)
         {
             var result = new HashSet<RemoteDir>();
-            await OnVDiskDirs(oldConfig, newConfig, (vDisk, oldDirs, newDirs) =>
+            foreach(var info in vDiskInfo)
             {
-                result.UnionWith(oldDirs.Except(newDirs));
-            }, cancellationToken);
+                result.UnionWith(info.OldDirs.Except(info.NewDirs));
+            }
             return result;
         }
 
