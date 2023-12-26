@@ -44,19 +44,18 @@ namespace ClusterModifier
                 _args.OldConfigPath, _args.ClusterConfigPath);
 
             var vDiskInfo = await GetVDiskInfo(oldConfig, config, cancellationToken);
-            var dirsToDelete = FindDirsToDelete(vDiskInfo);
-            var copyOperations = await CopyDataToNewReplicas(vDiskInfo, dirsToDelete, cancellationToken);
+            var dirsToDelete = GetDirsToDelete(vDiskInfo);
+            var copyOperations = GetCopyOperations(vDiskInfo, dirsToDelete);
+
+            await CopyDataToNewReplicas(copyOperations, cancellationToken);
 
             if (_args.RemoveUnusedReplicas)
-                await RemoveUnusedReplicas(oldConfig, config, copyOperations, dirsToDelete, cancellationToken);
+                await RemoveUnusedReplicas(copyOperations, dirsToDelete, cancellationToken);
         }
 
-        private async Task<List<CopyOperation>> CopyDataToNewReplicas(List<VDiskInfo> vDiskInfo,
-            HashSet<RemoteDir> dirsToDelete, CancellationToken cancellationToken)
+        private async Task CopyDataToNewReplicas(List<CopyOperation> operations, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Copying data from old to current replicas");
-            var sourceDirsByDest = GetSourceDirsByDestination(vDiskInfo);
-            var operations = CollectOperations(sourceDirsByDest, dirsToDelete);
             if (!_args.DryRun)
             {
                 var parallelOperations = operations
@@ -70,7 +69,12 @@ namespace ClusterModifier
                 foreach(var (from, to) in operations)
                     _logger.LogInformation("Expected copying from {From} to {To}", from, to);
             }
-            return operations;
+        }
+
+        private List<CopyOperation> GetCopyOperations(List<VDiskInfo> vDiskInfo, HashSet<RemoteDir> dirsToDelete)
+        {
+            var sourceDirsByDest = GetSourceDirsByDestination(vDiskInfo);
+            return CollectOperations(sourceDirsByDest, dirsToDelete);
         }
 
         private async Task<List<VDiskInfo>> GetVDiskInfo(ClusterConfiguration oldConfig, ClusterConfiguration config,
@@ -150,7 +154,7 @@ namespace ClusterModifier
             return nodeInfoByName;
         }
 
-        private HashSet<RemoteDir> FindDirsToDelete(List<VDiskInfo> vDiskInfo)
+        private HashSet<RemoteDir> GetDirsToDelete(List<VDiskInfo> vDiskInfo)
         {
             var result = new HashSet<RemoteDir>();
             foreach(var info in vDiskInfo)
@@ -160,8 +164,7 @@ namespace ClusterModifier
             return result;
         }
 
-        private async Task RemoveUnusedReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
-            IEnumerable<CopyOperation> copyOperations, HashSet<RemoteDir> dirsToDelete,
+        private async Task RemoveUnusedReplicas(IEnumerable<CopyOperation> copyOperations, HashSet<RemoteDir> dirsToDelete,
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Removing data from old replicas");
