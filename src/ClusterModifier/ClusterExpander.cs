@@ -51,7 +51,7 @@ namespace ClusterModifier
                 await RemoveUnusedReplicas(oldConfig, config, copyOperations, dirsToDelete, cancellationToken);
         }
 
-        private async Task<List<(RemoteDir from, RemoteDir to)>> CopyDataToNewReplicas(List<VDiskInfo> vDiskInfo,
+        private async Task<List<CopyOperation>> CopyDataToNewReplicas(List<VDiskInfo> vDiskInfo,
             HashSet<RemoteDir> dirsToDelete, CancellationToken cancellationToken)
         {
             _logger.LogInformation("Copying data from old to current replicas");
@@ -60,8 +60,8 @@ namespace ClusterModifier
             if (!_args.DryRun)
             {
                 var parallelOperations = operations
-                    .Select(op => ParallelP2PProcessor.CreateOperation(op.from.Address, op.to.Address,
-                        () => Copy(op.from, op.to, cancellationToken)))
+                    .Select(op => ParallelP2PProcessor.CreateOperation(op.From.Address, op.To.Address,
+                        () => Copy(op, cancellationToken)))
                     .ToArray();
                 await _parallelP2PProcessor.Invoke(_args.CopyParallelDegree, parallelOperations, cancellationToken);
             }
@@ -109,7 +109,7 @@ namespace ClusterModifier
             return sourceDirsByDest;
         }
 
-        private static List<(RemoteDir from, RemoteDir to)> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest,
+        private static List<CopyOperation> CollectOperations(Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest,
             HashSet<RemoteDir> dirsToDelete)
         {
             var loadCountByAddress = new Dictionary<IPAddress, int>();
@@ -120,7 +120,7 @@ namespace ClusterModifier
                     loadCountByAddress[src.Address] = 0;
                     loadCountByDir[src] = 0;
                 }
-            var operations = new List<(RemoteDir, RemoteDir)>();
+            var operations = new List<CopyOperation>();
             foreach (var (dest, sources) in sourceDirsByDest.OrderBy(kv => kv.Key.Address.ToString()).ThenBy(kv => kv.Key.Path))
             {
                 var bestSource = sources
@@ -129,11 +129,13 @@ namespace ClusterModifier
                     .ThenBy(rd => rd.Address.ToString()).ThenBy(rd => rd.Path).First();
                 loadCountByAddress[bestSource.Address]++;
                 loadCountByDir[bestSource]++;
-                operations.Add((bestSource, dest));
+                operations.Add(new CopyOperation(bestSource, dest));
             }
 
             return operations;
         }
+
+        public record struct CopyOperation(RemoteDir From, RemoteDir To);
 
         private async Task<Dictionary<string, NodeInfo>> GetNodeInfoByName(ClusterConfiguration config, CancellationToken cancellationToken)
         {
@@ -159,15 +161,15 @@ namespace ClusterModifier
         }
 
         private async Task RemoveUnusedReplicas(ClusterConfiguration oldConfig, ClusterConfiguration newConfig,
-            IEnumerable<(RemoteDir from, RemoteDir to)> copyOperations, HashSet<RemoteDir> dirsToDelete,
+            IEnumerable<CopyOperation> copyOperations, HashSet<RemoteDir> dirsToDelete,
             CancellationToken cancellationToken)
         {
             _logger.LogInformation("Removing data from old replicas");
             var newDirsByOldDir = new Dictionary<RemoteDir, RemoteDir[]>();
             var oldDirsToDeleteWithoutCopy = new List<RemoteDir>();
             var copiedNewByOldDir = copyOperations
-                .GroupBy(t => t.from)
-                .ToDictionary(g => g.Key, g => g.Select(t => t.to).Distinct().ToArray());
+                .GroupBy(t => t.From)
+                .ToDictionary(g => g.Key, g => g.Select(t => t.To).Distinct().ToArray());
             foreach(var oldDir in dirsToDelete)
             {
                 if (copiedNewByOldDir.TryGetValue(oldDir, out var copiedNewDirs))
@@ -234,11 +236,11 @@ namespace ClusterModifier
             }
         }
 
-        private async Task<bool> Copy(RemoteDir from, RemoteDir to, CancellationToken cancellationToken)
+        private async Task<bool> Copy(CopyOperation op, CancellationToken cancellationToken)
         {
-            var copyResult = await _remoteFileCopier.Copy(from, to, cancellationToken);
+            var copyResult = await _remoteFileCopier.Copy(op.From, op.To, cancellationToken);
             if (copyResult.IsError)
-                throw new OperationException($"Failed to copy data from {from} to {to}");
+                throw new OperationException($"Failed to copy data from {op.From} to {op.To}");
             return true;
         }
 
