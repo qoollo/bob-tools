@@ -14,48 +14,34 @@ public class Copier
 {
     private readonly IRemoteFileCopier _remoteFileCopier;
     private readonly ParallelP2PProcessor _parallelP2PProcessor;
-    private readonly ILogger<Copier> _logger;
-    private readonly ClusterExpandArguments _args;
 
-    public Copier(
-        IRemoteFileCopier remoteFileCopier,
-        ParallelP2PProcessor parallelP2PProcessor,
-        ILogger<Copier> logger,
-        ClusterExpandArguments args
-    )
+    public Copier(IRemoteFileCopier remoteFileCopier, ParallelP2PProcessor parallelP2PProcessor)
     {
         _remoteFileCopier = remoteFileCopier;
         _parallelP2PProcessor = parallelP2PProcessor;
-        _logger = logger;
-        _args = args;
     }
 
-    public async Task Copy(List<CopyOperation> copyOperations, CancellationToken cancellationToken)
+    public async Task Copy(
+        List<CopyOperation> copyOperations,
+        int copyParallelDegree,
+        CancellationToken cancellationToken
+    )
     {
-        _logger.LogInformation("Copying data from old to current replicas");
-        if (!_args.DryRun)
-        {
-            var parallelOperations = copyOperations
-                .Select(
-                    op =>
-                        ParallelP2PProcessor.CreateOperation(
-                            op.From.Address,
-                            op.To.Address,
-                            () => Copy(op, cancellationToken)
-                        )
-                )
-                .ToArray();
-            await _parallelP2PProcessor.Invoke(
-                _args.CopyParallelDegree,
-                parallelOperations,
-                cancellationToken
-            );
-        }
-        else
-        {
-            foreach (var op in copyOperations)
-                _logger.LogInformation("Expected copying from {From} to {To}", op.From, op.To);
-        }
+        var parallelOperations = copyOperations
+            .Select(
+                op =>
+                    ParallelP2PProcessor.CreateOperation(
+                        op.From.Address,
+                        op.To.Address,
+                        () => Copy(op, cancellationToken)
+                    )
+            )
+            .ToArray();
+        await _parallelP2PProcessor.Invoke(
+            copyParallelDegree,
+            parallelOperations,
+            cancellationToken
+        );
     }
 
     private async Task<bool> Copy(CopyOperation op, CancellationToken cancellationToken)

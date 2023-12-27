@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -12,20 +11,27 @@ public class Remover
 {
     private readonly IRemoteFileCopier _remoteFileCopier;
     private readonly ILogger<Remover> _logger;
-    private readonly ClusterExpandArguments _args;
 
-    public Remover(
-        IRemoteFileCopier remoteFileCopier,
-        ILogger<Remover> logger,
-        ClusterExpandArguments args
-    )
+    public Remover(IRemoteFileCopier remoteFileCopier, ILogger<Remover> logger)
     {
         _remoteFileCopier = remoteFileCopier;
         _logger = logger;
-        _args = args;
     }
 
-    public async Task<bool> RemoveConfirmed(
+    public async Task Remove(
+        List<ConfirmedDeleteOperation> confirmed,
+        List<RemoteDir> unconfirmed,
+        bool forceRemoveUnconfirmed,
+        CancellationToken cancellationToken
+    )
+    {
+        if (await RemoveConfirmed(confirmed, cancellationToken) || forceRemoveUnconfirmed)
+        {
+            await RemoveUnconfirmed(unconfirmed, cancellationToken);
+        }
+    }
+
+    private async Task<bool> RemoveConfirmed(
         List<ConfirmedDeleteOperation> operations,
         CancellationToken cancellationToken
     )
@@ -33,63 +39,50 @@ public class Remover
         bool noErrors = true;
         foreach (var op in operations)
         {
-            if (_args.DryRun)
-                _logger.LogInformation("Expected removing files from {Directory}", op.DirToDelete);
-            else
+            bool deleteAllowed = true;
+            foreach (var copy in op.Copies)
             {
-                bool deleteAllowed = true;
-                foreach (var copy in op.Copies)
-                {
-                    if (
-                        !await _remoteFileCopier.SourceCopiedToDest(
-                            op.DirToDelete,
-                            copy,
-                            cancellationToken
-                        )
+                if (
+                    !await _remoteFileCopier.SourceCopiedToDest(
+                        op.DirToDelete,
+                        copy,
+                        cancellationToken
                     )
-                    {
-                        noErrors = false;
-                        _logger.LogError(
-                            "Directories {From} and {To} contain different files, directory {From} can't be removed",
-                            op.DirToDelete,
-                            copy,
-                            op.DirToDelete
-                        );
-                        deleteAllowed = false;
-                        break;
-                    }
-                }
-                if (deleteAllowed)
+                )
                 {
-                    if (await _remoteFileCopier.RemoveInDir(op.DirToDelete, cancellationToken))
-                        _logger.LogInformation("Removed directory {From}", op.DirToDelete);
-                    else
-                    {
-                        noErrors = false;
-                        _logger.LogError("Failed to remove directory {From}", op.DirToDelete);
-                    }
+                    noErrors = false;
+                    _logger.LogError(
+                        "Directories {From} and {To} contain different files, directory {From} can't be removed",
+                        op.DirToDelete,
+                        copy,
+                        op.DirToDelete
+                    );
+                    deleteAllowed = false;
+                    break;
+                }
+            }
+            if (deleteAllowed)
+            {
+                if (await _remoteFileCopier.RemoveInDir(op.DirToDelete, cancellationToken))
+                    _logger.LogInformation("Removed directory {From}", op.DirToDelete);
+                else
+                {
+                    noErrors = false;
+                    _logger.LogError("Failed to remove directory {From}", op.DirToDelete);
                 }
             }
         }
         return noErrors;
     }
 
-    public async Task RemoveUnconfirmed(List<RemoteDir> dirs, CancellationToken cancellationToken)
+    private async Task RemoveUnconfirmed(List<RemoteDir> dirs, CancellationToken cancellationToken)
     {
         foreach (var dir in dirs)
         {
-            if (_args.DryRun)
-                _logger.LogInformation(
-                    "Expected removing files from {Directory} (directory has no replicas)",
-                    dir
-                );
+            if (await _remoteFileCopier.RemoveInDir(dir, cancellationToken))
+                _logger.LogInformation("Removed directory {From}", dir);
             else
-            {
-                if (await _remoteFileCopier.RemoveInDir(dir, cancellationToken))
-                    _logger.LogInformation("Removed directory {From}", dir);
-                else
-                    _logger.LogError("Failed to remove directory {From}", dir);
-            }
+                _logger.LogError("Failed to remove directory {From}", dir);
         }
     }
 }
