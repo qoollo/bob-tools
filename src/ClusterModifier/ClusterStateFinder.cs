@@ -42,12 +42,6 @@ public class ClusterStateFinder
         if (!configResult.IsOk(out var config, out var newError))
             throw new ConfigurationException($"Current config is not available: {newError}");
 
-        _logger.LogDebug(
-            "Expanding cluster from {OldConfigPath} to {CurrentConfigPath}",
-            _args.OldConfigPath,
-            _args.ClusterConfigPath
-        );
-
         return await GetVDiskInfo(oldConfig, config, cancellationToken);
     }
 
@@ -106,30 +100,9 @@ public class ClusterStateFinder
     )
     {
         var addr = await node.FindIPAddress();
-        var rootDir = await GetRootDir(node, cancellationToken);
+        var rootDir = await _args.GetRootDir(node, cancellationToken);
         return (disk, vdisk) =>
             new RemoteDir(addr, Path.Combine(disk.Path, rootDir, vdisk.Id.ToString()));
-    }
-
-    private async ValueTask<string> GetRootDir(
-        ClusterConfiguration.Node node,
-        CancellationToken cancellationToken = default
-    )
-    {
-        var rootDir = _args.FindRootDir(node.Name);
-        if (rootDir == null)
-        {
-            var client = _args.GetBobApiClientProvider().GetClient(node);
-            var nodeConfigResult = await client.GetNodeConfiguration(cancellationToken);
-            if (nodeConfigResult.IsOk(out var conf, out var error))
-                rootDir = conf.RootDir;
-            else
-                throw new ClusterStateException(
-                    $"Node {node.Name} configuration is unavailable: {error}, "
-                        + "and bob-root-dir does not contain enough information"
-                );
-        }
-        return rootDir;
     }
 
     private readonly struct NodeInfo
