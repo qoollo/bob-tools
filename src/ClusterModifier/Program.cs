@@ -22,6 +22,7 @@ public class Program
         services
             .AddTransient<ClusterExpander>()
             .AddTransient<ClusterStateFinder>()
+            .AddTransient<NodeDiskRemoteDirsFinder>()
             .AddTransient<WorkSpecificationFinder>()
             .AddTransient<Copier>()
             .AddTransient<Remover>();
