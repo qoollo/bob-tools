@@ -23,10 +23,26 @@ public class Program
             .AddTransient<ClusterExpander>()
             .AddTransient<ClusterStateFinder>()
             .AddTransient<WorkSpecificationFinder>()
-            .AddTransient<INodeDiskRemoteDirsFinder, NodeDiskRemoteDirsFinder>()
-            .AddTransient<IConfigurationsFinder, ConfigurationsFinder>()
-            .AddTransient<ICopier, Copier>()
-            .AddTransient<IRemover, Remover>();
+            .AddTransient<ClusterStateAlterer>();
+        if (arguments.TestRun)
+        {
+            services
+                .AddTransient<
+                    INodeDiskRemoteDirsFinder,
+                    TestModeImplementations.CommonImplementation
+                >()
+                .AddTransient<IConfigurationsFinder, TestModeImplementations.CommonImplementation>()
+                .AddTransient<ICopier, TestModeImplementations.CommonImplementation>()
+                .AddTransient<IRemover, TestModeImplementations.CommonImplementation>();
+        }
+        else
+        {
+            services
+                .AddTransient<INodeDiskRemoteDirsFinder, NodeDiskRemoteDirsFinder>()
+                .AddTransient<IConfigurationsFinder, ConfigurationsFinder>()
+                .AddTransient<ICopier, Copier>()
+                .AddTransient<IRemover, Remover>();
+        }
         services.AddRemoteFileCopy(arguments.SshConfiguration, arguments.FilesFinderConfiguration);
         using var provider = services.BuildServiceProvider();
 
