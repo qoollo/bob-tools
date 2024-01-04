@@ -22,10 +22,11 @@ public class Program
         services
             .AddTransient<ClusterExpander>()
             .AddTransient<ClusterStateFinder>()
-            .AddTransient<NodeDiskRemoteDirsFinder>()
             .AddTransient<WorkSpecificationFinder>()
-            .AddTransient<Copier>()
-            .AddTransient<Remover>();
+            .AddTransient<INodeDiskRemoteDirsFinder, NodeDiskRemoteDirsFinder>()
+            .AddTransient<IConfigurationsFinder, ConfigurationsFinder>()
+            .AddTransient<ICopier, Copier>()
+            .AddTransient<IRemover, Remover>();
         services.AddRemoteFileCopy(arguments.SshConfiguration, arguments.FilesFinderConfiguration);
         using var provider = services.BuildServiceProvider();
 

@@ -1,29 +1,26 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
 using BobToolsCli.Exceptions;
-using Microsoft.Extensions.Logging;
 using RemoteFileCopy.Entities;
 
 namespace ClusterModifier;
 
 public class ClusterStateFinder
 {
-    private readonly ClusterExpandArguments _args;
-    private readonly NodeDiskRemoteDirsFinder _nodeDirsRemoteDirsFinder;
-    private readonly ILogger<ClusterStateFinder> _logger;
+    private readonly INodeDiskRemoteDirsFinder _nodeDirsRemoteDirsFinder;
+    private readonly IConfigurationsFinder _configurationsFinder;
 
     public ClusterStateFinder(
-        ClusterExpandArguments args,
-        NodeDiskRemoteDirsFinder nodeDirsRemoteDirsFinder,
-        ILogger<ClusterStateFinder> logger
+        INodeDiskRemoteDirsFinder nodeDirsRemoteDirsFinder,
+        IConfigurationsFinder configurationsFinder
     )
     {
-        _args = args;
         _nodeDirsRemoteDirsFinder = nodeDirsRemoteDirsFinder;
-        _logger = logger;
+        _configurationsFinder = configurationsFinder;
     }
 
     public async Task<ClusterState> Find(CancellationToken cancellationToken)
@@ -33,18 +30,8 @@ public class ClusterStateFinder
 
     private async Task<List<VDiskInfo>> GetVDiskInfo(CancellationToken cancellationToken)
     {
-        var oldConfigResult = await _args.GetClusterConfigurationFromFile(
-            _args.OldConfigPath,
-            cancellationToken
-        );
-        if (!oldConfigResult.IsOk(out var oldConfig, out var oldError))
-            throw new ConfigurationException($"Old config is not available: {oldError}");
-
-        var configResult = await _args.FindClusterConfiguration(
-            cancellationToken: cancellationToken
-        );
-        if (!configResult.IsOk(out var config, out var newError))
-            throw new ConfigurationException($"Current config is not available: {newError}");
+        var oldConfig = await _configurationsFinder.FindOldConfig(cancellationToken);
+        var config = await _configurationsFinder.FindNewConfig(cancellationToken);
 
         return await GetVDiskInfo(oldConfig, config, cancellationToken);
     }
@@ -58,44 +45,39 @@ public class ClusterStateFinder
         var vDiskPairs = oldConfig
             .VDisks
             .Join(config.VDisks, vd => vd.Id, vd => vd.Id, (ovd, vd) => (ovd, vd));
-        var oldRemoteDirByDiskByNode = await _nodeDirsRemoteDirsFinder.FindRemoteDirByDiskByNode(
-            oldConfig,
-            cancellationToken
-        );
-        var newRemoteDirByDiskByNode = await _nodeDirsRemoteDirsFinder.FindRemoteDirByDiskByNode(
-            config,
-            cancellationToken
-        );
+        var findOldDir = await GetRemoteDirFinder(oldConfig, "old", cancellationToken);
+        var findNewDir = await GetRemoteDirFinder(config, "new", cancellationToken);
         var result = new List<VDiskInfo>();
-        RemoteDir GetOldDir(string node, string disk, long vDisk)
-        {
-            if (
-                oldRemoteDirByDiskByNode.TryGetValue(node, out var d)
-                && d.TryGetValue(disk, out var rd)
-            )
-                return rd.GetSubdir(vDisk.ToString());
-            throw new ClusterStateException(
-                $"Disk {disk} not found on node {node} in old cluster config"
-            );
-        }
-        RemoteDir GetNewDir(string node, string disk, long vDisk)
-        {
-            if (
-                newRemoteDirByDiskByNode.TryGetValue(node, out var d)
-                && d.TryGetValue(disk, out var rd)
-            )
-                return rd.GetSubdir(vDisk.ToString());
-            throw new ClusterStateException(
-                $"Disk {disk} not found on node {node} in new cluster config"
-            );
-        }
         foreach (var (oldVDisk, vDisk) in vDiskPairs)
         {
-            var oldDirs = oldVDisk.Replicas.Select(r => GetOldDir(r.Node, r.Disk, oldVDisk.Id));
-            var newDirs = vDisk.Replicas.Select(r => GetNewDir(r.Node, r.Disk, vDisk.Id));
+            var oldDirs = oldVDisk.Replicas.Select(r => findOldDir(r.Node, r.Disk, oldVDisk.Id));
+            var newDirs = vDisk.Replicas.Select(r => findNewDir(r.Node, r.Disk, vDisk.Id));
             result.Add(new VDiskInfo(vDisk, oldDirs.ToArray(), newDirs.ToArray()));
         }
         return result;
+    }
+
+    private async Task<Func<string, string, long, RemoteDir>> GetRemoteDirFinder(
+        ClusterConfiguration config,
+        string clusterConfigName,
+        CancellationToken cancellationToken
+    )
+    {
+        var remoteDirByDiskByNode = await _nodeDirsRemoteDirsFinder.FindRemoteDirByDiskByNode(
+            config,
+            cancellationToken
+        );
+        return (node, disk, vDiskId) =>
+        {
+            if (
+                remoteDirByDiskByNode.TryGetValue(node, out var d)
+                && d.TryGetValue(disk, out var rd)
+            )
+                return rd.GetSubdir(vDiskId.ToString());
+            throw new ClusterStateException(
+                $"Disk {disk} not found on node {node} in cluster config \"{clusterConfigName}\""
+            );
+        };
     }
 }
 

@@ -8,7 +8,7 @@ using RemoteFileCopy.Entities;
 
 namespace ClusterModifier;
 
-public class NodeDiskRemoteDirsFinder
+public class NodeDiskRemoteDirsFinder : INodeDiskRemoteDirsFinder
 {
     private readonly ClusterExpandArguments _args;
 

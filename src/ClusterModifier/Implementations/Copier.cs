@@ -1,16 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobToolsCli.Exceptions;
 using BobToolsCli.Helpers;
-using Microsoft.Extensions.Logging;
 using RemoteFileCopy;
 
 namespace ClusterModifier;
 
-public class Copier
+public class Copier : ICopier
 {
     private readonly IRemoteFileCopier _remoteFileCopier;
     private readonly ParallelP2PProcessor _parallelP2PProcessor;

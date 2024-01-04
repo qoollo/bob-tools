@@ -7,7 +7,7 @@ using RemoteFileCopy.Entities;
 
 namespace ClusterModifier;
 
-public class Remover
+public class Remover : IRemover
 {
     private readonly IRemoteFileCopier _remoteFileCopier;
     private readonly ILogger<Remover> _logger;
