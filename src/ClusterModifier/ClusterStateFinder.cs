@@ -29,7 +29,8 @@ public class ClusterStateFinder
         var config = await _configurationsFinder.FindNewConfig(cancellationToken);
 
         var vDiskInfo = await GetVDiskInfo(oldConfig, config, cancellationToken);
-        return new ClusterState(vDiskInfo);
+        var alienDirs = await GetAlienDirs(oldConfig, cancellationToken);
+        return new ClusterState(vDiskInfo, alienDirs);
     }
 
     private async Task<List<VDiskInfo>> GetVDiskInfo(
@@ -41,8 +42,8 @@ public class ClusterStateFinder
         var vDiskPairs = oldConfig
             .VDisks
             .Join(config.VDisks, vd => vd.Id, vd => vd.Id, (ovd, vd) => (ovd, vd));
-        var findOldDir = await GetRemoteDirFinder(oldConfig, "old", cancellationToken);
-        var findNewDir = await GetRemoteDirFinder(config, "new", cancellationToken);
+        var findOldDir = await GetRootRemoteDirFinder(oldConfig, "old", cancellationToken);
+        var findNewDir = await GetRootRemoteDirFinder(config, "new", cancellationToken);
         var result = new List<VDiskInfo>();
         foreach (var (oldVDisk, vDisk) in vDiskPairs)
         {
@@ -53,7 +54,20 @@ public class ClusterStateFinder
         return result;
     }
 
-    private async Task<Func<string, string, long, RemoteDir>> GetRemoteDirFinder(
+    private async Task<List<RemoteDir>> GetAlienDirs(
+        ClusterConfiguration config,
+        CancellationToken cancellationToken
+    )
+    {
+        var remoteAlienDirByDiskByNode =
+            await _nodeDiskRemoteDirsFinder.FindRemoteAlienDirByDiskByNode(
+                config,
+                cancellationToken
+            );
+        return remoteAlienDirByDiskByNode.Values.SelectMany(d => d.Values).ToList();
+    }
+
+    private async Task<Func<string, string, long, RemoteDir>> GetRootRemoteDirFinder(
         ClusterConfiguration config,
         string clusterConfigName,
         CancellationToken cancellationToken
@@ -77,7 +91,7 @@ public class ClusterStateFinder
     }
 }
 
-public record struct ClusterState(List<VDiskInfo> VDiskInfo);
+public record struct ClusterState(List<VDiskInfo> VDiskInfo, List<RemoteDir> AlienDirs);
 
 public record struct VDiskInfo(
     ClusterConfiguration.VDisk VDisk,

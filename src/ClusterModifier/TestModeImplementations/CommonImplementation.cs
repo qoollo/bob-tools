@@ -56,6 +56,29 @@ public class CommonImplementation
         ).Unwrap();
     }
 
+    public Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteAlienDirByDiskByNode(
+        ClusterConfiguration config,
+        CancellationToken cancellationToken
+    )
+    {
+        return Task.FromResult(
+            config
+                .Nodes
+                .ToDictionary(
+                    n => n.Name,
+                    n =>
+                        n.Disks.ToDictionary(
+                            d => d.Name,
+                            d =>
+                                new RemoteDir(
+                                    System.Net.IPAddress.None,
+                                    $"/{n.Name}/{d.Name}/alien"
+                                )
+                        )
+                )
+        );
+    }
+
     public Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(
         ClusterConfiguration config,
         CancellationToken cancellationToken
@@ -69,7 +92,7 @@ public class CommonImplementation
                     n =>
                         n.Disks.ToDictionary(
                             d => d.Name,
-                            d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}")
+                            d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/bob")
                         )
                 )
         );

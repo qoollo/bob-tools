@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,11 +9,32 @@ namespace ClusterModifier;
 
 public class NodeDiskRemoteDirsFinder : INodeDiskRemoteDirsFinder
 {
+    private const string AlienDir = "alien";
     private readonly ClusterExpandArguments _args;
 
     public NodeDiskRemoteDirsFinder(ClusterExpandArguments args)
     {
         _args = args;
+    }
+
+    public async Task<
+        Dictionary<string, Dictionary<string, RemoteDir>>
+    > FindRemoteAlienDirByDiskByNode(
+        ClusterConfiguration config,
+        CancellationToken cancellationToken
+    )
+    {
+        var result = new Dictionary<string, Dictionary<string, RemoteDir>>();
+        foreach (var node in config.Nodes)
+        {
+            var remoteDirByDisk = await GetRemoteDirByDisk(node, cancellationToken);
+            result.Add(node.Name, remoteDirByDisk);
+        }
+
+        return result.ToDictionary(
+            kv => kv.Key,
+            kv => kv.Value.ToDictionary(kv1 => kv1.Key, kv1 => kv1.Value.GetSubdir(AlienDir))
+        );
     }
 
     public async Task<
