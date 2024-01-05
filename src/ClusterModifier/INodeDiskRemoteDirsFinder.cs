@@ -8,6 +8,6 @@ namespace ClusterModifier;
 
 public interface INodeDiskRemoteDirsFinder
 {
-    Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteDirByDiskByNode(ClusterConfiguration config, CancellationToken cancellationToken);
+    Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(ClusterConfiguration config, CancellationToken cancellationToken);
 }
 

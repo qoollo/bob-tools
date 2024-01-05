@@ -56,7 +56,7 @@ public class CommonImplementation
         ).Unwrap();
     }
 
-    public Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteDirByDiskByNode(
+    public Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(
         ClusterConfiguration config,
         CancellationToken cancellationToken
     )

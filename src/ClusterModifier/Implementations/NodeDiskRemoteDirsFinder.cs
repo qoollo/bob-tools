@@ -17,7 +17,7 @@ public class NodeDiskRemoteDirsFinder : INodeDiskRemoteDirsFinder
         _args = args;
     }
 
-    public async Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteDirByDiskByNode(
+    public async Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(
         ClusterConfiguration config,
         CancellationToken cancellationToken
     )
