@@ -59,7 +59,7 @@ public class ClusterStateFinder
         CancellationToken cancellationToken
     )
     {
-        var remoteDirByDiskByNode = await _nodeDiskRemoteDirsFinder.FindRemoteDirByDiskByNode(
+        var remoteDirByDiskByNode = await _nodeDiskRemoteDirsFinder.FindRemoteRootDirByDiskByNode(
             config,
             cancellationToken
         );

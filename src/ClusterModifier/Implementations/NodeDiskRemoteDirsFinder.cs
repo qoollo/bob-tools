@@ -17,7 +17,9 @@ public class NodeDiskRemoteDirsFinder : INodeDiskRemoteDirsFinder
         _args = args;
     }
 
-    public async Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(
+    public async Task<
+        Dictionary<string, Dictionary<string, RemoteDir>>
+    > FindRemoteRootDirByDiskByNode(
         ClusterConfiguration config,
         CancellationToken cancellationToken
     )
@@ -26,7 +28,12 @@ public class NodeDiskRemoteDirsFinder : INodeDiskRemoteDirsFinder
         foreach (var node in config.Nodes)
         {
             var remoteDirByDisk = await GetRemoteDirByDisk(node, cancellationToken);
-            result.Add(node.Name, remoteDirByDisk);
+            var rootDir = await _args.GetRootDir(node, cancellationToken);
+            var remoteRootDirByDisk = remoteDirByDisk.ToDictionary(
+                kv => kv.Key,
+                kv => kv.Value.GetSubdir(rootDir)
+            );
+            result.Add(node.Name, remoteRootDirByDisk);
         }
 
         return result;
@@ -38,10 +45,6 @@ public class NodeDiskRemoteDirsFinder : INodeDiskRemoteDirsFinder
     )
     {
         var addr = await node.FindIPAddress();
-        var rootDir = await _args.GetRootDir(node, cancellationToken);
-        return node.Disks.ToDictionary(
-            d => d.Name,
-            d => new RemoteDir(addr, Path.Combine(d.Path, rootDir))
-        );
+        return node.Disks.ToDictionary(d => d.Name, d => new RemoteDir(addr, d.Path));
     }
 }
