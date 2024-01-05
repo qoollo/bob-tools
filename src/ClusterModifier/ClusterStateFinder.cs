@@ -11,29 +11,25 @@ namespace ClusterModifier;
 
 public class ClusterStateFinder
 {
-    private readonly INodeDiskRemoteDirsFinder _nodeDirsRemoteDirsFinder;
+    private readonly INodeDiskRemoteDirsFinder _nodeDiskRemoteDirsFinder;
     private readonly IConfigurationsFinder _configurationsFinder;
 
     public ClusterStateFinder(
-        INodeDiskRemoteDirsFinder nodeDirsRemoteDirsFinder,
+        INodeDiskRemoteDirsFinder nodeDiskRemoteDirsFinder,
         IConfigurationsFinder configurationsFinder
     )
     {
-        _nodeDirsRemoteDirsFinder = nodeDirsRemoteDirsFinder;
+        _nodeDiskRemoteDirsFinder = nodeDiskRemoteDirsFinder;
         _configurationsFinder = configurationsFinder;
     }
 
     public async Task<ClusterState> Find(CancellationToken cancellationToken)
     {
-        return new ClusterState(await GetVDiskInfo(cancellationToken));
-    }
-
-    private async Task<List<VDiskInfo>> GetVDiskInfo(CancellationToken cancellationToken)
-    {
         var oldConfig = await _configurationsFinder.FindOldConfig(cancellationToken);
         var config = await _configurationsFinder.FindNewConfig(cancellationToken);
 
-        return await GetVDiskInfo(oldConfig, config, cancellationToken);
+        var vDiskInfo = await GetVDiskInfo(oldConfig, config, cancellationToken);
+        return new ClusterState(vDiskInfo);
     }
 
     private async Task<List<VDiskInfo>> GetVDiskInfo(
@@ -63,7 +59,7 @@ public class ClusterStateFinder
         CancellationToken cancellationToken
     )
     {
-        var remoteDirByDiskByNode = await _nodeDirsRemoteDirsFinder.FindRemoteDirByDiskByNode(
+        var remoteDirByDiskByNode = await _nodeDiskRemoteDirsFinder.FindRemoteDirByDiskByNode(
             config,
             cancellationToken
         );

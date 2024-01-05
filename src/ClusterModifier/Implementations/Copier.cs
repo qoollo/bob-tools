@@ -31,7 +31,7 @@ public class Copier : ICopier
                     ParallelP2PProcessor.CreateOperation(
                         op.From.Address,
                         op.To.Address,
-                        () => Copy(op, cancellationToken)
+                        () => InvokeOperation(op, cancellationToken)
                     )
             )
             .ToArray();
@@ -42,7 +42,7 @@ public class Copier : ICopier
         );
     }
 
-    private async Task<bool> Copy(CopyOperation op, CancellationToken cancellationToken)
+    private async Task<bool> InvokeOperation(CopyOperation op, CancellationToken cancellationToken)
     {
         var copyResult = await _remoteFileCopier.Copy(op.From, op.To, cancellationToken);
         if (copyResult.IsError)
