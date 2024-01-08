@@ -18,7 +18,7 @@ namespace ClusterModifier
         [Option("dry-run", Required = false, HelpText = "Do not copy anything")]
         public bool DryRun { get; set; } = false;
 
-        [Option("dry-run", Required = false, HelpText = "Special testing run with no interactions with cluster")]
+        [Option("test-run", Required = false, HelpText = "Special testing run with no interactions with cluster")]
         public bool TestRun { get; set; } = false;
 
         [Option("remove-unused-replicas", Required = false, HelpText = "Remove files in unused replicas")]

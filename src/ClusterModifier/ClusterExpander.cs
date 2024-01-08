@@ -1,6 +1,5 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace ClusterModifier;
 
@@ -9,10 +8,6 @@ public class ClusterExpander
     private readonly ClusterStateFinder _clusterStateFinder;
     private readonly WorkSpecificationFinder _workSpecificationFinder;
     private readonly ClusterStateAlterer _clusterStateAlterer;
-    private readonly ICopier _copier;
-    private readonly IRemover _remover;
-    private readonly ClusterExpandArguments _args;
-    private readonly ILogger<ClusterExpander> _logger;
 
     public ClusterExpander(
         ClusterStateFinder clusterStateFinder,

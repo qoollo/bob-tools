@@ -73,7 +73,10 @@ public class ClusterStateAlterer
                     op.DirToDelete
                 );
             foreach (var dir in workSpecification.UnconfirmedDeleteDirs)
-                _logger.LogInformation("Expected removing directory {Dir} without checking copies");
+                _logger.LogInformation(
+                    "Expected removing directory {Dir} without checking copies",
+                    dir
+                );
         }
         else
         {
