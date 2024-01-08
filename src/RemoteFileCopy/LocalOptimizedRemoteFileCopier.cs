@@ -89,6 +89,17 @@ namespace RemoteFileCopy
                 return await _remoteFileCopier.RemoveAlreadyMovedFiles(from, to, cancellationToken);
         }
 
+        public async Task<bool> DirContainsFiles(RemoteDir dir, bool recursive = true, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (TryGetLocalPath(dir, out var path))
+            {
+                return DirContainsFiles(path, recursive, cancellationToken);
+            }
+            else
+                return await _remoteFileCopier.DirContainsFiles(dir, recursive, cancellationToken);
+        }
+
         public async Task<bool> SourceCopiedToDest(RemoteDir from, RemoteDir to, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -149,6 +160,22 @@ namespace RemoteFileCopy
                 count += RemoveLocalAlreadyMovedFiles(dir, toDir, cancellationToken);
             }
             return count;
+        }
+
+        private bool DirContainsFiles(string path, bool recursive, CancellationToken cancellationToken)
+        {
+            if (!Directory.Exists(path))
+                return false;
+
+            if (Directory.EnumerateFiles(path).Any())
+                return true;
+
+            if (recursive)
+            {
+                return Directory.EnumerateDirectories(path)
+                    .Any(d => DirContainsFiles(d, recursive, cancellationToken));
+            }
+            return false;
         }
 
         private bool TryGetLocalPath(RemoteDir dir, out string path)

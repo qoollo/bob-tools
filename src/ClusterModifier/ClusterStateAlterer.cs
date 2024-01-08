@@ -16,6 +16,7 @@ public class ClusterStateAlterer
         ClusterExpandArguments args,
         ICopier copier,
         IRemover remover,
+        IValidator validator,
         ILogger<ClusterStateAlterer> logger
     )
     {

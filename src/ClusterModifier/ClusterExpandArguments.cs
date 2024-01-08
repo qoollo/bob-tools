@@ -33,6 +33,9 @@ namespace ClusterModifier
         [Option("copy-parallel-degree", HelpText = "Number of simultaneous copy processes", Default = 1)]
         public int CopyParallelDegree { get; set; }
 
+        [Option("skip-alien-presence-check", HelpText = "Do not check for alien existence before cluster expansion", Default = false)]
+        public bool SkipAlienPresenceCheck { get; set; }
+
         public async ValueTask<string> GetRootDir(
             ClusterConfiguration.Node node,
             CancellationToken cancellationToken = default

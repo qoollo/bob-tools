@@ -13,7 +13,8 @@ public class CommonImplementation
     : IConfigurationsFinder,
         INodeDiskRemoteDirsFinder,
         ICopier,
-        IRemover
+        IRemover,
+        IValidator
 {
     private readonly ClusterExpandArguments _args;
     private readonly ILogger<CommonImplementation> _logger;
@@ -62,20 +63,14 @@ public class CommonImplementation
     )
     {
         return Task.FromResult(
-            config
-                .Nodes
-                .ToDictionary(
-                    n => n.Name,
-                    n =>
-                        n.Disks.ToDictionary(
-                            d => d.Name,
-                            d =>
-                                new RemoteDir(
-                                    System.Net.IPAddress.None,
-                                    $"/{n.Name}/{d.Name}/alien"
-                                )
-                        )
-                )
+            config.Nodes.ToDictionary(
+                n => n.Name,
+                n =>
+                    n.Disks.ToDictionary(
+                        d => d.Name,
+                        d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/alien")
+                    )
+            )
         );
     }
 
@@ -85,16 +80,14 @@ public class CommonImplementation
     )
     {
         return Task.FromResult(
-            config
-                .Nodes
-                .ToDictionary(
-                    n => n.Name,
-                    n =>
-                        n.Disks.ToDictionary(
-                            d => d.Name,
-                            d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/bob")
-                        )
-                )
+            config.Nodes.ToDictionary(
+                n => n.Name,
+                n =>
+                    n.Disks.ToDictionary(
+                        d => d.Name,
+                        d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/bob")
+                    )
+            )
         );
     }
 
@@ -116,6 +109,11 @@ public class CommonImplementation
             _logger.LogInformation("Will remove unconfirmed dirs even if error occured");
         foreach (var dir in unconfirmed)
             _logger.LogInformation("Remove dir {Dir} without any confirmation", dir);
+        return Task.CompletedTask;
+    }
+
+    public Task Validate(ClusterState clusterState, CancellationToken cancellationToken)
+    {
         return Task.CompletedTask;
     }
 }

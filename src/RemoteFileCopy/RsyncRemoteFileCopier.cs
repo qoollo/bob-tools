@@ -105,6 +105,11 @@ namespace RemoteFileCopy
             return equal.IsSubsetOf(dstFiles.Select(f => (to, f)));
         }
 
+        public async Task<bool> DirContainsFiles(RemoteDir dir, bool recursive = true, CancellationToken cancellationToken = default)
+        {
+            return await _filesFinder.FileExists(dir, recursive, cancellationToken);
+        }
+
         internal async Task<bool> RemoveFiles(IEnumerable<RemoteFileInfo> fileInfos, CancellationToken cancellationToken = default)
         {
             var error = false;
@@ -144,7 +149,6 @@ namespace RemoteFileCopy
             }
             return !error;
         }
-
 
         private class FileInfoComparer : IEqualityComparer<(RemoteDir dir, RemoteFileInfo file)>
         {

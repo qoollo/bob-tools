@@ -13,24 +13,37 @@ public class ClusterStateFinder
 {
     private readonly INodeDiskRemoteDirsFinder _nodeDiskRemoteDirsFinder;
     private readonly IConfigurationsFinder _configurationsFinder;
+    private readonly IValidator _validator;
 
     public ClusterStateFinder(
         INodeDiskRemoteDirsFinder nodeDiskRemoteDirsFinder,
-        IConfigurationsFinder configurationsFinder
+        IConfigurationsFinder configurationsFinder,
+        IValidator validator
     )
     {
         _nodeDiskRemoteDirsFinder = nodeDiskRemoteDirsFinder;
         _configurationsFinder = configurationsFinder;
+        _validator = validator;
     }
 
     public async Task<ClusterState> Find(CancellationToken cancellationToken)
+    {
+        var state = await GetState(cancellationToken);
+
+        await _validator.Validate(state, cancellationToken);
+
+        return state;
+    }
+
+    private async Task<ClusterState> GetState(CancellationToken cancellationToken)
     {
         var oldConfig = await _configurationsFinder.FindOldConfig(cancellationToken);
         var config = await _configurationsFinder.FindNewConfig(cancellationToken);
 
         var vDiskInfo = await GetVDiskInfo(oldConfig, config, cancellationToken);
         var alienDirs = await GetAlienDirs(oldConfig, cancellationToken);
-        return new ClusterState(vDiskInfo, alienDirs);
+        var state = new ClusterState(vDiskInfo, alienDirs);
+        return state;
     }
 
     private async Task<List<VDiskInfo>> GetVDiskInfo(

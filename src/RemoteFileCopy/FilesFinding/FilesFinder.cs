@@ -1,5 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ namespace RemoteFileCopy.FilesFinding
                                                                    CancellationToken cancellationToken = default)
         {
             var function = GetHashFunction();
-            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {GetBashHereDoc(dir.Path, function)}", cancellationToken);
+            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {GetEnumerateFilesBashHereDoc(dir.Path, function)}", cancellationToken);
 
             if (sshResult.IsError)
             {
@@ -53,6 +54,22 @@ namespace RemoteFileCopy.FilesFinding
             return result;
         }
 
+        internal async Task<bool> FileExists(RemoteDir dir, bool recurse, CancellationToken cancellationToken)
+        {
+            var doc = GetFileExistsBashHereDoc(dir.Path, recurse);
+            var sshResult = await _sshWrapper.InvokeSshProcess(dir.Address, $"bash << {doc}", cancellationToken);
+
+            if (sshResult.IsError)
+            {
+                _logger.LogWarning("Failed to check files existence in {dir}", dir);
+                _logger.LogDebug("Finder stderr: {output}", string.Join(Environment.NewLine, sshResult.StdErr));
+                _logger.LogDebug("Finder stdout: {output}", string.Join(Environment.NewLine, sshResult.StdOut));
+                throw new CommandLineFailureException("find");
+            }
+            
+            return sshResult.StdOut.Any();
+        }
+
         private string GetHashFunction()
         {
             return _filesFinderConfiguration.HashType switch
@@ -63,7 +80,7 @@ namespace RemoteFileCopy.FilesFinding
             };
         }
 
-        internal static string GetBashHereDoc(string path, string hashFunction)
+        internal static string GetEnumerateFilesBashHereDoc(string path, string hashFunction)
         {
             return $@"'EOF'
 if [ -d {path} ]
@@ -73,6 +90,19 @@ then
         size=$(stat -c%s $f)
         echo f$f l$size c$hash
     done
+fi
+EOF";
+        }
+
+        internal static string GetFileExistsBashHereDoc(string path, bool recurse)
+        {
+            var additionalArgs= "";
+            if (!recurse)
+                additionalArgs = " -maxdepth 1";
+            return $@"'EOF'
+if [ -d {path} ]
+then 
+    echo $(find {path} -type f{additionalArgs} 2>/dev/null | head -n 1)
 fi
 EOF";
         }
