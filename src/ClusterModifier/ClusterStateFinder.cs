@@ -67,7 +67,8 @@ public class ClusterStateFinder
         var findOldDirs = await GetVDiskRemoteDirsFinder(oldConfig, "old", cancellationToken);
         var findNewDirs = await GetVDiskRemoteDirsFinder(config, "new", cancellationToken);
         return oldConfig
-            .VDisks.Join(
+            .VDisks
+            .Join(
                 config.VDisks,
                 vd => vd.Id,
                 vd => vd.Id,
@@ -89,7 +90,7 @@ public class ClusterStateFinder
         return remoteAlienDirByDiskByNode.Values.SelectMany(d => d.Values).ToList();
     }
 
-    private async Task<Func<ClusterConfiguration.VDisk, RemoteDir[]>> GetVDiskRemoteDirsFinder(
+    private async Task<Func<ClusterConfiguration.VDisk, ReplicaDir[]>> GetVDiskRemoteDirsFinder(
         ClusterConfiguration config,
         string clusterConfigName,
         CancellationToken cancellationToken
@@ -99,18 +100,25 @@ public class ClusterStateFinder
             config,
             cancellationToken
         );
-        RemoteDir FindReplicaRemoteDir(
+        var nodeByName = config.Nodes.ToDictionary(n => n.Name);
+
+        ReplicaDir FindReplicaDir(
             ClusterConfiguration.VDisk v,
             ClusterConfiguration.VDisk.Replica r
         )
         {
-            if (remoteDirs.TryGetValue(r.Node, out var d) && d.TryGetValue(r.Disk, out var rd))
-                return rd.GetSubdir(v.Id.ToString());
-            throw new ClusterStateException(
-                $"Disk {r.Disk} not found on node {r.Node} in cluster config \"{clusterConfigName}\""
-            );
+            if (!nodeByName.TryGetValue(r.Node, out var n))
+                throw new ConfigurationException(
+                    $"Replica's node {r.Node} not found in cluster config \"{clusterConfigName}\""
+                );
+            if (!remoteDirs.TryGetValue(r.Node, out var d) || !d.TryGetValue(r.Disk, out var rd))
+                throw new ClusterStateException(
+                    $"Disk {r.Disk} not found on node {r.Node} in cluster config \"{clusterConfigName}\""
+                );
+            return new ReplicaDir(n, r.Disk, rd.GetSubdir(v.Id.ToString()));
         }
-        return (vDisk) => vDisk.Replicas.Select(r => FindReplicaRemoteDir(vDisk, r)).ToArray();
+
+        return (vDisk) => vDisk.Replicas.Select(r => FindReplicaDir(vDisk, r)).ToArray();
     }
 }
 
@@ -118,6 +126,8 @@ public record struct ClusterState(List<VDiskInfo> VDiskInfo, List<RemoteDir> Ali
 
 public record struct VDiskInfo(
     ClusterConfiguration.VDisk VDisk,
-    RemoteDir[] OldDirs,
-    RemoteDir[] NewDirs
+    ReplicaDir[] OldDirs,
+    ReplicaDir[] NewDirs
 );
+
+public record struct ReplicaDir(ClusterConfiguration.Node Node, string DiskName, RemoteDir Dir);
