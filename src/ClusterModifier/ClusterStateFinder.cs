@@ -39,20 +39,16 @@ public class ClusterStateFinder
         CancellationToken cancellationToken
     )
     {
-        var vDiskPairs = oldConfig.VDisks.Join(
-            config.VDisks,
-            vd => vd.Id,
-            vd => vd.Id,
-            (ovd, vd) => (ovd, vd)
-        );
         var findOldDirs = await GetVDiskRemoteDirsFinder(oldConfig, "old", cancellationToken);
         var findNewDirs = await GetVDiskRemoteDirsFinder(config, "new", cancellationToken);
-        var result = new List<VDiskInfo>();
-        foreach (var (oldVDisk, vDisk) in vDiskPairs)
-        {
-            result.Add(new VDiskInfo(vDisk, findOldDirs(oldVDisk), findNewDirs(vDisk)));
-        }
-        return result;
+        return oldConfig
+            .VDisks.Join(
+                config.VDisks,
+                vd => vd.Id,
+                vd => vd.Id,
+                (ovd, vd) => new VDiskInfo(vd, findOldDirs(ovd), findNewDirs(vd))
+            )
+            .ToList();
     }
 
     private async Task<List<RemoteDir>> GetAlienDirs(
