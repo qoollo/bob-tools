@@ -39,11 +39,23 @@ public class ClusterStateFinder
     {
         var oldConfig = await _configurationsFinder.FindOldConfig(cancellationToken);
         var config = await _configurationsFinder.FindNewConfig(cancellationToken);
+        ValidateConfigs(oldConfig, config);
 
         var vDiskInfo = await GetVDiskInfo(oldConfig, config, cancellationToken);
         var alienDirs = await GetAlienDirs(oldConfig, cancellationToken);
         var state = new ClusterState(vDiskInfo, alienDirs);
         return state;
+    }
+
+    private static void ValidateConfigs(ClusterConfiguration oldConfig, ClusterConfiguration config)
+    {
+        var oldVDiskIds = oldConfig.VDisks.Select(vd => vd.Id).ToHashSet();
+        var newVDiskIds = config.VDisks.Select(vd => vd.Id).ToHashSet();
+        oldVDiskIds.ExceptWith(newVDiskIds);
+        if (oldVDiskIds.Count > 0)
+            throw new ConfigurationException(
+                $"Cluster shrink detection, removed vdisks {string.Join(", ", oldVDiskIds)}"
+            );
     }
 
     private async Task<List<VDiskInfo>> GetVDiskInfo(
