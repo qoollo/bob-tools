@@ -63,14 +63,20 @@ public class CommonImplementation
     )
     {
         return Task.FromResult(
-            config.Nodes.ToDictionary(
-                n => n.Name,
-                n =>
-                    n.Disks.ToDictionary(
-                        d => d.Name,
-                        d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/alien")
-                    )
-            )
+            config
+                .Nodes
+                .ToDictionary(
+                    n => n.Name,
+                    n =>
+                        n.Disks.ToDictionary(
+                            d => d.Name,
+                            d =>
+                                new RemoteDir(
+                                    System.Net.IPAddress.None,
+                                    $"/{n.Name}/{d.Name}/alien"
+                                )
+                        )
+                )
         );
     }
 
@@ -80,20 +86,22 @@ public class CommonImplementation
     )
     {
         return Task.FromResult(
-            config.Nodes.ToDictionary(
-                n => n.Name,
-                n =>
-                    n.Disks.ToDictionary(
-                        d => d.Name,
-                        d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/bob")
-                    )
-            )
+            config
+                .Nodes
+                .ToDictionary(
+                    n => n.Name,
+                    n =>
+                        n.Disks.ToDictionary(
+                            d => d.Name,
+                            d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/bob")
+                        )
+                )
         );
     }
 
     public Task Remove(
         List<ConfirmedDeleteOperation> confirmed,
-        List<RemoteDir> unconfirmed,
+        List<UnconfirmedDeleteOperation> unconfirmed,
         bool forceRemoveUnconfirmed,
         CancellationToken cancellationToken
     )
@@ -107,8 +115,8 @@ public class CommonImplementation
             );
         if (forceRemoveUnconfirmed)
             _logger.LogInformation("Will remove unconfirmed dirs even if error occured");
-        foreach (var dir in unconfirmed)
-            _logger.LogInformation("Remove dir {Dir} without any confirmation", dir);
+        foreach (var op in unconfirmed)
+            _logger.LogInformation("Remove dir {Dir} without any confirmation", op.DirToDelete);
         return Task.CompletedTask;
     }
 

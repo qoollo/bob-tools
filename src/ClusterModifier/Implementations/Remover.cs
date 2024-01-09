@@ -20,7 +20,7 @@ public class Remover : IRemover
 
     public async Task Remove(
         List<ConfirmedDeleteOperation> confirmed,
-        List<RemoteDir> unconfirmed,
+        List<UnconfirmedDeleteOperation> unconfirmed,
         bool forceRemoveUnconfirmed,
         CancellationToken cancellationToken
     )
@@ -75,14 +75,14 @@ public class Remover : IRemover
         return noErrors;
     }
 
-    private async Task RemoveUnconfirmed(List<RemoteDir> dirs, CancellationToken cancellationToken)
+    private async Task RemoveUnconfirmed(List<UnconfirmedDeleteOperation> ops, CancellationToken cancellationToken)
     {
-        foreach (var dir in dirs)
+        foreach (var op in ops)
         {
-            if (await _remoteFileCopier.RemoveInDir(dir, cancellationToken))
-                _logger.LogInformation("Removed directory {From}", dir);
+            if (await _remoteFileCopier.RemoveInDir(op.DirToDelete, cancellationToken))
+                _logger.LogInformation("Removed directory {From}", op);
             else
-                _logger.LogError("Failed to remove directory {From}", dir);
+                _logger.LogError("Failed to remove directory {From}", op);
         }
     }
 }

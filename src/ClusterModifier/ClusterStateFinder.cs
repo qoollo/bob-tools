@@ -115,7 +115,7 @@ public class ClusterStateFinder
                 throw new ClusterStateException(
                     $"Disk {r.Disk} not found on node {r.Node} in cluster config \"{clusterConfigName}\""
                 );
-            return new ReplicaDir(n, r.Disk, rd.GetSubdir(v.Id.ToString()));
+            return new ReplicaDir(new NodeDisk(n, r.Disk), rd.GetSubdir(v.Id.ToString()));
         }
 
         return (vDisk) => vDisk.Replicas.Select(r => FindReplicaDir(vDisk, r)).ToArray();
@@ -130,4 +130,6 @@ public record struct VDiskInfo(
     ReplicaDir[] NewDirs
 );
 
-public record struct ReplicaDir(ClusterConfiguration.Node Node, string DiskName, RemoteDir Dir);
+public record NodeDisk(ClusterConfiguration.Node Node, string DiskName);
+
+public record struct ReplicaDir(NodeDisk NodeDisk, RemoteDir Dir);
