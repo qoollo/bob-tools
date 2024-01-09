@@ -14,7 +14,8 @@ public class CommonImplementation
         INodeDiskRemoteDirsFinder,
         ICopier,
         IRemover,
-        IValidator
+        IValidator,
+        IBobDiskRestarter
 {
     private readonly ClusterExpandArguments _args;
     private readonly ILogger<CommonImplementation> _logger;
@@ -57,46 +58,46 @@ public class CommonImplementation
         ).Unwrap();
     }
 
-    public Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteAlienDirByDiskByNode(
+    public async Task<
+        Dictionary<string, Dictionary<string, RemoteDir>>
+    > FindRemoteAlienDirByDiskByNode(
         ClusterConfiguration config,
         CancellationToken cancellationToken
     )
     {
-        return Task.FromResult(
-            config
-                .Nodes
-                .ToDictionary(
-                    n => n.Name,
-                    n =>
-                        n.Disks.ToDictionary(
-                            d => d.Name,
-                            d =>
-                                new RemoteDir(
-                                    System.Net.IPAddress.None,
-                                    $"/{n.Name}/{d.Name}/alien"
-                                )
-                        )
+        var result = new Dictionary<string, Dictionary<string, RemoteDir>>();
+        foreach (var node in config.Nodes)
+        {
+            var addr = await node.FindIPAddress();
+            result.Add(
+                node.Name,
+                node.Disks.ToDictionary(
+                    d => d.Name,
+                    d => new RemoteDir(addr, $"/{node.Name}/{d.Name}/alien")
                 )
-        );
+            );
+        }
+        return result;
     }
 
-    public Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(
+    public async Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(
         ClusterConfiguration config,
         CancellationToken cancellationToken
     )
     {
-        return Task.FromResult(
-            config
-                .Nodes
-                .ToDictionary(
-                    n => n.Name,
-                    n =>
-                        n.Disks.ToDictionary(
-                            d => d.Name,
-                            d => new RemoteDir(System.Net.IPAddress.None, $"/{n.Name}/{d.Name}/bob")
-                        )
+        var result = new Dictionary<string, Dictionary<string, RemoteDir>>();
+        foreach (var node in config.Nodes)
+        {
+            var addr = await node.FindIPAddress();
+            result.Add(
+                node.Name,
+                node.Disks.ToDictionary(
+                    d => d.Name,
+                    d => new RemoteDir(addr, $"/{node.Name}/{d.Name}/bob")
                 )
-        );
+            );
+        }
+        return result;
     }
 
     public Task Remove(
@@ -109,14 +110,24 @@ public class CommonImplementation
         _logger.LogInformation("Performing {Count} confirmed remove operations", confirmed.Count);
         foreach (var op in confirmed)
             _logger.LogInformation(
-                "Check that {@Dirs} contains all data from {Dir}, then remove it",
-                op.Copies,
+                "Check that {@Dirs} contains all data from {Dir}, then remove source",
+                op.Copies.Select(c => c.ToString()),
                 op.DirToDelete
             );
         if (forceRemoveUnconfirmed)
             _logger.LogInformation("Will remove unconfirmed dirs even if error occured");
         foreach (var op in unconfirmed)
             _logger.LogInformation("Remove dir {Dir} without any confirmation", op.DirToDelete);
+        return Task.CompletedTask;
+    }
+
+    public Task RestartDisk(NodeDisk disk, CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "Restarting disk {Disk} on node {Node}",
+            disk.DiskName,
+            disk.Node.Name
+        );
         return Task.CompletedTask;
     }
 
