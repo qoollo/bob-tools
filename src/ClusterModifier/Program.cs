@@ -23,6 +23,8 @@ public class Program
             .AddTransient<ClusterExpander>()
             .AddTransient<ClusterStateFinder>()
             .AddTransient<WorkSpecificationFinder>()
+            .AddTransient<DataManipulator>()
+            .AddTransient<BobServersManipulator>()
             .AddTransient<ClusterStateAlterer>();
         if (arguments.TestRun)
         {
