@@ -80,7 +80,9 @@ public class CommonImplementation
         return result;
     }
 
-    public async Task<Dictionary<string, Dictionary<string, RemoteDir>>> FindRemoteRootDirByDiskByNode(
+    public async Task<
+        Dictionary<string, Dictionary<string, RemoteDir>>
+    > FindRemoteRootDirByDiskByNode(
         ClusterConfiguration config,
         CancellationToken cancellationToken
     )
@@ -116,6 +118,11 @@ public class CommonImplementation
             );
         if (forceRemoveUnconfirmed)
             _logger.LogInformation("Will remove unconfirmed dirs even if error occured");
+        if (unconfirmed.Count > 0)
+            _logger.LogInformation(
+                "Performing {Count} unconfirmed remove operations",
+                unconfirmed.Count
+            );
         foreach (var op in unconfirmed)
             _logger.LogInformation("Remove dir {Dir} without any confirmation", op.DirToDelete);
         return Task.CompletedTask;
