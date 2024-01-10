@@ -1,7 +1,9 @@
 ﻿using System;
-using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using BobApi;
+using BobToolsCli;
+using BobToolsCli.Exceptions;
 using CommandLine;
 using DisksMonitoring.Bob;
 using DisksMonitoring.Config;
@@ -14,130 +16,100 @@ using DisksMonitoring.OS.DisksProcessing;
 using DisksMonitoring.OS.DisksProcessing.FSTabAltering;
 using DisksMonitoring.OS.Helpers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-namespace DisksMonitoring
+using RemoteFileCopy.Extensions;
+
+namespace DisksMonitoring;
+
+class Program
 {
-    class Program
+    static async Task Main(string[] args)
     {
-        const string configFile = "config.yaml";
-        static IServiceProvider serviceProvider;
-        static ILogger<Program> logger;
+        await CliHelper.RunWithParsed<MonitorArguments, GenerateOnlyArguments>(
+            args,
+            Monitor,
+            GenerateConfiguration
+        );
+    }
 
-        static void Initialize(LogLevel logLevel)
-        {
-            var services = new ServiceCollection();
-            services.AddLogging(c => c.AddConsole(ops => ops.TimestampFormat = "[hh:mm:ss] ").SetMinimumLevel(logLevel));
-            services.AddTransient<LshwParser>();
-            services.AddTransient<DisksFinder>();
-            services.AddTransient<ProcessInvoker>();
-            services.AddTransient<DisksFormatter>();
-            services.AddTransient<DisksMounter>();
-            services.AddTransient<NeededInfoStorage>();
-            services.AddTransient<FSTabAlterer>();
-            services.AddTransient<DisksMonitor>();
-            services.AddTransient<ConfigGenerator>();
-            services.AddTransient<BobPathPreparer>();
-            services.AddSingleton<Configuration>();
-            services.AddTransient<DisksWorker>();
-            services.AddTransient<DisksCopier>();
-            services.AddTransient<ExternalScriptsRunner>();
-            services.AddTransient<DevPathDataFinder>();
-            services.AddTransient<IFileSystemAccessor, LinuxFileSystemAccessor>();
+    private static async Task Monitor(
+        MonitorArguments args,
+        IServiceCollection services,
+        CancellationToken cancellationToken
+    )
+    {
+        var prov = CreateServiceProvider(services, args);
+        var generator = prov.GetRequiredService<ConfigurationGenerator>();
+        var monitor = prov.GetRequiredService<Monitor>();
+        var client = await args.GetLocalBobClient(cancellationToken);
+        var config = await generator.Generate(args.StateFile, client, cancellationToken);
+        await monitor.Run(config, cancellationToken);
+    }
 
-            serviceProvider = services.BuildServiceProvider();
-            logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-        }
+    private static async Task GenerateConfiguration(
+        GenerateOnlyArguments args,
+        IServiceCollection services,
+        CancellationToken cancellationToken
+    )
+    {
+        var prov = CreateServiceProvider(services, args);
+        var generator = prov.GetRequiredService<ConfigurationGenerator>();
+        var client = await args.GetLocalBobClient(cancellationToken);
+        await generator.Generate(args.StateFile, client, cancellationToken);
+    }
 
-        static async Task Main(string[] args)
-        {
-            var parsed = Parser.Default.ParseArguments<MonitorOptions, GenerateOnlyOptions>(args);
-            await Task.WhenAll(
-                parsed.WithParsedAsync<MonitorOptions>(Monitor),
-                parsed.WithParsedAsync<GenerateOnlyOptions>(GenerateConfiguration));
-        }
+    static IServiceProvider CreateServiceProvider(
+        IServiceCollection services,
+        CommonWithSshArguments args
+    )
+    {
+        services.AddTransient<LshwParser>();
+        services.AddTransient<DisksFinder>();
+        services.AddTransient<ProcessInvoker>();
+        services.AddTransient<DisksFormatter>();
+        services.AddTransient<DisksMounter>();
+        services.AddTransient<NeededInfoStorage>();
+        services.AddTransient<FSTabAlterer>();
+        services.AddTransient<DisksMonitor>();
+        services.AddTransient<ConfigGenerator>();
+        services.AddTransient<BobPathPreparer>();
+        services.AddSingleton<Configuration>();
+        services.AddTransient<DisksWorker>();
+        services.AddTransient<DisksCopier>();
+        services.AddTransient<ExternalScriptsRunner>();
+        services.AddTransient<DevPathDataFinder>();
+        services.AddTransient<IFileSystemAccessor, LinuxFileSystemAccessor>();
+        services.AddTransient<Monitor>().AddTransient<ConfigurationGenerator>();
 
-        private static async Task Monitor(MonitorOptions options)
-        {
-            var configuration = await GenerateConfiguration(options);
-            var monitor = serviceProvider.GetRequiredService<DisksMonitor>();
-            var externalScriptsRunner = serviceProvider.GetRequiredService<ExternalScriptsRunner>();
-            var disksWorker = serviceProvider.GetRequiredService<DisksWorker>();
-            var span = TimeSpan.FromSeconds(configuration.MinCycleTimeSec);
-            var client = GetBobApiClient(options);
-            logger.LogInformation("Start monitor");
-            while (true)
-            {
-                var sw = Stopwatch.StartNew();
-                try
-                {
-                    await externalScriptsRunner.RunPreCycleScripts();
-                    await monitor.CheckAndUpdate(client);
-                    await configuration.SaveToFile(configFile);
-                    await disksWorker.AlterBobDisks(client);
-                    await externalScriptsRunner.RunPostCycleScripts();
-                }
-                catch (Exception e)
-                {
-                    logger.LogError($"Exception while processing cycle: {e.Message}{Environment.NewLine}{e.StackTrace}");
-                }
-                sw.Stop();
-                if (sw.Elapsed < span)
-                    await Task.Delay(span - sw.Elapsed);
-            }
-        }
+        services.AddRemoteFileCopy(args.SshConfiguration, args.FilesFinderConfiguration);
 
-        private static async Task<Configuration> GenerateConfiguration(MonitorOptions options)
-        {
-            Initialize(options.LogLevel);
-            return await GetConfiguration(GetBobApiClient(options));
-        }
-
-        private static BobApiClient GetBobApiClient(MonitorOptions options)
-        {
-            return new BobApiClient(new Uri($"http://127.0.0.1:{options.Port}"), options.Username, options.Password);
-        }
-
-        private static async Task<Configuration> GetConfiguration(BobApiClient bobApiClient)
-        {
-            logger.LogInformation("Reading configuration...");
-            var configuration = serviceProvider.GetRequiredService<Configuration>();
-            try
-            {
-                await configuration.ReadFromFile(configFile);
-                await configuration.AddEntriesFromBob(bobApiClient);
-                await configuration.SaveToFile(configFile);
-                return configuration;
-            }
-            catch (Exception e)
-            {
-                logger.LogError($"Exception while getting info from config: {e.Message}{Environment.NewLine}{e.StackTrace}");
-                throw;
-            }
-            finally
-            {
-                logger.LogInformation("Reading configuration done");
-            }
-        }
-
-        [Verb("monitor", isDefault: true, HelpText = "Monitor disks unplugging")]
-        public class MonitorOptions
-        {
-            [Option("log-level", Required = false, HelpText = "Logging level", Default = LogLevel.Information)]
-            public LogLevel LogLevel { get; set; }
-
-            [Option("port", Required = false, HelpText = "Local bob http api port", Default = 8000)]
-            public int Port { get; set; }
-
-            [Option("user", HelpText = "Local bob username")]
-            public string Username { get; set; }
-
-            [Option("password", HelpText = "Local bob password")]
-            public string Password { get; set; }
-        }
-
-        [Verb("generate-only", HelpText = "Perform only config generation")]
-        public class GenerateOnlyOptions : MonitorOptions
-        {
-        }
+        return services.BuildServiceProvider();
     }
 }
+
+[Verb("monitor", isDefault: true, HelpText = "Monitor disks unplugging")]
+public class MonitorArguments : CommonWithSshArguments
+{
+    [Option("local-node", HelpText = "Local node name")]
+    public string LocalNodeName { get; set; }
+
+    [Option(
+        "state-file",
+        HelpText = "File in which state will be persisted",
+        Default = "config.yaml"
+    )]
+    public string StateFile { get; set; }
+
+    public async Task<BobApiClient> GetLocalBobClient(CancellationToken cancellationToken)
+    {
+        var conf = await GetClusterConfiguration(cancellationToken: cancellationToken);
+        var node = conf.Nodes.Find(n => n.Name == LocalNodeName);
+        if (node == null)
+            throw new ConfigurationException(
+                $"Failed to find local node {LocalNodeName} in configuration"
+            );
+        return GetBobApiClientProvider().GetClient(node);
+    }
+}
+
+[Verb("generate-only", HelpText = "Perform only config generation")]
+public class GenerateOnlyArguments : MonitorArguments { }

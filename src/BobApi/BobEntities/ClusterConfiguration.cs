@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -15,6 +15,27 @@ namespace BobApi.BobEntities
 
         [YamlMember(Alias = "vdisks")]
         public List<VDisk> VDisks { get; set; }
+
+        public string FindDiskName(string nodeName, long vdiskId)
+        {
+            return VDisks
+                .Find(vd => vd.Id == vdiskId)
+                ?.Replicas
+                .Find(r => r.Node == nodeName)
+                ?.Disk;
+        }
+
+        public Node FindNodeByName(string name) => Nodes.Find(n => n.Name == name);
+
+        public VDisk FindVDiskByNodeNameDiskName(string nodeName, string diskName) =>
+            VDisks.Find(vd => vd.Replicas.Any(r => r.Node == nodeName && r.Disk == diskName));
+
+        public static async Task<ClusterConfiguration> FromYamlFile(string filename)
+        {
+            var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().Build();
+            var content = await File.ReadAllTextAsync(filename);
+            return deserializer.Deserialize<ClusterConfiguration>(content);
+        }
 
         public class Node
         {
@@ -35,8 +56,11 @@ namespace BobApi.BobEntities
                 if (!IPAddress.TryParse(host, out var addr))
                     addr = (await Dns.GetHostAddressesAsync(host)).FirstOrDefault();
                 return addr;
-
             }
+
+            public Disk FindDiskByPath(string path) => Disks.Find(d => d.Path == path);
+
+            public override string ToString() => Name;
 
             public class Disk
             {
@@ -45,11 +69,6 @@ namespace BobApi.BobEntities
 
                 [YamlMember(Alias = "path")]
                 public string Path { get; set; }
-            }
-
-            public override string ToString()
-            {
-                return Name;
             }
         }
 
@@ -72,18 +91,5 @@ namespace BobApi.BobEntities
                 public override string ToString() => $"{Disk}@{Node}";
             }
         }
-
-        public string FindDiskName(string nodeName, long vdiskId)
-        {
-            return VDisks.Find(vd => vd.Id == vdiskId)?.Replicas.Find(r => r.Node == nodeName)?.Disk;
-        }
-
-        public static async Task<ClusterConfiguration> FromYamlFile(string filename)
-        {
-            var deserializer = new DeserializerBuilder().IgnoreUnmatchedProperties().Build();
-            var content = await File.ReadAllTextAsync(filename);
-            return deserializer.Deserialize<ClusterConfiguration>(content);
-        }
     }
 }
-
