@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -20,16 +20,18 @@ namespace OldPartitionsRemover.BySpaceRemoving
         private readonly IConfigurationFinder _configurationFinder;
         private readonly IBobApiClientFactory _bobApiClientFactory;
         private readonly ResultsCombiner _resultsCombiner;
+        private readonly RemovablePartitionsFinder _removablePartitionsFinder;
         private readonly ILogger<Remover> _logger;
 
         public Remover(Arguments arguments, IConfigurationFinder configurationFinder,
             IBobApiClientFactory bobApiClientFactory, ResultsCombiner resultsCombiner,
-            ILogger<Remover> logger)
+            RemovablePartitionsFinder removablePartitionsFinder, ILogger<Remover> logger)
         {
             _arguments = arguments;
             _configurationFinder = configurationFinder;
             _bobApiClientFactory = bobApiClientFactory;
             _resultsCombiner = resultsCombiner;
+            _removablePartitionsFinder = removablePartitionsFinder;
             _logger = logger;
         }
 
@@ -89,40 +91,17 @@ namespace OldPartitionsRemover.BySpaceRemoving
                     {
                         if (isDone)
                             return Result<int>.Ok(n);
-                        var removeResult = await rem();
-                        return removeResult.Map(removed => n + removed);
+                        var removeResult = await rem.Remove(cancellationToken);
+                        return removeResult.Map(removed => n + (removed ? 1 : 0));
                     });
                 }));
         }
 
-        private async Task<Result<IEnumerable<Func<Task<Result<int>>>>>> GetRemovalFunctions(
+        private async Task<Result<List<RemovablePartition>>> GetRemovalFunctions(
             ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node, CancellationToken cancellationToken)
         {
-            var partitionsApi = _bobApiClientFactory.GetPartitionsBobApiClient(node);
-            var vdisksToCheck = clusterConfiguration.VDisks.Where(r => r.Replicas.Any(r => r.Node == node.Name));
-            var partitionsResult = await _resultsCombiner.CollectResults(vdisksToCheck, async vd =>
-            {
-                Result<List<string>> partitionIdsResult = await partitionsApi.GetPartitions(vd, cancellationToken);
-                return await partitionIdsResult.Bind(async partitionIds =>
-                {
-                    var partitionsResult = await _resultsCombiner.CollectResults<string, Partition>(partitionIds,
-                        async p => await partitionsApi.GetPartition(vd.Id, p, cancellationToken));
-                    return partitionsResult;
-                });
-            });
-            return partitionsResult
-                .Map(partitions => partitions
-                    .GroupBy(p => (p.Timestamp, p.VDiskId))
-                    .OrderBy(g => g.Key.Timestamp).ThenBy(g => g.Key.VDiskId)
-                    .Select(g => CreateRemovalFunc(g.Key.VDiskId, g.Key.Timestamp, g.Count())));
-
-            Func<Task<Result<int>>> CreateRemovalFunc(long vdiskId, long timestamp, int partitionsCount)
-                => async () =>
-                {
-                    _logger.LogTrace("Removing partitions by timestamp {Timestamp} on {Node}/{VDisk}", timestamp, node.Name, vdiskId);
-                    var result = await partitionsApi.DeletePartitionsByTimestamp(vdiskId, timestamp, cancellationToken);
-                    return result.Map(r => r ? partitionsCount : 0);
-                };
+            var removableResult = await _removablePartitionsFinder.FindOnNode(clusterConfiguration, node, _arguments.AllowAlien, cancellationToken);
+            return removableResult;
         }
     }
 }

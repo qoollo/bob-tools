@@ -31,20 +31,39 @@ public class RemovablePartitionsFinder
     )
     {
         var vDisksByNode = GetVDisksByNode(config);
-
         return await _resultsCombiner.CollectResults(
             config.Nodes,
             async node =>
-            {
-                if (allowAliens)
-                    return await _resultsCombiner.CollectResults(
-                        FindNormalOnNode(config, node, cancellationToken),
-                        FindAlienOnNode(vDisksByNode, node, cancellationToken)
-                    );
-                else
-                    return await FindNormalOnNode(config, node, cancellationToken);
-            }
+                await FindOnNode(config, node, allowAliens, vDisksByNode, cancellationToken)
         );
+    }
+
+    public async Task<Result<List<RemovablePartition>>> FindOnNode(
+        ClusterConfiguration config,
+        ClusterConfiguration.Node node,
+        bool allowAliens,
+        CancellationToken cancellationToken
+    )
+    {
+        var vDisksByNode = GetVDisksByNode(config);
+        return await FindOnNode(config, node, allowAliens, vDisksByNode, cancellationToken);
+    }
+
+    private async Task<Result<List<RemovablePartition>>> FindOnNode(
+        ClusterConfiguration config,
+        ClusterConfiguration.Node node,
+        bool allowAliens,
+        Dictionary<string, List<long>> vDisksByNode,
+        CancellationToken cancellationToken
+    )
+    {
+        if (allowAliens)
+            return await _resultsCombiner.CollectResults(
+                FindNormalOnNode(config, node, cancellationToken),
+                FindAlienOnNode(vDisksByNode, node, cancellationToken)
+            );
+        else
+            return await FindNormalOnNode(config, node, cancellationToken);
     }
 
     private Dictionary<string, List<long>> GetVDisksByNode(ClusterConfiguration config)
@@ -164,7 +183,7 @@ public class RemovablePartitionsFinder
 
     private RemovablePartition CreateRemovablePartition(
         PartitionSlim p,
-        Func<CancellationToken, Task> remove
+        RemoveRemovablePartition remove
     )
     {
         return new RemovablePartition(

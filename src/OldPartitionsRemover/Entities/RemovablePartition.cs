@@ -7,5 +7,7 @@ namespace OldPartitionsRemover.Entities;
 public record class RemovablePartition(
     string Id,
     DateTimeOffset Timestamp,
-    Func<CancellationToken, Task> Remove
+    RemoveRemovablePartition Remove
 );
+
+public delegate Task<Result<bool>> RemoveRemovablePartition(CancellationToken ct);

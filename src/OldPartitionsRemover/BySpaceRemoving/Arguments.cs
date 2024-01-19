@@ -1,5 +1,4 @@
-using System;
-using System.Text.RegularExpressions;
+﻿using System;
 using BobToolsCli;
 using ByteSizeLib;
 using CommandLine;
@@ -18,6 +17,9 @@ namespace OldPartitionsRemover.BySpaceRemoving
 
         [Option("threshold-type", Default = "free", HelpText = "Type of threshold: `free` space on node or bob's `occupied` space")]
         public string ThresholdTypeString { get; set; } // Enums are case sensitive in CommandLineParser by default, and changing this requires recreating whole help
+
+        [Option('a', "allow-alien", Default = false, HelpText = "Allow removal of alien partitions", Required = false)]
+        public bool AllowAlien { get; set; }
 
         public Result<ThresholdType> GetThresholdType()
         {
