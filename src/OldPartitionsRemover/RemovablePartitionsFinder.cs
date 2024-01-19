@@ -6,8 +6,7 @@ using System.Threading.Tasks;
 using BobApi;
 using BobApi.BobEntities;
 using BobApi.Entities;
-using BobToolsCli;
-using BobToolsCli.Helpers;
+using BobToolsCli.BobApliClientFactories;
 using OldPartitionsRemover.Entities;
 using OldPartitionsRemover.Infrastructure;
 
@@ -16,12 +15,15 @@ namespace OldPartitionsRemover;
 public class RemovablePartitionsFinder
 {
     private readonly ResultsCombiner _resultsCombiner;
-    private readonly BobApiClientProvider _bobApiProvider;
+    private readonly IBobApiClientFactory _bobApiClientFactory;
 
-    public RemovablePartitionsFinder(ResultsCombiner resultsCombiner, CommonArguments args)
+    public RemovablePartitionsFinder(
+        ResultsCombiner resultsCombiner,
+        IBobApiClientFactory bobApiClientFactory
+    )
     {
         _resultsCombiner = resultsCombiner;
-        _bobApiProvider = args.GetBobApiClientProvider();
+        _bobApiClientFactory = bobApiClientFactory;
     }
 
     public async Task<Result<List<RemovablePartition>>> Find(
@@ -85,7 +87,7 @@ public class RemovablePartitionsFinder
     )
     {
         // API is not disposed because it will be captured in removable partitions
-        var api = _bobApiProvider.GetClient(node);
+        var api = _bobApiClientFactory.GetPartitionsBobApiClient(node);
         var vDisksByDisk = GetVDisksByDisk(config, node);
         return await _resultsCombiner.CollectResults(
             vDisksByDisk,
@@ -104,7 +106,7 @@ public class RemovablePartitionsFinder
     )
     {
         // API is not disposed because it will be captured in removable partitions
-        var api = _bobApiProvider.GetClient(node);
+        var api = _bobApiClientFactory.GetPartitionsBobApiClient(node);
         return await _resultsCombiner.CollectResults(
             vDisksByNode.Where(kv => kv.Key != node.Name),
             async kv =>
@@ -131,7 +133,7 @@ public class RemovablePartitionsFinder
     }
 
     private async Task<Result<List<RemovablePartition>>> FindNormal(
-        BobApiClient api,
+        IPartitionsBobApiClient api,
         string disk,
         long vDisk,
         CancellationToken cancellationToken
@@ -156,7 +158,7 @@ public class RemovablePartitionsFinder
     }
 
     private async Task<Result<List<RemovablePartition>>> FindAlien(
-        BobApiClient api,
+        IPartitionsBobApiClient api,
         string node,
         long vDisk,
         CancellationToken cancellationToken
