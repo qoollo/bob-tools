@@ -7,6 +7,7 @@ using BobApi;
 using BobApi.BobEntities;
 using BobApi.Entities;
 using BobToolsCli.BobApliClientFactories;
+using BobToolsCli.Exceptions;
 using OldPartitionsRemover.Entities;
 using OldPartitionsRemover.Infrastructure;
 
@@ -32,11 +33,11 @@ public class RemovablePartitionsFinder
         CancellationToken cancellationToken
     )
     {
-        var vDisksByNode = GetVDisksByNode(config);
+        var vDisksConfiguration = GetVDisksConfiguration(config);
         return await _resultsCombiner.CollectResults(
             config.Nodes,
             async node =>
-                await FindOnNode(config, node, allowAliens, vDisksByNode, cancellationToken)
+                await FindOnNode(vDisksConfiguration, node, allowAliens, cancellationToken)
         );
     }
 
@@ -47,48 +48,59 @@ public class RemovablePartitionsFinder
         CancellationToken cancellationToken
     )
     {
-        var vDisksByNode = GetVDisksByNode(config);
-        return await FindOnNode(config, node, allowAliens, vDisksByNode, cancellationToken);
+        var vDisksConfiguration = GetVDisksConfiguration(config);
+        return await FindOnNode(vDisksConfiguration, node, allowAliens, cancellationToken);
     }
 
     private async Task<Result<List<RemovablePartition>>> FindOnNode(
-        ClusterConfiguration config,
+        VDisksConfiguration vDisksConfiguration,
         ClusterConfiguration.Node node,
         bool allowAliens,
-        Dictionary<string, List<long>> vDisksByNode,
         CancellationToken cancellationToken
     )
     {
         if (allowAliens)
             return await _resultsCombiner.CollectResults(
-                FindNormalOnNode(config, node, cancellationToken),
-                FindAlienOnNode(vDisksByNode, node, cancellationToken)
+                FindNormalOnNode(vDisksConfiguration, node, cancellationToken),
+                FindAlienOnNode(vDisksConfiguration, node, cancellationToken)
             );
         else
-            return await FindNormalOnNode(config, node, cancellationToken);
+            return await FindNormalOnNode(vDisksConfiguration, node, cancellationToken);
     }
 
-    private Dictionary<string, List<long>> GetVDisksByNode(ClusterConfiguration config)
+    private VDisksConfiguration GetVDisksConfiguration(ClusterConfiguration config)
     {
-        var result = config.Nodes.ToDictionary(n => n.Name, _ => new List<long>());
+        var vDisksByNode = config.Nodes.ToDictionary(n => n.Name, _ => new HashSet<long>());
+        var vDisksByDiskByNode = config.Nodes.ToDictionary(
+            n => n.Name,
+            _ => new Dictionary<string, List<long>>()
+        );
         foreach (var vDisk in config.VDisks)
         foreach (var replica in vDisk.Replicas)
         {
-            if (result.TryGetValue(replica.Node, out var vDisks))
-                vDisks.Add(vDisk.Id);
+            if (vDisksByNode.TryGetValue(replica.Node, out var vDisksHs))
+                vDisksHs.Add(vDisk.Id);
+            if (vDisksByDiskByNode.TryGetValue(replica.Node, out var vDisksByDisk))
+            {
+                if (vDisksByDisk.TryGetValue(replica.Disk, out var vDisks))
+                    vDisks.Add(vDisk.Id);
+                else
+                    vDisksByDisk.Add(replica.Disk, new List<long> { vDisk.Id });
+            }
         }
-        return result;
+        return new VDisksConfiguration(vDisksByDiskByNode, vDisksByNode);
     }
 
     private async Task<Result<List<RemovablePartition>>> FindNormalOnNode(
-        ClusterConfiguration config,
+        VDisksConfiguration vDisksConfiguration,
         ClusterConfiguration.Node node,
         CancellationToken cancellationToken
     )
     {
         // API is not disposed because it will be captured in removable partitions
         var api = _bobApiClientFactory.GetPartitionsBobApiClient(node);
-        var vDisksByDisk = GetVDisksByDisk(config, node);
+        if (!vDisksConfiguration.VDisksByDiskByNode.TryGetValue(node.Name, out var vDisksByDisk))
+            throw new ConfigurationException($"Node {node} is not presented in replicas");
         return await _resultsCombiner.CollectResults(
             vDisksByDisk,
             async kv =>
@@ -100,7 +112,7 @@ public class RemovablePartitionsFinder
     }
 
     private async Task<Result<List<RemovablePartition>>> FindAlienOnNode(
-        Dictionary<string, List<long>> vDisksByNode,
+        VDisksConfiguration vDisksConfiguration,
         ClusterConfiguration.Node node,
         CancellationToken cancellationToken
     )
@@ -108,7 +120,7 @@ public class RemovablePartitionsFinder
         // API is not disposed because it will be captured in removable partitions
         var api = _bobApiClientFactory.GetPartitionsBobApiClient(node);
         return await _resultsCombiner.CollectResults(
-            vDisksByNode.Where(kv => kv.Key != node.Name),
+            vDisksConfiguration.VDisksByNode.Where(kv => kv.Key != node.Name),
             async kv =>
                 await _resultsCombiner.CollectResults(
                     kv.Value,
@@ -194,4 +206,9 @@ public class RemovablePartitionsFinder
             remove
         );
     }
+
+    private record struct VDisksConfiguration(
+        Dictionary<string, Dictionary<string, List<long>>> VDisksByDiskByNode,
+        Dictionary<string, HashSet<long>> VDisksByNode
+    );
 }
