@@ -48,11 +48,11 @@ namespace OldPartitionsRemover.ByDateRemoving
         private async Task<Result<List<RemovablePartition>>> FindInCluster(ClusterConfiguration clusterConfig,
             DateTime threshold, CancellationToken cancellationToken)
         {
-            return (await _removablePartitionsFinder.Find(clusterConfig, _arguments.AllowAlien, cancellationToken))
-                    .Map(rms => {
-                        rms.RemoveAll(rm => rm.Timestamp >= threshold);
-                        return rms;
-                    });
+            return (await _removablePartitionsFinder.Find(clusterConfig, cancellationToken))
+                .Map(rms => {
+                    rms.RemoveAll(rm => rm.Timestamp >= threshold);
+                    return rms;
+                });
         }
 
         private async Task<Result<int>> InvokeOperations(List<RemovablePartition> ops, CancellationToken cancellationToken)

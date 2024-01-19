@@ -96,7 +96,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
         private async Task<Result<List<RemovablePartition>>> GetRemovalFunctions(
             ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node, CancellationToken cancellationToken)
         {
-            var removableResult = await _removablePartitionsFinder.FindOnNode(clusterConfiguration, node, _arguments.AllowAlien, cancellationToken);
+            var removableResult = await _removablePartitionsFinder.FindOnNode(clusterConfiguration, node, cancellationToken);
             return removableResult;
         }
     }

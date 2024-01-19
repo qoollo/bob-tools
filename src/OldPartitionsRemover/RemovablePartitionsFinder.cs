@@ -17,49 +17,48 @@ public class RemovablePartitionsFinder
 {
     private readonly ResultsCombiner _resultsCombiner;
     private readonly IBobApiClientFactory _bobApiClientFactory;
+    private readonly RemoverArguments _removerArguments;
 
     public RemovablePartitionsFinder(
         ResultsCombiner resultsCombiner,
-        IBobApiClientFactory bobApiClientFactory
+        IBobApiClientFactory bobApiClientFactory,
+        RemoverArguments removerArguments
     )
     {
         _resultsCombiner = resultsCombiner;
         _bobApiClientFactory = bobApiClientFactory;
+        _removerArguments = removerArguments;
     }
 
     public async Task<Result<List<RemovablePartition>>> Find(
         ClusterConfiguration config,
-        bool allowAliens,
         CancellationToken cancellationToken
     )
     {
         var vDisksConfiguration = GetVDisksConfiguration(config);
         return await _resultsCombiner.CollectResults(
             config.Nodes,
-            async node =>
-                await FindOnNode(vDisksConfiguration, node, allowAliens, cancellationToken)
+            async node => await FindOnNode(vDisksConfiguration, node, cancellationToken)
         );
     }
 
     public async Task<Result<List<RemovablePartition>>> FindOnNode(
         ClusterConfiguration config,
         ClusterConfiguration.Node node,
-        bool allowAliens,
         CancellationToken cancellationToken
     )
     {
         var vDisksConfiguration = GetVDisksConfiguration(config);
-        return await FindOnNode(vDisksConfiguration, node, allowAliens, cancellationToken);
+        return await FindOnNode(vDisksConfiguration, node, cancellationToken);
     }
 
     private async Task<Result<List<RemovablePartition>>> FindOnNode(
         VDisksConfiguration vDisksConfiguration,
         ClusterConfiguration.Node node,
-        bool allowAliens,
         CancellationToken cancellationToken
     )
     {
-        if (allowAliens)
+        if (_removerArguments.AllowAlien)
             return await _resultsCombiner.CollectResults(
                 FindNormalOnNode(vDisksConfiguration, node, cancellationToken),
                 FindAlienOnNode(vDisksConfiguration, node, cancellationToken)

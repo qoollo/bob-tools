@@ -1,22 +1,18 @@
 ﻿using System;
-using System.Globalization;
 using System.Text.RegularExpressions;
-using BobToolsCli;
 using CommandLine;
 using OldPartitionsRemover.Entities;
 
 namespace OldPartitionsRemover.ByDateRemoving
 {
     [Verb("by-date")]
-    public class Arguments : CommonArguments
+    public class Arguments : RemoverArguments
     {
         private static readonly Regex s_timeSpanRegex = new(@"^\-(?<span>\d+)(?<unit>[dhmy])");
 
         [Option('t', "threshold", HelpText = "Removal threshold. Can be either date, timestamp or in relative days count format, e.g. \"-3d\"", Required = true)]
         public string ThresholdString { get; set; }
 
-        [Option('a', "allow-alien", Default = false, HelpText = "Allow removal of alien partitions", Required = false)]
-        public bool AllowAlien { get; set; }
 
         public Result<DateTime> GetThreshold()
         {
