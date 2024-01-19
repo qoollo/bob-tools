@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -134,6 +134,48 @@ namespace BobApi
             await GetJson<Partition>(
                 $"vdisks/{vdiskId}/partitions/{partition}",
                 cancellationToken: cancellationToken
+            );
+
+        public async Task<BobApiResult<List<PartitionSlim>>> GetPartitionSlims(
+            string diskName,
+            long vDiskId,
+            CancellationToken cancellationToken = default
+        ) =>
+            await GetJson<List<PartitionSlim>>(
+                $"disks/{diskName}/vdisks/{vDiskId}/partitions",
+                cancellationToken
+            );
+
+        public async Task<BobApiResult<List<PartitionSlim>>> GetAlienPartitionSlims(
+            string nodeName,
+            long vDiskId,
+            CancellationToken cancellationToken = default
+        ) =>
+            await GetJson<List<PartitionSlim>>(
+                $"alien/nodes/{nodeName}/vdisks/{vDiskId}/partitions",
+                cancellationToken
+            );
+
+        public async Task<BobApiResult<bool>> DeletePartitionById(
+            string diskName,
+            long vDiskId,
+            string partitionId,
+            CancellationToken cancellationToken
+        ) =>
+            await DeleteIsOk(
+                $"disks/{diskName}/vdisks/{vDiskId}/partitions/{partitionId}",
+                cancellationToken
+            );
+
+        public async Task<BobApiResult<bool>> DeleteAlienPartitionById(
+            string nodeName,
+            long vDiskId,
+            string partitionId,
+            CancellationToken cancellationToken
+        ) =>
+            await DeleteIsOk(
+                $"alien/nodes/{nodeName}/vdisks/{vDiskId}/partitions/{partitionId}",
+                cancellationToken
             );
 
         public async Task<BobApiResult<long>> CountRecordsOnVDisk(
