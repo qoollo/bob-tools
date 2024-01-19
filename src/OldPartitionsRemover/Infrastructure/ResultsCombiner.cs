@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -30,6 +30,12 @@ namespace OldPartitionsRemover.Infrastructure
         {
             return await CombineResults(elems, new List<Y>(),
                 async (l, p) => (await f(p)).Map(part => { l.AddRange(part); return l; }));
+        }
+
+        public async Task<Result<List<T>>> CollectResults<T>(params Task<Result<List<T>>>[] fs)
+        {
+            return await CombineResults(fs, new List<T>(),
+                async (l, t) => (await t).Map(part => { l.AddRange(part); return l; }));
         }
 
         public async Task<Result<Y>> CombineResults<T, Y>(IEnumerable<T> elems, Y seed, Func<Y, T, Task<Result<Y>>> f)
