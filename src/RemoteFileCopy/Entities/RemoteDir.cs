@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net;
 
 namespace RemoteFileCopy.Entities
@@ -13,6 +13,8 @@ namespace RemoteFileCopy.Entities
 
         public IPAddress Address { get; }
         public string Path { get; }
+
+        public RemoteDir GetSubdir(string dir) => new(Address, System.IO.Path.Combine(Path, dir));
 
         public override string ToString()
         {

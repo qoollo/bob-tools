@@ -1,4 +1,5 @@
-using System;
+﻿using System;
+using BobToolsCli.Exceptions;
 
 namespace BobToolsCli.ConfigurationReading
 {
@@ -27,7 +28,10 @@ namespace BobToolsCli.ConfigurationReading
             return ConfigurationReadingResult<Y>.Ok(f(_data));
         }
 
+        public T Unwrap() => IsOk(out var d, out var e) ? d : throw new ConfigurationException(e);
+
         public static ConfigurationReadingResult<T> Ok(T data) => new(data, null);
+
         public static ConfigurationReadingResult<T> Error(string error) => new(default, error);
     }
 }

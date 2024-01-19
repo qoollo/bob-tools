@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using BobApi.BobEntities;
 using BobToolsCli;
 using BobToolsCli.Exceptions;
 using CommandLine;
@@ -15,6 +18,9 @@ namespace ClusterModifier
         [Option("dry-run", Required = false, HelpText = "Do not copy anything")]
         public bool DryRun { get; set; } = false;
 
+        [Option("test-run", Required = false, HelpText = "Special testing run with no interactions with cluster")]
+        public bool TestRun { get; set; } = false;
+
         [Option("remove-unused-replicas", Required = false, HelpText = "Remove files in unused replicas")]
         public bool RemoveUnusedReplicas { get; set; } = false;
 
@@ -27,7 +33,31 @@ namespace ClusterModifier
         [Option("copy-parallel-degree", HelpText = "Number of simultaneous copy processes", Default = 1)]
         public int CopyParallelDegree { get; set; }
 
-        public string FindRootDir(string node)
+        [Option("skip-alien-presence-check", HelpText = "Do not check for alien existence before cluster expansion", Default = false)]
+        public bool SkipAlienPresenceCheck { get; set; }
+
+        public async ValueTask<string> GetRootDir(
+            ClusterConfiguration.Node node,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var rootDir = FindRootDirOverride(node.Name);
+            if (rootDir == null)
+            {
+                var client = GetBobApiClientProvider().GetClient(node);
+                var nodeConfigResult = await client.GetNodeConfiguration(cancellationToken);
+                if (nodeConfigResult.IsOk(out var conf, out var error))
+                    rootDir = conf.RootDir;
+                else
+                    throw new ClusterStateException(
+                        $"Node {node.Name} configuration is unavailable: {error}, "
+                            + "and bob-root-dir does not contain enough information"
+                    );
+            }
+            return rootDir;
+        }
+
+        private string FindRootDirOverride(string nodeName)
         {
             if (BobRootDirOverrides.Any())
             {
@@ -37,7 +67,7 @@ namespace ClusterModifier
                     if (split.Length != 2)
                         throw new ConfigurationException("Malformed overrides argument");
 
-                    if (split[0] == node || split[0] == "*")
+                    if (split[0] == nodeName || split[0] == "*")
                         return split[1];
                 }
             }
