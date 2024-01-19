@@ -1,17 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using BobApi;
 using BobApi.BobEntities;
-using BobApi.Entities;
-using BobToolsCli;
 using BobToolsCli.BobApliClientFactories;
 using BobToolsCli.ConfigurationFinding;
-using BobToolsCli.Helpers;
 using Microsoft.Extensions.Logging;
-using OldPartitionsRemover.ByDateRemoving.Entities;
 using OldPartitionsRemover.Entities;
 using OldPartitionsRemover.Infrastructure;
 
