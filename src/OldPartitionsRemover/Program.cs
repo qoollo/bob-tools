@@ -1,20 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using BobApi;
-using BobApi.Entities;
 using BobToolsCli;
-using BobToolsCli.Helpers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using OldPartitionsRemover.Infrastructure;
 
 namespace OldPartitionsRemover
@@ -38,6 +26,7 @@ namespace OldPartitionsRemover
         {
             services.AddTransient<TRem>();
             services.AddTransient<ResultsCombiner>();
+            services.AddTransient<RemovablePartitionsFinder>();
             using var provider = services.BuildServiceProvider();
             var remover = provider.GetRequiredService<TRem>();
 

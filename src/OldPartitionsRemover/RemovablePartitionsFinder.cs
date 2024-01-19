@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using BobApi;
 using BobApi.BobEntities;
+using BobApi.Entities;
 using BobToolsCli;
 using BobToolsCli.Helpers;
 using OldPartitionsRemover.Entities;
@@ -64,7 +65,8 @@ public class RemovablePartitionsFinder
         CancellationToken cancellationToken
     )
     {
-        using var api = _bobApiProvider.GetClient(node);
+        // API is not disposed because it will be captured in removable partitions
+        var api = _bobApiProvider.GetClient(node);
         var vDisksByDisk = GetVDisksByDisk(config, node);
         return await _resultsCombiner.CollectResults(
             vDisksByDisk,
@@ -82,7 +84,8 @@ public class RemovablePartitionsFinder
         CancellationToken cancellationToken
     )
     {
-        using var api = _bobApiProvider.GetClient(node);
+        // API is not disposed because it will be captured in removable partitions
+        var api = _bobApiProvider.GetClient(node);
         return await _resultsCombiner.CollectResults(
             vDisksByNode.Where(kv => kv.Key != node.Name),
             async kv =>
@@ -111,20 +114,63 @@ public class RemovablePartitionsFinder
     private async Task<Result<List<RemovablePartition>>> FindNormal(
         BobApiClient api,
         string disk,
-        long vdisk,
-        CancellationToken cancellationToken
-    )
-    {
-        throw new NotImplementedException();
-    }
-
-    private async Task<Result<List<RemovablePartition>>> FindAlien(
-        BobApiClient api,
-        string key,
         long vDisk,
         CancellationToken cancellationToken
     )
     {
-        throw new NotImplementedException();
+        Result<List<PartitionSlim>> apiResult = await api.GetPartitionSlims(
+            disk,
+            vDisk,
+            cancellationToken
+        );
+        return apiResult.Map(
+            ps =>
+                ps.Select(
+                        p =>
+                            CreateRemovablePartition(
+                                p,
+                                async ct => await api.DeletePartitionById(disk, vDisk, p.Id, ct)
+                            )
+                    )
+                    .ToList()
+        );
+    }
+
+    private async Task<Result<List<RemovablePartition>>> FindAlien(
+        BobApiClient api,
+        string node,
+        long vDisk,
+        CancellationToken cancellationToken
+    )
+    {
+        Result<List<PartitionSlim>> apiResult = await api.GetAlienPartitionSlims(
+            node,
+            vDisk,
+            cancellationToken
+        );
+        return apiResult.Map(
+            ps =>
+                ps.Select(
+                        p =>
+                            CreateRemovablePartition(
+                                p,
+                                async ct =>
+                                    await api.DeleteAlienPartitionById(node, vDisk, p.Id, ct)
+                            )
+                    )
+                    .ToList()
+        );
+    }
+
+    private RemovablePartition CreateRemovablePartition(
+        PartitionSlim p,
+        Func<CancellationToken, Task> remove
+    )
+    {
+        return new RemovablePartition(
+            p.Id,
+            DateTimeOffset.FromUnixTimeSeconds(p.Timestamp),
+            remove
+        );
     }
 }
