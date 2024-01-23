@@ -1,14 +1,13 @@
-using System;
+﻿using System;
 using FluentAssertions;
-using NUnit.Framework;
 using OldPartitionsRemover.ByDateRemoving;
-using OldPartitionsRemover.Entities;
+using Xunit;
 
 namespace OldPartitionsRemover.UnitTests.ByDateRemoving;
 
 public class ArgumentsTests
 {
-    [Test]
+    [Fact]
     public void GetThreshold_WithEmptyThresholdString_ReturnsError()
     {
         var arguments = new Arguments();
@@ -18,7 +17,7 @@ public class ArgumentsTests
         threshold.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [Test]
+    [Fact]
     public void GetThreshold_WithGarbageString_ReturnsError()
     {
         var arguments = new Arguments()
@@ -31,10 +30,11 @@ public class ArgumentsTests
         threshold.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [TestCase("-2y", "800.00:00:00", "700.00:00:00")]
-    [TestCase("-1m", "40.00:00:00", "20.00:00:00")]
-    [TestCase("-1d", "1.01:00:00", "0.23:00:00")]
-    [TestCase("-1h", "01:10:00", "00:50:00")]
+    [Theory]
+    [InlineData("-2y", "800.00:00:00", "700.00:00:00")]
+    [InlineData("-1m", "40.00:00:00", "20.00:00:00")]
+    [InlineData("-1d", "1.01:00:00", "0.23:00:00")]
+    [InlineData("-1h", "01:10:00", "00:50:00")]
     public void GetThreshold_WithThresholdAndEps_LiesWithinInterval(string thresholdString, string minBefore, string maxBefore)
     {
         var arguments = new Arguments { ThresholdString = thresholdString };
@@ -47,7 +47,7 @@ public class ArgumentsTests
         d.Should().BeAfter(dt - TimeSpan.Parse(minBefore));
     }
 
-    [Test]
+    [Fact]
     public void GetThreshold_WithDateString_ReturnsExactThreshold()
     {
         var arguments = new Arguments
@@ -61,7 +61,7 @@ public class ArgumentsTests
         d.Should().Be(new DateTime(2020, 12, 01));
     }
 
-    [Test]
+    [Fact]
     public void GetThreshold_UnitMillisecondsTimestamp_ReturnsExactThreshold()
     {
         var arguments = new Arguments
@@ -75,7 +75,7 @@ public class ArgumentsTests
         d.Should().Be(new DateTime(2022, 4, 06, 14, 24, 35));
     }
 
-    [Test]
+    [Fact]
     public void GetThreshold_TooLargeNumberOfYears_ReturnsError()
     {
         var arguments = new Arguments

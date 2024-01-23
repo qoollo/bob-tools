@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -76,5 +76,7 @@ namespace BobApi.Entities
                     content
                 )
             );
+
+        public static implicit operator BobApiResult<T>(T data) => Ok(data);
     }
 }

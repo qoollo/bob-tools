@@ -5,33 +5,22 @@
     <Nullable>enable</Nullable>
 
     <IsPackable>false</IsPackable>
-    <CollectCoverage>true</CollectCoverage>
-    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
-    <CoverletOutput>./test-coverage/</CoverletOutput>
     <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AutoFixture" Version="4.17.0" />
-    <PackageReference Include="AutoFixture.AutoFakeItEasy" Version="4.17.0" />
-    <PackageReference Include="AutoFixture.NUnit3" Version="4.17.0" />
     <PackageReference Include="FakeItEasy" Version="7.2.0" />
     <PackageReference Include="FluentAssertions" Version="6.3.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />
-    <PackageReference Include="NUnit" Version="3.13.2" />
-    <PackageReference Include="NUnit3TestAdapter" Version="4.0.0" />
     <PackageReference Include="coverlet.collector" Version="3.1.0" />
-    <PackageReference Include="coverlet.msbuild" Version="3.1.0">
+    <PackageReference Include="xunit" Version="2.6.6" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.6">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="ReportGenerator" Version="5.0.2" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\OldPartitionsRemover\OldPartitionsRemover.csproj" />
   </ItemGroup>
-  <Target Name="GenerateHtmlCoverageReport" AfterTargets="GenerateCoverageResultAfterTest">
-    <ReportGenerator ReportFiles="@(CoverletReport)" TargetDirectory="./test-coverage/html-coverage-report" />
-  </Target>
 </Project>

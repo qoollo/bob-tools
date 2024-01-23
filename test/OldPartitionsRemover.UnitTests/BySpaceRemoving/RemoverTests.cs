@@ -1,290 +1,200 @@
-using System.Collections.Generic;
-using System.Threading;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
-using AutoFixture;
-using AutoFixture.AutoFakeItEasy;
-using AutoFixture.NUnit3;
-using BobApi;
-using BobApi.BobEntities;
 using BobApi.Entities;
-using BobToolsCli;
-using BobToolsCli.BobApliClientFactories;
-using BobToolsCli.ConfigurationFinding;
-using BobToolsCli.ConfigurationReading;
 using FakeItEasy;
-using FluentAssertions;
-using NUnit.Framework;
+using Microsoft.Extensions.Logging;
 using OldPartitionsRemover.BySpaceRemoving;
-using OldPartitionsRemover.UnitTests.Customizations;
+using Xunit;
 
 namespace OldPartitionsRemover.UnitTests.BySpaceRemoving;
 
-public class RemoverTests
+public class RemoverTests : GenericRemoverTests
 {
-    [Test, AD]
-    public async Task RemoveOldPartitions_WithoutConfig_ReturnsError(
-        IConfigurationFinder configurationFinder,
-        Remover sut)
+    private readonly Arguments _arguments = new();
+
+    public RemoverTests()
     {
-        A.CallTo(() => configurationFinder.FindClusterConfiguration(A<bool>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(ConfigurationReadingResult<ClusterConfiguration>.Error(""));
-
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
-
-        result.IsOk(out var _, out var _).Should().BeFalse();
+        _arguments.DelayMilliseconds = 0; // TODO Test this
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithEnoughSpace_ReturnsZeroRemoved(
-        ISpaceBobApiClient spaceBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemoveOldPartitions_WithoutConfig_ReturnsError()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Ok(2000));
+        ConfigurationReadingReturnsError("error");
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        result.IsOk(out var r, out var _).Should().BeTrue();
-
-        r.Should().Be(0);
+        AssertRunFailed();
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithConnectionError_ReturnsError(
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithEnoughSpace_ReturnsZeroRemoved()
     {
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(null, default))
-            .WithAnyArguments().Returns(BobApiResult<List<string>>.Unavailable());
+        EnoughFreeSpace();
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        result.IsOk(out var _, out var e).Should().BeFalse();
-        e.Should().ContainEquivalentOf("Unavailable");
+        AssertRemovedCount(0);
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithConnectionErrorAndErrorSkip_ReturnsOk(
-        Arguments arguments,
-        ISpaceBobApiClient spaceBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithConnectionError_ReturnsError()
     {
-        arguments.ContinueOnError = true;
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Unavailable());
+        NotEnoughFreeSpace();
+        PartitionSlimsReturns(BobApiResult<List<PartitionSlim>>.Unavailable());
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        result.IsOk(out var _, out var e).Should().BeTrue();
+        AssertRunFailed("Unavailable");
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithNotEnoughSpace_RemovesSinglePartition(
-        ISpaceBobApiClient spaceBobApiClient,
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithConnectionErrorAndErrorSkip_ReturnsOk()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Ok(500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 100 }));
+        NotEnoughFreeSpace();
+        ContinueOnErrorIs(true);
+        FreeSpaceReturns(BobApiResult<ulong>.Unavailable());
+        NumberOfReturnedPartitionsIs(1);
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(0, 100, A<CancellationToken>.Ignored))
-            .MustHaveHappened();
+        AssertRunSucceeded();
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithNotEnoughSpace_ReturnsOne(
-        ISpaceBobApiClient spaceBobApiClient,
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithNotEnoughSpace_RemovesSinglePartition()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Ok(500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 100 }));
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(default, 0, default)).WithAnyArguments()
-            .Returns(BobApiResult<bool>.Ok(true));
+        NotEnoughFreeSpace();
+        NumberOfReturnedPartitionsIs(1);
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
-        result.IsOk(out var count, out var _);
+        await Run();
 
-        count.Should().Be(1);
+        AssertDeleteCalledExactTimes(1);
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithMultiplePartitions_RemovesUntilSpaceIsEnough(
-       ISpaceBobApiClient spaceBobApiClient,
-       IPartitionsBobApiClient partitionsBobApiClient,
-       Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithNotEnoughSpace_ReturnsOne()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .ReturnsNextFromSequence(BobApiResult<ulong>.Ok(500), BobApiResult<ulong>.Ok(1500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 200 }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "2", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 100 }));
+        NotEnoughFreeSpace();
+        NumberOfReturnedPartitionsIs(1);
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(0, 200, A<CancellationToken>.Ignored))
-            .MustNotHaveHappened();
+        AssertRemovedCount(1);
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithMultiplePartitions_ReturnsRemovedCount(
-       ISpaceBobApiClient spaceBobApiClient,
-       IPartitionsBobApiClient partitionsBobApiClient,
-       Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithMultiplePartitions_RemovesUntilSpaceIsEnough()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .ReturnsNextFromSequence(BobApiResult<ulong>.Ok(500), BobApiResult<ulong>.Ok(900), BobApiResult<ulong>.Ok(1500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2", "3" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 200 }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "2", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 150 }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "3", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 100 }));
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(default, 0, default)).WithAnyArguments()
-            .Returns(BobApiResult<bool>.Ok(true));
+        FreeSpaceIsEnoughtAfterDeletions(1);
+        NumberOfReturnedPartitionsIs(2);
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
-        result.IsOk(out var count, out var _);
+        await Run();
 
-        count.Should().Be(2);
+        AssertDeleteCalledExactTimes(1);
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithErrorInPartitionsCall_ReturnsError(
-        ISpaceBobApiClient spaceBobApiClient,
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithMultiplePartitions_ReturnsRemovedCount()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Ok(500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Unavailable());
+        FreeSpaceIsEnoughtAfterDeletions(2);
+        NumberOfReturnedPartitionsIs(3);
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        result.IsOk(out var _, out var err).Should().BeFalse();
-        err.Should().ContainEquivalentOf("Unavailable");
+        AssertRemovedCount(2);
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithErrorInSinglePartitionCall_ReturnsError(
-        ISpaceBobApiClient spaceBobApiClient,
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithErrorInDeleteCall_ReturnsError()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Ok(500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Unavailable());
+        NotEnoughFreeSpace();
+        NumberOfReturnedPartitionsIs(1);
+        DeletePartitionReturns(BobApiResult<bool>.Unavailable());
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        result.IsOk(out var _, out var err).Should().BeFalse();
-        err.Should().ContainEquivalentOf("Unavailable");
+        AssertRunFailed("Unavailable");
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithErrorInDeleteCall_ReturnsError(
-        ISpaceBobApiClient spaceBobApiClient,
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithErrorInFirstDeletePartitionCallAndSkipErrors_ReturnsOk()
     {
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Ok(500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 200 }));
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(0, 200, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<bool>.Unavailable());
+        ContinueOnErrorIs(true);
+        NotEnoughFreeSpace();
+        NumberOfReturnedPartitionsIs(2);
+        DeletePartitionReturns(BobApiResult<bool>.Unavailable());
+        DeletePartitionReturns(true);
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        result.IsOk(out var _, out var err).Should().BeFalse();
-        err.Should().ContainEquivalentOf("Unavailable");
+        AssertRunSucceeded();
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithErrorInFirstPartitionCallAndSkipErrors_ReturnsOk(
-        Arguments arguments,
-        ISpaceBobApiClient spaceBobApiClient,
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithOccupiedSpaceFlag_RemovesUntilSpaceIsSmallerThanThreshold()
     {
-        arguments.ContinueOnError = true;
-        A.CallTo(() => spaceBobApiClient.GetFreeSpaceBytes(A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<ulong>.Ok(500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Unavailable());
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "2", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 300 }));
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(0, 200, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<bool>.Unavailable());
+        OccupiedSpaceIsLowAfterDeletions(1);
+        PartitionSlimsReturns(new PartitionSlim(), new PartitionSlim());
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
+        await Run();
 
-        result.IsOk(out var _, out var err).Should().BeTrue();
+        AssertDeleteCalledExactTimes(1);
     }
 
-    [Test, AD]
-    public async Task RemovePartitionsBySpace_WithOccupiedSpaceFlag_RemovesUntilSpaceIsSmallerThanThreshold(
-        Arguments arguments,
-        ISpaceBobApiClient spaceBobApiClient,
-        IPartitionsBobApiClient partitionsBobApiClient,
-        Remover sut)
+    private async Task Run()
     {
-        arguments.ThresholdTypeString = "occupied";
-        A.CallTo(() => spaceBobApiClient.GetOccupiedSpaceBytes(A<CancellationToken>.Ignored))
-            .ReturnsNextFromSequence(BobApiResult<ulong>.Ok(1500), BobApiResult<ulong>.Ok(500));
-        A.CallTo(() => partitionsBobApiClient.GetPartitions(A<ClusterConfiguration.VDisk>.Ignored, A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<List<string>>.Ok(new List<string> { "1", "2" }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "1", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 200 }));
-        A.CallTo(() => partitionsBobApiClient.GetPartition(0, "2", A<CancellationToken>.Ignored))
-            .Returns(BobApiResult<Partition>.Ok(new Partition { Timestamp = 100 }));
+        var remover = new Remover(
+            _arguments,
+            _configurationFinder,
+            _bobApiClientFactory,
+            _resultsCombiner,
+            _removablePartitionsFinder,
+            _loggerFactory.CreateLogger<Remover>()
+        );
 
-        var result = await sut.RemovePartitionsBySpace(CancellationToken.None);
-
-        A.CallTo(() => partitionsBobApiClient.DeletePartitionsByTimestamp(0, 200, A<CancellationToken>.Ignored))
-            .MustNotHaveHappened();
+        _result = await remover.RemovePartitionsBySpace(default);
     }
 
-    private class ADAttribute : AutoDataAttribute
+    private void EnoughFreeSpace()
     {
-        public ADAttribute() : base(() =>
-        {
-            var fixture = new Fixture();
-            fixture.Customize(new FrozenApiClientsCustomization());
-            fixture.Customize(new SingleNodeConfigCustomization());
-            fixture.Customize(new FrozenArgumentsCustomization<Arguments>(args =>
-            {
-                args.DelayMilliseconds = 0;
-                args.ThresholdString = "1000B";
-                args.ContinueOnError = false;
-                args.ThresholdTypeString = "free";
-            }));
+        _arguments.ThresholdString = "1000B";
+        _arguments.ThresholdTypeString = "free";
+        FreeSpaceReturns(2000);
+    }
 
-            return fixture;
-        })
-        { }
+    private void NotEnoughFreeSpace()
+    {
+        _arguments.ThresholdString = "1000B";
+        _arguments.ThresholdTypeString = "free";
+        FreeSpaceReturns(500);
+    }
+
+    private void FreeSpaceIsEnoughtAfterDeletions(int deletionsRequired)
+    {
+        _arguments.ThresholdString = "1000B";
+        _arguments.ThresholdTypeString = "free";
+        var responses = Enumerable
+            .Range(0, deletionsRequired)
+            .Select(_ => 500ul)
+            .Concat(new[] { 2000ul });
+        FreeSpaceReturns(responses.ToArray());
+    }
+
+    private void OccupiedSpaceIsLowAfterDeletions(int deletionsRequired)
+    {
+        _arguments.ThresholdString = "1000B";
+        _arguments.ThresholdTypeString = "occupied";
+        var responses = Enumerable
+            .Range(0, deletionsRequired)
+            .Select(_ => 2000ul)
+            .Concat(new[] { 500ul });
+        OccupiedSpaceReturns(responses.ToArray());
+    }
+
+    protected override RemoverArguments GetArguments()
+    {
+        return _arguments;
     }
 }

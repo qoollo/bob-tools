@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace BobToolsCli.ConfigurationReading
 {
@@ -28,6 +28,9 @@ namespace BobToolsCli.ConfigurationReading
         }
 
         public static ConfigurationReadingResult<T> Ok(T data) => new(data, null);
+
         public static ConfigurationReadingResult<T> Error(string error) => new(default, error);
+
+        public static implicit operator ConfigurationReadingResult<T>(T data) => Ok(data);
     }
 }
