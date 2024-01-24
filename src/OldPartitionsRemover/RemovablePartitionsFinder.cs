@@ -96,16 +96,15 @@ public class RemovablePartitionsFinder
         CancellationToken cancellationToken
     )
     {
-        // API is not disposed because it will be captured in removable partitions
-        var api = _bobApiClientFactory.GetPartitionsBobApiClient(node);
         if (!vDisksConfiguration.VDisksByDiskByNode.TryGetValue(node.Name, out var vDisksByDisk))
             throw new ConfigurationException($"Node {node} is not presented in replicas");
+        var getApi = CreateGetApi(node);
         return await _resultsCombiner.CollectResults(
             vDisksByDisk,
             async kv =>
                 await _resultsCombiner.CollectResults(
                     kv.Value,
-                    async vDisk => await FindNormal(api, kv.Key, vDisk, cancellationToken)
+                    async vDisk => await FindNormal(getApi, kv.Key, vDisk, cancellationToken)
                 )
         );
     }
@@ -116,14 +115,13 @@ public class RemovablePartitionsFinder
         CancellationToken cancellationToken
     )
     {
-        // API is not disposed because it will be captured in removable partitions
-        var api = _bobApiClientFactory.GetPartitionsBobApiClient(node);
+        var getApi = CreateGetApi(node);
         return await _resultsCombiner.CollectResults(
             vDisksConfiguration.VDisksByNode.Where(kv => kv.Key != node.Name),
             async kv =>
                 await _resultsCombiner.CollectResults(
                     kv.Value,
-                    async vDisk => await FindAlien(api, kv.Key, vDisk, cancellationToken)
+                    async vDisk => await FindAlien(getApi, kv.Key, vDisk, cancellationToken)
                 )
         );
     }
@@ -144,12 +142,13 @@ public class RemovablePartitionsFinder
     }
 
     private async Task<Result<List<RemovablePartition>>> FindNormal(
-        IPartitionsBobApiClient api,
+        GetApi getApi,
         string disk,
         long vDisk,
         CancellationToken cancellationToken
     )
     {
+        using var api = getApi();
         Result<List<PartitionSlim>> apiResult = await api.GetPartitionSlims(
             disk,
             vDisk,
@@ -161,7 +160,8 @@ public class RemovablePartitionsFinder
                         p =>
                             CreateRemovablePartition(
                                 p,
-                                async ct => await api.DeletePartitionById(disk, vDisk, p.Id, ct)
+                                getApi,
+                                async (a, ct) => await a.DeletePartitionById(disk, vDisk, p.Id, ct)
                             )
                     )
                     .ToList()
@@ -169,12 +169,13 @@ public class RemovablePartitionsFinder
     }
 
     private async Task<Result<List<RemovablePartition>>> FindAlien(
-        IPartitionsBobApiClient api,
+        GetApi getApi,
         string node,
         long vDisk,
         CancellationToken cancellationToken
     )
     {
+        using var api = getApi();
         Result<List<PartitionSlim>> apiResult = await api.GetAlienPartitionSlims(
             node,
             vDisk,
@@ -186,8 +187,9 @@ public class RemovablePartitionsFinder
                         p =>
                             CreateRemovablePartition(
                                 p,
-                                async ct =>
-                                    await api.DeleteAlienPartitionById(node, vDisk, p.Id, ct)
+                                getApi,
+                                async (a, ct) =>
+                                    await a.DeleteAlienPartitionById(node, vDisk, p.Id, ct)
                             )
                     )
                     .ToList()
@@ -196,18 +198,30 @@ public class RemovablePartitionsFinder
 
     private RemovablePartition CreateRemovablePartition(
         PartitionSlim p,
-        RemoveRemovablePartition remove
+        GetApi getApi,
+        Func<IPartitionsBobApiClient, CancellationToken, Task<BobApiResult<bool>>> remove
     )
     {
         return new RemovablePartition(
             p.Id,
             DateTimeOffset.FromUnixTimeSeconds(p.Timestamp),
-            remove
+            async ct =>
+            {
+                using var api = getApi();
+                return await remove(api, ct);
+            }
         );
+    }
+
+    private GetApi CreateGetApi(ClusterConfiguration.Node node)
+    {
+        return () => _bobApiClientFactory.GetPartitionsBobApiClient(node);
     }
 
     private record struct VDisksConfiguration(
         Dictionary<string, Dictionary<string, List<long>>> VDisksByDiskByNode,
         Dictionary<string, HashSet<long>> VDisksByNode
     );
+
+    private delegate IPartitionsBobApiClient GetApi();
 }

@@ -1,12 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using BobApi.BobEntities;
 using BobApi.Entities;
 
 namespace BobApi
 {
-    public interface IPartitionsBobApiClient
+    public interface IPartitionsBobApiClient : IDisposable
     {
         Task<BobApiResult<List<PartitionSlim>>> GetPartitionSlims(
             string diskName,
