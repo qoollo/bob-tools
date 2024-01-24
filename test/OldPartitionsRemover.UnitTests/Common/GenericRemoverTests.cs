@@ -117,19 +117,17 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
             _occupiedSpaceResults.Add(v);
     }
 
-    protected void DeletePartitionReturns(BobApiResult<bool> response)
-    {
+    protected void DeletePartitionReturns(BobApiResult<bool> response) =>
         _deletePartitionByIdResults.Add(response);
-    }
 
     protected void NumberOfReturnedPartitionsIs(int count) =>
-        PartitionSlimsReturns(
-            Enumerable.Range(0, count).Select(_ => new PartitionSlim()).ToArray()
+        PartitionSlimsReturnsResponse(
+            Enumerable.Range(0, count).Select(_ => CreatePartitionSlim()).ToList()
         );
 
     protected void NumberOfReturnedAlienPartitionsIs(int count) =>
-        AlienPartitionSlimsReturns(
-            Enumerable.Range(0, count).Select(_ => new PartitionSlim()).ToArray()
+        AlienPartitionSlimsReturnsResponse(
+            Enumerable.Range(0, count).Select(_ => CreatePartitionSlim()).ToList()
         );
 
     protected void PartitionSlimsReturns(params PartitionSlim[] partitionSlims) =>
@@ -182,33 +180,38 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
         BobApiResult<List<PartitionSlim>> response
     )
     {
-        response = response.Map(
-            l =>
-                l.All(p => p.Id != null)
-                    ? l
-                    : l.Select(
-                            p =>
-                                new PartitionSlim
-                                {
-                                    Id = p.Id ?? Guid.NewGuid().ToString(),
-                                    Timestamp = p.Timestamp
-                                }
-                        )
-                        .ToList()
+        response = UpdatePartitions(
+            response,
+            p => UpdatePartitionSlim(p, id: p.Id ?? Guid.NewGuid().ToString())
         );
+
         if (_allPartitionsDefaultTimestamp != null)
-            response = response.Map(
-                l =>
-                    l.Select(
-                            p =>
-                                new PartitionSlim
-                                {
-                                    Id = p.Id,
-                                    Timestamp = _allPartitionsDefaultTimestamp.Value
-                                }
-                        )
-                        .ToList()
+        {
+            response = UpdatePartitions(
+                response,
+                p => UpdatePartitionSlim(p, timestamp: _allPartitionsDefaultTimestamp)
             );
+        }
         return response;
+    }
+
+    private BobApiResult<List<PartitionSlim>> UpdatePartitions(
+        BobApiResult<List<PartitionSlim>> r,
+        Func<PartitionSlim, PartitionSlim> update
+    ) => r.Map(l => l.Select(update).ToList());
+
+    private PartitionSlim CreatePartitionSlim() => new PartitionSlim();
+
+    private PartitionSlim UpdatePartitionSlim(
+        PartitionSlim p,
+        string? id = null,
+        long? timestamp = null
+    )
+    {
+        return new PartitionSlim
+        {
+            Id = id ?? p.Id,
+            Timestamp = timestamp != null ? timestamp.Value : p.Timestamp
+        };
     }
 }
