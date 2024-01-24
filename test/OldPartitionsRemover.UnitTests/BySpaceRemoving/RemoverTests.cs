@@ -42,7 +42,7 @@ public class RemoverTests : GenericRemoverTests
     public async Task RemovePartitionsBySpace_WithConnectionError_ReturnsError()
     {
         NotEnoughFreeSpace();
-        PartitionSlimsReturns(BobApiResult<List<PartitionSlim>>.Unavailable());
+        PartitionSlimsReturnsResponse(BobApiResult<List<PartitionSlim>>.Unavailable());
 
         await Run();
 
@@ -154,6 +154,34 @@ public class RemoverTests : GenericRemoverTests
         await Run();
 
         AssertAlienDeleteHappened();
+    }
+
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithAlienAndNonAlienPartitions_RemoveOldest()
+    {
+        AllowAlienIs(true);
+        ConfigurationReadingReturnsTwoNodes();
+        FreeSpaceIsEnoughtAfterDeletions(1);
+        PartitionSlimsReturns(new PartitionSlim { Timestamp = 200 });
+        AlienPartitionSlimsReturns(new PartitionSlim { Timestamp = 100 });
+
+        await Run();
+
+        AssertAlienDeleteHappened();
+        AssertDeleteNeverHappened();
+    }
+
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithAlienDisabled_DoesNotRemoveAlien()
+    {
+        AllowAlienIs(false);
+        ConfigurationReadingReturnsTwoNodes();
+        NotEnoughFreeSpace();
+        NumberOfReturnedAlienPartitionsIs(1);
+
+        await Run();
+
+        AssertAlienDeleteNeverHappened();
     }
 
     private async Task Run()

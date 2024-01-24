@@ -50,6 +50,9 @@ public abstract class ResultAssertionsChecker
     protected void AssertAlienDeleteHappened(string? partitionId = null) =>
         DeleteAlienCall(partitionId: partitionId).MustHaveHappened();
 
+    protected void AssertAlienDeleteNeverHappened(string? partitionId = null) =>
+        DeleteAlienCall(partitionId: partitionId).MustNotHaveHappened();
+
     private IReturnValueArgumentValidationConfiguration<Task<BobApiResult<bool>>> DeleteCall(
         string? partitionId = null
     )

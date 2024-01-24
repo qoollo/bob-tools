@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BobApi.BobEntities;
@@ -97,7 +98,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
             ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node, CancellationToken cancellationToken)
         {
             var removableResult = await _removablePartitionsFinder.FindOnNode(clusterConfiguration, node, cancellationToken);
-            return removableResult;
+            return removableResult.Map(l => l.OrderBy(p => p.Timestamp).ToList());
         }
     }
 }

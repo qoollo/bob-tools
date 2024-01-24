@@ -36,6 +36,7 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
     private readonly List<BobApiResult<bool>> _deletePartitionByIdResults = new();
     private readonly List<BobApiResult<ulong>> _freeSpaceResults = new();
     private readonly List<BobApiResult<ulong>> _occupiedSpaceResults = new();
+    private long? _allPartitionsDefaultTimestamp = null;
 
     protected abstract RemoverArguments GetArguments();
 
@@ -43,12 +44,26 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
 
     public GenericRemoverTests()
     {
-        A.CallTo(() => _partitionsBobApiClient.GetPartitionSlims(default, default, default))
+        A.CallTo<Task<BobApiResult<List<PartitionSlim>>>>(
+                () => _partitionsBobApiClient.GetPartitionSlims(default, default, default)
+            )
             .WithAnyArguments()
-            .ReturnsLazily(CreateReturner(_partitionSlimsResults, new List<PartitionSlim>()));
+            .ReturnsLazily(
+                CreateReturner(
+                    _partitionSlimsResults,
+                    new List<PartitionSlim>(),
+                    ApplyDefaultValues
+                )
+            );
         A.CallTo(() => _partitionsBobApiClient.GetAlienPartitionSlims(default, default, default))
             .WithAnyArguments()
-            .ReturnsLazily(CreateReturner(_alienPartitionSlimsResults, new List<PartitionSlim>()));
+            .ReturnsLazily(
+                CreateReturner(
+                    _alienPartitionSlimsResults,
+                    new List<PartitionSlim>(),
+                    ApplyDefaultValues
+                )
+            );
         A.CallTo(_partitionsBobApiClient)
             .WithReturnType<Task<BobApiResult<bool>>>()
             .ReturnsLazily(CreateReturner(_deletePartitionByIdResults, true));
@@ -118,19 +133,22 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
         );
 
     protected void PartitionSlimsReturns(params PartitionSlim[] partitionSlims) =>
-        PartitionSlimsReturns(PreprocessPartitionSlims(partitionSlims));
+        PartitionSlimsReturnsResponse(partitionSlims.ToList());
 
     protected void AlienPartitionSlimsReturns(params PartitionSlim[] partitionSlims) =>
-        AlienPartitionSlimsReturns(PreprocessPartitionSlims(partitionSlims));
+        AlienPartitionSlimsReturnsResponse(partitionSlims.ToList());
 
-    protected void PartitionSlimsReturns(BobApiResult<List<PartitionSlim>> response) =>
+    protected void PartitionSlimsReturnsResponse(BobApiResult<List<PartitionSlim>> response) =>
         _partitionSlimsResults.Add(response);
 
-    protected void AlienPartitionSlimsReturns(BobApiResult<List<PartitionSlim>> response) =>
+    protected void AlienPartitionSlimsReturnsResponse(BobApiResult<List<PartitionSlim>> response) =>
         _alienPartitionSlimsResults.Add(response);
 
     protected void FreeSpaceReturns(BobApiResult<ulong> response) =>
         _freeSpaceResults.Add(response);
+
+    protected void SetAllPartitionsTimestamp(long timestamp) =>
+        _allPartitionsDefaultTimestamp = timestamp;
 
     protected override Result<int> GetResult()
     {
@@ -142,28 +160,55 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
         return _partitionsBobApiClient;
     }
 
-    private Func<T> CreateReturner<T>(List<T> sequence, T def)
+    private Func<T> CreateReturner<T>(List<T> sequence, T def, Func<T, T>? postprocess = null)
     {
         var ind = 0;
         return () =>
         {
+            var result = def;
+
             if (ind < sequence.Count)
-                return sequence[ind++];
+                result = sequence[ind++];
             else if (sequence.Count > 0) // Return last if any exist
-                return sequence.Last();
-            else
-                return def;
+                result = sequence.Last();
+
+            if (postprocess != null)
+                result = postprocess(result);
+            return result;
         };
     }
 
-    private static List<PartitionSlim> PreprocessPartitionSlims(PartitionSlim[] partitionSlims)
+    private BobApiResult<List<PartitionSlim>> ApplyDefaultValues(
+        BobApiResult<List<PartitionSlim>> response
+    )
     {
-        return partitionSlims
-            .Select(p =>
-            {
-                p.Id ??= Guid.NewGuid().ToString();
-                return p;
-            })
-            .ToList();
+        response = response.Map(
+            l =>
+                l.All(p => p.Id != null)
+                    ? l
+                    : l.Select(
+                            p =>
+                                new PartitionSlim
+                                {
+                                    Id = p.Id ?? Guid.NewGuid().ToString(),
+                                    Timestamp = p.Timestamp
+                                }
+                        )
+                        .ToList()
+        );
+        if (_allPartitionsDefaultTimestamp != null)
+            response = response.Map(
+                l =>
+                    l.Select(
+                            p =>
+                                new PartitionSlim
+                                {
+                                    Id = p.Id,
+                                    Timestamp = _allPartitionsDefaultTimestamp.Value
+                                }
+                        )
+                        .ToList()
+            );
+        return response;
     }
 }

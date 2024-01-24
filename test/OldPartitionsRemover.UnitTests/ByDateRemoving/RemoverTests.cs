@@ -1,12 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
-using BobApi;
-using BobApi.BobEntities;
 using BobApi.Entities;
-using FakeItEasy;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using OldPartitionsRemover.ByDateRemoving;
 using Xunit;
@@ -15,6 +10,8 @@ namespace OldPartitionsRemover.UnitTests.ByDateRemoving;
 
 public class RemoverTests : GenericRemoverTests
 {
+    private static readonly DateTimeOffset s_exampleDateTimeOffset =
+        new(2000, 01, 01, 0, 0, 0, TimeSpan.Zero);
     private readonly Arguments _arguments = new();
 
     public RemoverTests()
@@ -35,7 +32,7 @@ public class RemoverTests : GenericRemoverTests
     [Fact]
     public async Task RemoveOldPartitions_WithoutConnection_ReturnsError()
     {
-        PartitionSlimsReturns(BobApiResult<List<PartitionSlim>>.Unavailable());
+        PartitionSlimsReturnsResponse(BobApiResult<List<PartitionSlim>>.Unavailable());
 
         await Run();
 
@@ -46,7 +43,7 @@ public class RemoverTests : GenericRemoverTests
     public async Task RemoveOldPartitions_WithoutConnectionWithContinueOnErrorFlag_ReturnsOk()
     {
         ContinueOnErrorIs(true);
-        PartitionSlimsReturns(BobApiResult<List<PartitionSlim>>.Unavailable());
+        PartitionSlimsReturnsResponse(BobApiResult<List<PartitionSlim>>.Unavailable());
 
         await Run();
 
@@ -110,7 +107,7 @@ public class RemoverTests : GenericRemoverTests
     }
 
     [Fact]
-    public async Task RemoveOldPartitions_WithSuccessfullDeletion_ReturnsTrue()
+    public async Task RemoveOldPartitions_WithSuccessfullDeletion_ReturnsNumberOfDeletedPartitions()
     {
         NumberOfReturnedPartitionsIs(2);
         EveryPartitionIsOutdated();
@@ -118,6 +115,32 @@ public class RemoverTests : GenericRemoverTests
         await Run();
 
         AssertRemovedCount(2);
+    }
+
+    [Fact]
+    public async Task RemoveOldPartitions_WithAlienEnabled_DeletesAlienPartitions()
+    {
+        AllowAlienIs(true);
+        ConfigurationReadingReturnsTwoNodes();
+        NumberOfReturnedAlienPartitionsIs(1);
+        EveryPartitionIsOutdated();
+
+        await Run();
+
+        AssertAlienDeleteHappened();
+    }
+
+    [Fact]
+    public async Task RemoveOldPartitions_WithAlienEnabledAndAliensNotOld_DoesNotDeleteAliens()
+    {
+        AllowAlienIs(true);
+        ConfigurationReadingReturnsTwoNodes();
+        NumberOfReturnedAlienPartitionsIs(1);
+        EveryPartitionIsActual();
+
+        await Run();
+
+        AssertAlienDeleteNeverHappened();
     }
 
     private async Task Run()
@@ -133,8 +156,19 @@ public class RemoverTests : GenericRemoverTests
         _result = await remover.RemoveOldPartitions(default);
     }
 
-    private void EveryPartitionIsOutdated() =>
-        _arguments.ThresholdString = DateTime.MaxValue.ToString();
+    private void EveryPartitionIsOutdated()
+    {
+        var ts = s_exampleDateTimeOffset.ToUnixTimeSeconds() - 1;
+        _arguments.ThresholdString = s_exampleDateTimeOffset.ToString();
+        SetAllPartitionsTimestamp(ts);
+    }
+
+    private void EveryPartitionIsActual()
+    {
+        var ts = s_exampleDateTimeOffset.ToUnixTimeSeconds() + 1;
+        _arguments.ThresholdString = s_exampleDateTimeOffset.ToString();
+        SetAllPartitionsTimestamp(ts);
+    }
 
     protected override RemoverArguments GetArguments()
     {
