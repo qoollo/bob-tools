@@ -47,6 +47,9 @@ public abstract class ResultAssertionsChecker
     protected void AssertDeleteNeverHappened(string? partitionId = null) =>
         DeleteCall(partitionId: partitionId).MustNotHaveHappened();
 
+    protected void AssertAlienDeleteHappened(string? partitionId = null) =>
+        DeleteAlienCall(partitionId: partitionId).MustHaveHappened();
+
     private IReturnValueArgumentValidationConfiguration<Task<BobApiResult<bool>>> DeleteCall(
         string? partitionId = null
     )
@@ -67,6 +70,34 @@ public abstract class ResultAssertionsChecker
                 () =>
                     GetPartitionsBobApiClientMock()
                         .DeletePartitionById(
+                            A<string>.Ignored,
+                            A<long>.Ignored,
+                            A<string>.Ignored,
+                            A<CancellationToken>.Ignored
+                        )
+            );
+    }
+
+    private IReturnValueArgumentValidationConfiguration<Task<BobApiResult<bool>>> DeleteAlienCall(
+        string? partitionId = null
+    )
+    {
+        if (partitionId != null)
+            return A.CallTo(
+                () =>
+                    GetPartitionsBobApiClientMock()
+                        .DeleteAlienPartitionById(
+                            A<string>.Ignored,
+                            A<long>.Ignored,
+                            partitionId,
+                            A<CancellationToken>.Ignored
+                        )
+            );
+        else
+            return A.CallTo(
+                () =>
+                    GetPartitionsBobApiClientMock()
+                        .DeleteAlienPartitionById(
                             A<string>.Ignored,
                             A<long>.Ignored,
                             A<string>.Ignored,

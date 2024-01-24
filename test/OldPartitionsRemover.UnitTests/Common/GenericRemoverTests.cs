@@ -32,6 +32,7 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
         ConfigurationReadingResult<ClusterConfiguration>
     > _configurationReadingResults = new();
     private readonly List<BobApiResult<List<PartitionSlim>>> _partitionSlimsResults = new();
+    private readonly List<BobApiResult<List<PartitionSlim>>> _alienPartitionSlimsResults = new();
     private readonly List<BobApiResult<bool>> _deletePartitionByIdResults = new();
     private readonly List<BobApiResult<ulong>> _freeSpaceResults = new();
     private readonly List<BobApiResult<ulong>> _occupiedSpaceResults = new();
@@ -42,9 +43,12 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
 
     public GenericRemoverTests()
     {
-        A.CallTo(_partitionsBobApiClient)
-            .WithReturnType<Task<BobApiResult<List<PartitionSlim>>>>()
+        A.CallTo(() => _partitionsBobApiClient.GetPartitionSlims(default, default, default))
+            .WithAnyArguments()
             .ReturnsLazily(CreateReturner(_partitionSlimsResults, new List<PartitionSlim>()));
+        A.CallTo(() => _partitionsBobApiClient.GetAlienPartitionSlims(default, default, default))
+            .WithAnyArguments()
+            .ReturnsLazily(CreateReturner(_alienPartitionSlimsResults, new List<PartitionSlim>()));
         A.CallTo(_partitionsBobApiClient)
             .WithReturnType<Task<BobApiResult<bool>>>()
             .ReturnsLazily(CreateReturner(_deletePartitionByIdResults, true));
@@ -76,10 +80,15 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
 
     protected void ContinueOnErrorIs(bool value) => GetArguments().ContinueOnError = value;
 
+    protected void AllowAlienIs(bool value) => GetArguments().AllowAlien = value;
+
     protected void ConfigurationReadingReturnsError(string error) =>
         _configurationReadingResults.Add(
             ConfigurationReadingResult<ClusterConfiguration>.Error(error)
         );
+
+    protected void ConfigurationReadingReturnsTwoNodes() =>
+        _configurationReadingResults.Add(TestConstants.TwoNodesClusterConfiguration);
 
     protected void FreeSpaceReturns(params ulong[] values)
     {
@@ -103,22 +112,35 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
             Enumerable.Range(0, count).Select(_ => new PartitionSlim()).ToArray()
         );
 
-    protected void PartitionSlimsReturns(params PartitionSlim[] partitionSlims) =>
-        PartitionSlimsReturns(
-            partitionSlims
-                .Select(p =>
-                {
-                    p.Id ??= Guid.NewGuid().ToString();
-                    return p;
-                })
-                .ToList()
+    protected void NumberOfReturnedAlienPartitionsIs(int count) =>
+        AlienPartitionSlimsReturns(
+            Enumerable.Range(0, count).Select(_ => new PartitionSlim()).ToArray()
         );
+
+    protected void PartitionSlimsReturns(params PartitionSlim[] partitionSlims) =>
+        PartitionSlimsReturns(PreprocessPartitionSlims(partitionSlims));
+
+    protected void AlienPartitionSlimsReturns(params PartitionSlim[] partitionSlims) =>
+        AlienPartitionSlimsReturns(PreprocessPartitionSlims(partitionSlims));
 
     protected void PartitionSlimsReturns(BobApiResult<List<PartitionSlim>> response) =>
         _partitionSlimsResults.Add(response);
 
+    protected void AlienPartitionSlimsReturns(BobApiResult<List<PartitionSlim>> response) =>
+        _alienPartitionSlimsResults.Add(response);
+
     protected void FreeSpaceReturns(BobApiResult<ulong> response) =>
         _freeSpaceResults.Add(response);
+
+    protected override Result<int> GetResult()
+    {
+        return _result!;
+    }
+
+    protected override IPartitionsBobApiClient GetPartitionsBobApiClientMock()
+    {
+        return _partitionsBobApiClient;
+    }
 
     private Func<T> CreateReturner<T>(List<T> sequence, T def)
     {
@@ -134,13 +156,14 @@ public abstract class GenericRemoverTests : ResultAssertionsChecker
         };
     }
 
-    protected override Result<int> GetResult()
+    private static List<PartitionSlim> PreprocessPartitionSlims(PartitionSlim[] partitionSlims)
     {
-        return _result!;
-    }
-
-    protected override IPartitionsBobApiClient GetPartitionsBobApiClientMock()
-    {
-        return _partitionsBobApiClient;
+        return partitionSlims
+            .Select(p =>
+            {
+                p.Id ??= Guid.NewGuid().ToString();
+                return p;
+            })
+            .ToList();
     }
 }

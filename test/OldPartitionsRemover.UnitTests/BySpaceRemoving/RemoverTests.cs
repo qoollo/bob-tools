@@ -143,6 +143,19 @@ public class RemoverTests : GenericRemoverTests
         AssertDeleteCalledExactTimes(1);
     }
 
+    [Fact]
+    public async Task RemovePartitionsBySpace_WithAlienEnabled_RemovesAlien()
+    {
+        AllowAlienIs(true);
+        ConfigurationReadingReturnsTwoNodes();
+        NotEnoughFreeSpace();
+        NumberOfReturnedAlienPartitionsIs(1);
+
+        await Run();
+
+        AssertAlienDeleteHappened();
+    }
+
     private async Task Run()
     {
         var remover = new Remover(
