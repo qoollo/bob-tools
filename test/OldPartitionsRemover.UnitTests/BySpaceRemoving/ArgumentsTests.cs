@@ -1,12 +1,12 @@
-using FluentAssertions;
-using NUnit.Framework;
+﻿using FluentAssertions;
 using OldPartitionsRemover.BySpaceRemoving;
+using Xunit;
 
 namespace OldPartitionsRemover.UnitTests.BySpaceRemoving;
 
 public class ArgumentsTests
 {
-    [Test]
+    [Fact]
     public void GetThreshold_WithEmptyThresholdString_ReturnsError()
     {
         var arguments = new Arguments();
@@ -16,7 +16,7 @@ public class ArgumentsTests
         result.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [Test]
+    [Fact]
     public void GetThreshold_WithGarbageString_ReturnsError()
     {
         var arguments = new Arguments
@@ -29,9 +29,10 @@ public class ArgumentsTests
         result.IsOk(out var _, out var _).Should().BeFalse();
     }
 
-    [TestCase("1000B", 1000)]
-    [TestCase("2kB", 2000)]
-    [TestCase("2kb", 2000)]
+    [Theory]
+    [InlineData("1000B", 1000)]
+    [InlineData("2kB", 2000)]
+    [InlineData("2kb", 2000)]
     public void GetThreshold_WithNumberWithB_ReturnsBytesSize(string s, double bytes)
     {
         var arguments = new Arguments

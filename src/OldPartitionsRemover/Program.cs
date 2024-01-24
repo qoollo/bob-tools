@@ -1,20 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using BobApi;
-using BobApi.Entities;
 using BobToolsCli;
-using BobToolsCli.Helpers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using OldPartitionsRemover.Infrastructure;
 
 namespace OldPartitionsRemover
@@ -28,16 +16,18 @@ namespace OldPartitionsRemover
         }
 
         private static async Task RemovePartitionsByDate(ByDateRemoving.Arguments args, IServiceCollection services, CancellationToken cancellationToken)
-            => await RemovePartitions<ByDateRemoving.Remover>(services, r => r.RemoveOldPartitions(cancellationToken));
+            => await RemovePartitions<ByDateRemoving.Remover>(services, args, r => r.RemoveOldPartitions(cancellationToken));
 
         private static async Task RemovePartitionsBySpace(BySpaceRemoving.Arguments args, IServiceCollection services, CancellationToken cancellationToken)
-            => await RemovePartitions<BySpaceRemoving.Remover>(services, r => r.RemovePartitionsBySpace(cancellationToken));
+            => await RemovePartitions<BySpaceRemoving.Remover>(services, args, r => r.RemovePartitionsBySpace(cancellationToken));
 
-        private static async Task RemovePartitions<TRem>(IServiceCollection services, Func<TRem, Task<Entities.Result<int>>> remove)
+        private static async Task RemovePartitions<TRem>(IServiceCollection services, RemoverArguments args, Func<TRem, Task<Entities.Result<int>>> remove)
             where TRem : class
         {
             services.AddTransient<TRem>();
             services.AddTransient<ResultsCombiner>();
+            services.AddTransient<RemovablePartitionsFinder>();
+            services.AddSingleton(args);
             using var provider = services.BuildServiceProvider();
             var remover = provider.GetRequiredService<TRem>();
 

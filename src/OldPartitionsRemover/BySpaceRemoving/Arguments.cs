@@ -1,6 +1,4 @@
-using System;
-using System.Text.RegularExpressions;
-using BobToolsCli;
+﻿using System;
 using ByteSizeLib;
 using CommandLine;
 using OldPartitionsRemover.Entities;
@@ -8,7 +6,7 @@ using OldPartitionsRemover.Entities;
 namespace OldPartitionsRemover.BySpaceRemoving
 {
     [Verb("by-space")]
-    public class Arguments : CommonArguments
+    public class Arguments : RemoverArguments
     {
         [Option('t', "threshold", HelpText = "Removal threshold", Required = true)]
         public string ThresholdString { get; set; }
