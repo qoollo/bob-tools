@@ -79,9 +79,9 @@ namespace OldPartitionsRemover.BySpaceRemoving
         private async Task<Result<int>> RemoveOnNode(ClusterConfiguration clusterConfiguration,
             NodeConditionSpecification nodeSpec, CancellationToken cancellationToken)
         {
-            var removalFunctionsResult = await GetRemovalFunctions(clusterConfiguration, nodeSpec.Node, cancellationToken);
-            return await removalFunctionsResult
-                .Bind(async removalFunctions => await _resultsCombiner.CombineResults(removalFunctions, 0, async (n, rem) =>
+            var removablePartitions = await GetRemovablePartitions(clusterConfiguration, nodeSpec.Node, cancellationToken);
+            return await removablePartitions
+                .Bind(async partitions => await _resultsCombiner.CombineResults(partitions, 0, async (n, rem) =>
                 {
                     var isDoneRes = await nodeSpec.CheckIsDone(_logger, cancellationToken);
                     return await isDoneRes.Bind(async isDone =>
@@ -94,7 +94,7 @@ namespace OldPartitionsRemover.BySpaceRemoving
                 }));
         }
 
-        private async Task<Result<List<RemovablePartition>>> GetRemovalFunctions(
+        private async Task<Result<List<RemovablePartition>>> GetRemovablePartitions(
             ClusterConfiguration clusterConfiguration, ClusterConfiguration.Node node, CancellationToken cancellationToken)
         {
             var removableResult = await _removablePartitionsFinder.FindOnNode(clusterConfiguration, node, cancellationToken);
