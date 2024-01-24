@@ -131,6 +131,19 @@ public class RemoverTests : GenericRemoverTests
     }
 
     [Fact]
+    public async Task RemoveOldPartitions_WithAlienDisabled_DoesNotDeleteAlienPartitions()
+    {
+        AllowAlienIs(false);
+        ConfigurationReadingReturnsTwoNodes();
+        NumberOfReturnedAlienPartitionsIs(1);
+        EveryPartitionIsOutdated();
+
+        await Run();
+
+        AssertAlienDeleteNeverHappened();
+    }
+
+    [Fact]
     public async Task RemoveOldPartitions_WithAlienEnabledAndAliensNotOld_DoesNotDeleteAliens()
     {
         AllowAlienIs(true);
