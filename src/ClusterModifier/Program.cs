@@ -23,6 +23,8 @@ public class Program
             .AddTransient<ClusterExpander>()
             .AddTransient<ClusterStateFinder>()
             .AddTransient<WorkSpecificationFinder>()
+            .AddTransient<DataManipulator>()
+            .AddTransient<BobServersManipulator>()
             .AddTransient<ClusterStateAlterer>();
         if (arguments.TestRun)
         {
@@ -34,6 +36,7 @@ public class Program
                 .AddTransient<IConfigurationsFinder, TestModeImplementations.CommonImplementation>()
                 .AddTransient<ICopier, TestModeImplementations.CommonImplementation>()
                 .AddTransient<IRemover, TestModeImplementations.CommonImplementation>()
+                .AddTransient<IBobDiskRestarter, TestModeImplementations.CommonImplementation>()
                 .AddTransient<IValidator, TestModeImplementations.CommonImplementation>();
         }
         else
@@ -43,6 +46,7 @@ public class Program
                 .AddTransient<IConfigurationsFinder, ConfigurationsFinder>()
                 .AddTransient<ICopier, Copier>()
                 .AddTransient<IRemover, Remover>()
+                .AddTransient<IBobDiskRestarter, BobDiskRestarter>()
                 .AddTransient<IValidator, Validator>();
         }
         services.AddRemoteFileCopy(arguments.SshConfiguration, arguments.FilesFinderConfiguration);

@@ -12,7 +12,7 @@ public class WorkSpecificationFinder
         var dirsToDelete = GetDirsToDelete(clusterState.VDiskInfo);
         var copyOperations = GetCopyOperations(clusterState.VDiskInfo, dirsToDelete);
         var confirmedDelete = GetConfirmedDeleteOperations(copyOperations, dirsToDelete);
-        var unconfirmedDelete = GetUnconfirmedDeleteDirs(copyOperations, dirsToDelete);
+        var unconfirmedDelete = GetUnconfirmedDeleteOperations(copyOperations, dirsToDelete);
         return new WorkSpecification(copyOperations, confirmedDelete, unconfirmedDelete);
     }
 
@@ -21,8 +21,20 @@ public class WorkSpecificationFinder
         HashSet<RemoteDir> dirsToDelete
     )
     {
+        var newNodeDisksByRemoteDir = GetNewNodeDisksByRemoteDir(vDiskInfo);
         var sourceDirsByDest = GetSourceDirsByDestination(vDiskInfo);
-        return CollectOperations(sourceDirsByDest, dirsToDelete);
+        return CollectOperations(sourceDirsByDest, newNodeDisksByRemoteDir, dirsToDelete);
+    }
+
+    private Dictionary<RemoteDir, List<NodeDisk>> GetNewNodeDisksByRemoteDir(
+        List<VDiskInfo> vDiskInfo
+    )
+    {
+        // Technically we can have multiple disks for single remote dir (multiple nodes or multiple disks in one dir)
+        return vDiskInfo
+            .SelectMany(i => i.NewDirs)
+            .GroupBy(d => d.Dir)
+            .ToDictionary(g => g.Key, g => g.Select(d => d.NodeDisk).ToList());
     }
 
     private Dictionary<RemoteDir, HashSet<RemoteDir>> GetSourceDirsByDestination(
@@ -32,18 +44,21 @@ public class WorkSpecificationFinder
         var sourceDirsByDest = new Dictionary<RemoteDir, HashSet<RemoteDir>>();
         foreach (var info in vDiskInfo)
         {
-            var missing = info.NewDirs.Except(info.OldDirs);
+            var newDirs = info.NewDirs.Select(d => d.Dir);
+            var oldDirs = info.OldDirs.Select(d => d.Dir).ToHashSet();
+            var missing = newDirs.Except(oldDirs);
             foreach (var newDir in missing)
                 if (sourceDirsByDest.TryGetValue(newDir, out var dirs))
-                    dirs.UnionWith(info.OldDirs);
+                    dirs.UnionWith(oldDirs);
                 else
-                    sourceDirsByDest.Add(newDir, info.OldDirs.ToHashSet());
+                    sourceDirsByDest.Add(newDir, oldDirs);
         }
         return sourceDirsByDest;
     }
 
     private static List<CopyOperation> CollectOperations(
         Dictionary<RemoteDir, HashSet<RemoteDir>> sourceDirsByDest,
+        Dictionary<RemoteDir, List<NodeDisk>> newNodeDisksByRemoteDir,
         HashSet<RemoteDir> dirsToDelete
     )
     {
@@ -70,7 +85,7 @@ public class WorkSpecificationFinder
                 .First();
             loadCountByAddress[bestSource.Address]++;
             loadCountByDir[bestSource]++;
-            operations.Add(new CopyOperation(bestSource, dest));
+            operations.Add(new CopyOperation(bestSource, dest, newNodeDisksByRemoteDir[dest]));
         }
 
         return operations;
@@ -81,7 +96,7 @@ public class WorkSpecificationFinder
         var result = new HashSet<RemoteDir>();
         foreach (var info in vDiskInfo)
         {
-            result.UnionWith(info.OldDirs.Except(info.NewDirs));
+            result.UnionWith(info.OldDirs.Except(info.NewDirs).Select(d => d.Dir));
         }
         return result;
     }
@@ -105,22 +120,28 @@ public class WorkSpecificationFinder
         return result;
     }
 
-    private List<RemoteDir> GetUnconfirmedDeleteDirs(
+    private List<UnconfirmedDeleteOperation> GetUnconfirmedDeleteOperations(
         List<CopyOperation> copyOperations,
         HashSet<RemoteDir> dirsToDelete
     )
     {
         var copied = copyOperations.Select(o => o.From).ToHashSet();
-        return dirsToDelete.Except(copied).ToList();
+        return dirsToDelete.Except(copied).Select(d => new UnconfirmedDeleteOperation(d)).ToList();
     }
 }
 
-public record struct CopyOperation(RemoteDir From, RemoteDir To);
+public record struct CopyOperation(
+    RemoteDir From,
+    RemoteDir To,
+    List<NodeDisk> AffectedNewNodeDisks
+);
 
 public record struct ConfirmedDeleteOperation(RemoteDir DirToDelete, RemoteDir[] Copies);
+
+public record struct UnconfirmedDeleteOperation(RemoteDir DirToDelete);
 
 public record struct WorkSpecification(
     List<CopyOperation> CopyOperations,
     List<ConfirmedDeleteOperation> ConfirmedDeleteOperations,
-    List<RemoteDir> UnconfirmedDeleteDirs
+    List<UnconfirmedDeleteOperation> UnconfirmedDeleteDirs
 );
