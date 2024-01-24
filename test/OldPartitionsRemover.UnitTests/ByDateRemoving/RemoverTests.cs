@@ -10,13 +10,13 @@ namespace OldPartitionsRemover.UnitTests.ByDateRemoving;
 
 public class RemoverTests : GenericRemoverTests
 {
-    private static readonly DateTimeOffset s_exampleDateTimeOffset =
+    private static readonly DateTimeOffset s_thresholdString =
         new(2000, 01, 01, 0, 0, 0, TimeSpan.Zero);
     private readonly Arguments _arguments = new();
 
     public RemoverTests()
     {
-        _arguments.ThresholdString = "01.01.2000";
+        _arguments.ThresholdString = s_thresholdString.ToString();
     }
 
     [Fact]
@@ -156,6 +156,21 @@ public class RemoverTests : GenericRemoverTests
         AssertAlienDeleteNeverHappened();
     }
 
+    [Fact]
+    public async Task RemoveOldPartitions_WithNormalAndAlienOutdatedPartitions_RemovesBoth()
+    {
+        AllowAlienIs(true);
+        ConfigurationReadingReturnsTwoNodes();
+        NumberOfReturnedAlienPartitionsIs(1);
+        NumberOfReturnedPartitionsIs(1);
+        EveryPartitionIsOutdated();
+
+        await Run();
+
+        AssertAlienDeleteHappened();
+        AssertDeleteHappened();
+    }
+
     private async Task Run()
     {
         var remover = new Remover(
@@ -171,15 +186,13 @@ public class RemoverTests : GenericRemoverTests
 
     private void EveryPartitionIsOutdated()
     {
-        var ts = s_exampleDateTimeOffset.ToUnixTimeSeconds() - 1;
-        _arguments.ThresholdString = s_exampleDateTimeOffset.ToString();
+        var ts = s_thresholdString.ToUnixTimeSeconds() - 1;
         SetAllPartitionsTimestamp(ts);
     }
 
     private void EveryPartitionIsActual()
     {
-        var ts = s_exampleDateTimeOffset.ToUnixTimeSeconds() + 1;
-        _arguments.ThresholdString = s_exampleDateTimeOffset.ToString();
+        var ts = s_thresholdString.ToUnixTimeSeconds() + 1;
         SetAllPartitionsTimestamp(ts);
     }
 
